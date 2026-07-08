@@ -50,6 +50,7 @@ AGENTS.md                          generic entry point, read by any agent
     verification-before-completion.md   evidence before completion claims, iron law
     closing-the-loop.md            check anti-patterns/decisions before ending a turn
 docs/plans/                        where design docs and task plans get saved
+.agent-room.json                   project config tracking language, tools, default branch, and skill packs
 ```
 
 With `--tools claude`:
@@ -99,6 +100,11 @@ With `--tools git`:
 | --- | --- |
 | `--name <name>` | Project name substituted into templates (default: target dir name) |
 | `--tools <list>` | Comma-separated: `claude,cursor,windsurf,cline,codex,git,none` (default: interactive prompt) |
+| `--template-source <path>` | Custom templates folder path (default: searches local, home, package) |
+| `--package-manager <name>` | Package manager to use, e.g. npm, poetry, cargo (default: npm) |
+| `--language <name>` | Target project language, e.g. typescript, python, rust (default: javascript) |
+| `--branch <name>` | Default git branch (default: main) |
+| `--skill-packs <list>` | Comma-separated optional skill packs: testing, security, release (default: none) |
 | `--git` | `git init` + an initial commit in the target dir |
 | `--force` | Overwrite files that already exist (default: skip existing files) |
 | `-y, --yes` | Skip all prompts, use defaults |
