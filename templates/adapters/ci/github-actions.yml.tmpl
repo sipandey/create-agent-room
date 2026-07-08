@@ -1,0 +1,20 @@
+name: agent-room-validate
+
+on:
+  push:
+    branches: [{{DEFAULT_BRANCH}}]
+  pull_request:
+    branches: [{{DEFAULT_BRANCH}}]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Validate {{PROJECT_NAME}} agent-room structure
+        run: npx --yes create-agent-room@latest validate .
+      - name: Lint session logs
+        run: npx --yes create-agent-room@latest lint-sessions .

@@ -27,7 +27,7 @@ Scaffold an LLM-agent-friendly project structure and governance framework into a
 These features actively constrain behavior and will fail/block operations if violated:
 
 - **Agent Guardrails** — Pre-commit hook blocks commits to protected paths or with forbidden patterns (optional; requires `--tools git`)
-- **Session Log Validation** — `lint-sessions` command validates all session logs against schema; fails CI with exit code 1 if malformed
+- **Session Log Validation** — `lint-sessions` command validates all session logs against schema; fails CI with exit code 1 if malformed. With the `git` adapter, a `.github/workflows/agent-room-validate.yml` workflow is scaffolded automatically to run `validate` and `lint-sessions` on every push/PR.
 - **Skill Frontmatter Validation** — `validate` command lints skill YAML headers
 
 ### 🟡 Prescriptive Guidance (Requires Human Discipline)

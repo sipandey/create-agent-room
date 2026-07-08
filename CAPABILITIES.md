@@ -24,8 +24,8 @@ These features **actively block, fail, or prevent** operations if violated:
   - Required sections: Goal, Files touched, Actions taken, Tests run, Decisions made, Outcome
   - Required fields: Date (YYYY-MM-DD HH:MM format), Agent, Classification (Bug|Enhancement|Feature|Product)
 - **How it fails:** Exit code 1 if any session is malformed
-- **CI integration:** Suitable for pre-merge gates
-- **User action:** Must be run explicitly or integrated into CI pipeline
+- **CI integration:** Scaffolded automatically as `.github/workflows/agent-room-validate.yml` whenever the `git` adapter is active (see `--tools git`), running both `validate` and `lint-sessions` on push/PR
+- **User action:** None — ships automatically with the git adapter; edit or remove the workflow file if you use a different CI provider
 
 ### Skill Frontmatter Validation
 
