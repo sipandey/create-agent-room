@@ -43,15 +43,23 @@ AGENTS.md                          generic entry point, read by any agent
 .agent-room/
   principles.md                    12 principles for reliable LLM output
   workflow-classifier.md           Bug / Enhancement / Feature / Product routing
+  guardrails.md                    boundaries and constraints (what not to do)
+  guardrails.json                  machine-readable guardrails config
   anti-patterns.md                 append-only negative-knowledge log (starts empty)
   decisions.md                     append-only decisions log (starts empty)
   skills/
     brainstorming.md               design before code, hard-gated
-    writing-plans.md                design -> bite-sized TDD task plan
+    writing-plans.md               design -> bite-sized TDD task plan
     test-driven-development.md     red-green-refactor, iron law
     systematic-debugging.md        root-cause before fixes, iron law
     verification-before-completion.md   evidence before completion claims, iron law
     closing-the-loop.md            check anti-patterns/decisions before ending a turn
+    [optional skill packs]         testing, security, release, code-review, etc.
+  coordination/
+    handoff-protocol.md            rules for serializing state between sessions
+    scope-boundaries.md            rules for partitioning work to avoid conflicts
+    session-log-format.md          format for tracking agent activity
+  sessions/                        where session logs get saved
 docs/plans/                        where design docs and task plans get saved
 .agent-room.json                   project config tracking language, tools, default branch, and skill packs
 ```
