@@ -110,6 +110,7 @@ With `--tools git`:
 | `--skill-packs <list>` | Comma-separated optional skill packs: testing, security, release (default: none) |
 | `--git` | `git init` + an initial commit in the target dir |
 | `--force` | Overwrite files that already exist (default: skip existing files) |
+| `--verbose` | Print detailed stack traces on failure (default: print clean error messages) |
 | `-y, --yes` | Skip all prompts, use defaults |
 
 Re-running `init` on an existing target is safe — it skips files that

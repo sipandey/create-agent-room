@@ -17,6 +17,8 @@ function parseArgs(argv) {
       args.force = true;
     } else if (a === '--check' || a === '-c') {
       args.check = true;
+    } else if (a === '--verbose') {
+      args.verbose = true;
     } else if (a === '--tools') {
       if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
         args.tools = argv[++i];
@@ -103,6 +105,7 @@ Options:
   --git                     Run "git init" and create an initial commit in target-dir
   --force                   Overwrite existing files instead of skipping them
   --check, -c               Check if mirrored files are out of sync without writing changes
+  --verbose                 Print detailed stack traces on failure
   -y, --yes                 Don't prompt; use defaults for anything unspecified
 
 Examples:
@@ -136,8 +139,14 @@ async function main() {
 }
 
 if (require.main === module) {
+  const { red } = require('../lib/color');
   main().catch((err) => {
-    console.error(err && err.message ? err.message : err);
+    const isVerbose = process.argv.includes('--verbose');
+    if (isVerbose && err && err.stack) {
+      console.error(red(err.stack));
+    } else {
+      console.error(red(err && err.message ? err.message : String(err)));
+    }
     process.exitCode = 1;
   });
 }

@@ -84,3 +84,8 @@ test('parseArgs: parses check flag', () => {
   const result2 = parseArgs(['-c']);
   assert.strictEqual(result2.check, true);
 });
+
+test('parseArgs: parses verbose flag', () => {
+  const result = parseArgs(['--verbose']);
+  assert.strictEqual(result.verbose, true);
+});

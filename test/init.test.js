@@ -124,3 +124,55 @@ test('runInit: scaffolds with custom parameters and optional skill packs', async
   assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'skills', 'security-principles.md')), 'security-principles skill should exist');
   assert.ok(!fs.existsSync(path.join(tmpDir, '.agent-room', 'skills', 'release-management.md')), 'release-management skill should NOT exist');
 });
+
+const { detectWorkspace } = require('../lib/init');
+
+test('detectWorkspace: detects Cargo.toml correctly', () => {
+  const tmpDir = path.join(__dirname, 'tmp-detect-rust-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  fs.writeFileSync(path.join(tmpDir, 'Cargo.toml'), '[package]');
+
+  const detected = detectWorkspace(tmpDir);
+  assert.strictEqual(detected.language, 'rust');
+  assert.strictEqual(detected.packageManager, 'cargo');
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('detectWorkspace: detects package.json and tsconfig.json correctly', () => {
+  const tmpDir = path.join(__dirname, 'tmp-detect-js-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  fs.writeFileSync(path.join(tmpDir, 'package.json'), '{}');
+  fs.writeFileSync(path.join(tmpDir, 'tsconfig.json'), '{}');
+  fs.writeFileSync(path.join(tmpDir, 'pnpm-lock.yaml'), '');
+
+  const detected = detectWorkspace(tmpDir);
+  assert.strictEqual(detected.language, 'typescript');
+  assert.strictEqual(detected.packageManager, 'pnpm');
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
+test('runInit: rolls back created files on scaffolding failure', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-rollback-project-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  // Create "docs" as a file so that folder creation fails
+  fs.writeFileSync(path.join(tmpDir, 'docs'), 'I am a file');
+
+  t.after(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  await assert.rejects(async () => {
+    await runInit(tmpDir, {
+      yes: true,
+      tools: 'none',
+      name: 'RollbackTest',
+      force: true
+    });
+  });
+
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, 'AGENTS.md')), false, 'AGENTS.md should have been deleted during rollback');
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.agent-room', 'principles.md')), false, '.agent-room/principles.md should have been deleted during rollback');
+});
