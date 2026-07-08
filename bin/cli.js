@@ -9,14 +9,35 @@ function parseArgs(argv) {
   const args = { _: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--yes' || a === '-y') args.yes = true;
-    else if (a === '--git') args.git = true;
-    else if (a === '--force') args.force = true;
-    else if (a === '--tools') args.tools = argv[++i];
-    else if (a === '--name') args.name = argv[++i];
-    else if (a.startsWith('--tools=')) args.tools = a.slice('--tools='.length);
-    else if (a.startsWith('--name=')) args.name = a.slice('--name='.length);
-    else args._.push(a);
+    if (a === '--yes' || a === '-y') {
+      args.yes = true;
+    } else if (a === '--git') {
+      args.git = true;
+    } else if (a === '--force') {
+      args.force = true;
+    } else if (a === '--tools') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.tools = argv[++i];
+      } else {
+        throw new Error('Error: --tools option requires a comma-separated list of tools.');
+      }
+    } else if (a === '--name') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.name = argv[++i];
+      } else {
+        throw new Error('Error: --name option requires a project name.');
+      }
+    } else if (a.startsWith('--tools=')) {
+      args.tools = a.slice('--tools='.length);
+    } else if (a.startsWith('--name=')) {
+      args.name = a.slice('--name='.length);
+    } else if (a === '--help' || a === '-h' || a === 'help') {
+      args.help = true;
+    } else if (a.startsWith('-')) {
+      throw new Error(`Error: Unknown option: ${a}`);
+    } else {
+      args._.push(a);
+    }
   }
   return args;
 }
@@ -48,7 +69,7 @@ async function main() {
   const command = argv[0];
   const args = parseArgs(argv.slice(1));
 
-  if (!command || command === '--help' || command === '-h' || command === 'help') {
+  if (!command || argv.includes('--help') || argv.includes('-h') || command === 'help') {
     printHelp();
     return;
   }
@@ -66,7 +87,11 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error(err && err.message ? err.message : err);
-  process.exitCode = 1;
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(err && err.message ? err.message : err);
+    process.exitCode = 1;
+  });
+}
+
+module.exports = { parseArgs };

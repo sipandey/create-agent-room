@@ -1,6 +1,6 @@
 {
   "name": "create-agent-room",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Scaffold an LLM-agent-friendly project structure: AGENTS.md, principles, workflow classifier, anti-patterns/decisions logs, and core skills (brainstorming, writing-plans, TDD, systematic debugging, verification-before-completion).",
   "bin": {
     "create-agent-room": "bin/cli.js"
@@ -13,7 +13,14 @@
     "README.md"
   ],
   "engines": {
-    "node": ">=14"
+    "node": ">=18"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test test/**/*.test.js",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "eslint": "^8.57.0"
+  }
 }
