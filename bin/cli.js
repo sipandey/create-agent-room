@@ -6,6 +6,7 @@ const { runInit } = require('../lib/init');
 const { runSync } = require('../lib/sync');
 const { runMetrics } = require('../lib/metrics');
 const { runValidate } = require('../lib/validate');
+const { runPrDesc } = require('../lib/pr');
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -21,6 +22,8 @@ function parseArgs(argv) {
       args.check = true;
     } else if (a === '--verbose') {
       args.verbose = true;
+    } else if (a === '--write' || a === '-w') {
+      args.write = true;
     } else if (a === '--tools') {
       if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
         args.tools = argv[++i];
@@ -105,6 +108,7 @@ Usage:
   create-agent-room sync [target-dir] [options]
   create-agent-room metrics [target-dir]
   create-agent-room validate [target-dir]
+  create-agent-room pr-desc [target-dir] [options]
 
 Options:
   --name <name>             Project name used in templates (default: target dir name)
@@ -119,6 +123,7 @@ Options:
   --force                   Overwrite existing files instead of skipping them
   --check, -c               Check if mirrored files are out of sync without writing changes
   --verbose                 Print detailed stack traces on failure
+  --write, -w               Save generated PR description to .agent-room/pr-description.md
   -y, --yes                 Don't prompt; use defaults for anything unspecified
 
 Examples:
@@ -127,6 +132,7 @@ Examples:
   create-agent-room sync . --check
   create-agent-room metrics .
   create-agent-room validate .
+  create-agent-room pr-desc . --write
 `);
 }
 
@@ -150,6 +156,8 @@ async function main() {
     runMetrics(target, args);
   } else if (command === 'validate') {
     runValidate(target, args);
+  } else if (command === 'pr-desc') {
+    runPrDesc(target, args);
   } else {
     console.error(`Unknown command: ${command}`);
     printHelp();
