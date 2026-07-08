@@ -5,31 +5,31 @@ project: a generic `AGENTS.md` entry point, principles + workflow-classifier
 reference docs, append-only anti-patterns/decisions logs, and 6 core skills
 (`brainstorming`, `writing-plans`, `test-driven-development`,
 `systematic-debugging`, `verification-before-completion`,
-`closing-the-loop`) — plus optional thin adapters for Claude Code and
-Cursor. The Claude Code adapter also installs a `Stop` hook that mechanically
-checks the closing-the-loop discipline instead of just hoping the agent
-remembers.
+`closing-the-loop`) — plus optional thin adapters for Claude Code, Cursor,
+Windsurf, Cline, and Git. The Claude Code and Git hook adapters install
+verification checks that mechanically check the closing-the-loop discipline
+instead of just hoping the developer remembers.
 
 ## Usage
 
 ```bash
 # from this repo, without publishing/installing:
-node tooling/create-agent-room/bin/cli.js init ../my-new-project --tools claude,cursor --git
+node bin/cli.js init ../my-new-project --tools claude,cursor,windsurf,cline,git --git
 
 # interactive (prompts for name + tools):
-node tooling/create-agent-room/bin/cli.js init ../my-new-project
+node bin/cli.js init ../my-new-project
 
 # non-interactive, generic-only (no tool adapters):
-node tooling/create-agent-room/bin/cli.js init . --yes
+node bin/cli.js init . --yes
 
 # after editing .agent-room/skills/*.md by hand, refresh the Claude Code mirror:
-node tooling/create-agent-room/bin/cli.js sync .
+node bin/cli.js sync .
 ```
 
 Once published to npm, the same commands work as:
 
 ```bash
-npx create-agent-room init my-new-project --tools claude,cursor --git
+npx create-agent-room init my-new-project --tools claude,cursor,windsurf,cline,git --git
 npx create-agent-room sync .
 ```
 
@@ -74,6 +74,23 @@ With `--tools cursor`:
 .cursor/rules/agent-room.md        pointer to AGENTS.md + .agent-room/
 ```
 
+With `--tools windsurf`:
+```
+.windsurfrules                     pointer to AGENTS.md + .agent-room/
+```
+
+With `--tools cline`:
+```
+.clinerules                        pointer to AGENTS.md + .agent-room/
+```
+
+With `--tools git`:
+```
+.git/hooks/pre-commit              Git pre-commit hook enforcing close-the-loop check
+```
+
+**The Git pre-commit hook** runs automatically on any staged local commit. If source files are changed but neither `.agent-room/anti-patterns.md` nor `.agent-room/decisions.md` is modified, it blocks the commit to ensure the loops are closed. You can bypass the block by adding a waiver to `decisions.md` or using `git commit --no-verify`.
+
 `codex` reads `AGENTS.md` natively — no extra adapter file is generated for it.
 
 ## Options
@@ -81,7 +98,7 @@ With `--tools cursor`:
 | Flag | Effect |
 | --- | --- |
 | `--name <name>` | Project name substituted into templates (default: target dir name) |
-| `--tools <list>` | Comma-separated: `claude,cursor,codex,none` (default: interactive prompt) |
+| `--tools <list>` | Comma-separated: `claude,cursor,windsurf,cline,codex,git,none` (default: interactive prompt) |
 | `--git` | `git init` + an initial commit in the target dir |
 | `--force` | Overwrite files that already exist (default: skip existing files) |
 | `-y, --yes` | Skip all prompts, use defaults |
