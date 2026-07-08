@@ -1,0 +1,14 @@
+{
+  "name": "PythonBackend",
+  "tools": [
+    "claude",
+    "git"
+  ],
+  "language": "python",
+  "packageManager": "pipenv",
+  "defaultBranch": "main",
+  "skillPacks": [
+    "testing",
+    "security"
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "name": "RustService",
+  "tools": [
+    "cursor"
+  ],
+  "language": "rust",
+  "packageManager": "cargo",
+  "defaultBranch": "main",
+  "skillPacks": [
+    "release"
+  ]
+}
