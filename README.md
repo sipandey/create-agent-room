@@ -24,6 +24,9 @@ node bin/cli.js init . --yes
 
 # after editing .agent-room/skills/*.md by hand, refresh the Claude Code mirror:
 node bin/cli.js sync .
+
+# check if mirrors are out of sync (exits with code 1 if out-of-sync):
+node bin/cli.js sync . --check
 ```
 
 Once published to npm, the same commands work as:
@@ -116,6 +119,8 @@ already exist unless `--force` is passed.
 
 - `.agent-room/skills/*.md` is always the source of truth, even in projects
   with a Claude Code adapter. `.claude/skills/*` is a generated mirror —
-  edit the source and run `sync`, don't edit the mirror directly.
+  edit the source and run `sync`, don't edit the mirror directly. **To protect
+  your work, `sync` checks for uncommitted changes in mirrored files and
+  skips them if they have unsaved edits, unless `--force` is passed.**
 - The core set is intentionally lean: no stack-specific idiom files or coder
   personas are included by default. Add those per-project as needed.

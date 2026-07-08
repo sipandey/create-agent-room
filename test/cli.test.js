@@ -76,3 +76,11 @@ test('parseArgs: throws error on missing custom arguments', () => {
   assert.throws(() => parseArgs(['--branch']), /Error: --branch option requires/);
   assert.throws(() => parseArgs(['--skill-packs']), /Error: --skill-packs option requires/);
 });
+
+test('parseArgs: parses check flag', () => {
+  const result1 = parseArgs(['--check']);
+  assert.strictEqual(result1.check, true);
+
+  const result2 = parseArgs(['-c']);
+  assert.strictEqual(result2.check, true);
+});

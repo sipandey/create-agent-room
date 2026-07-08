@@ -15,6 +15,8 @@ function parseArgs(argv) {
       args.git = true;
     } else if (a === '--force') {
       args.force = true;
+    } else if (a === '--check' || a === '-c') {
+      args.check = true;
     } else if (a === '--tools') {
       if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
         args.tools = argv[++i];
@@ -88,7 +90,7 @@ create-agent-room - scaffold an LLM-agent-friendly project structure
 
 Usage:
   create-agent-room init [target-dir] [options]
-  create-agent-room sync [target-dir]
+  create-agent-room sync [target-dir] [options]
 
 Options:
   --name <name>             Project name used in templates (default: target dir name)
@@ -100,12 +102,13 @@ Options:
   --skill-packs <list>      Comma-separated optional skill packs: testing,security,release (default: none)
   --git                     Run "git init" and create an initial commit in target-dir
   --force                   Overwrite existing files instead of skipping them
+  --check, -c               Check if mirrored files are out of sync without writing changes
   -y, --yes                 Don't prompt; use defaults for anything unspecified
 
 Examples:
   create-agent-room init my-new-project --tools claude,cursor,git --git
   create-agent-room init . --yes --language python --package-manager pip --skill-packs testing
-  create-agent-room sync .
+  create-agent-room sync . --check
 `);
 }
 
@@ -124,7 +127,7 @@ async function main() {
   if (command === 'init') {
     await runInit(target, args);
   } else if (command === 'sync') {
-    runSync(target);
+    runSync(target, args);
   } else {
     console.error(`Unknown command: ${command}`);
     printHelp();
