@@ -17,7 +17,6 @@ const { execSync } = require('child_process');
 
 const projectRoot = process.cwd();
 const guardrailsPath = path.join(projectRoot, '.agent-room', 'guardrails.json');
-const agentRoomDir = path.join(projectRoot, '.agent-room');
 
 // Allow override via env variable
 const ALLOW_GUARDRAILS_BYPASS = process.env.GUARDRAILS_BYPASS || process.env.SKIP_GUARDRAILS_CHECK;
