@@ -1,0 +1,56 @@
+# Agent Instructions — {{PROJECT_NAME}}
+
+This file is the entry point for any AI coding agent (Claude Code, Codex,
+Cursor, etc.) working in this repository. Tool-specific files (`CLAUDE.md`,
+`.cursor/rules`, ...) are thin pointers back to this file plus their own
+loading mechanics — the actual content lives here and in `.agent-room/`.
+
+## Read these before doing anything non-trivial
+
+- [`.agent-room/principles.md`](.agent-room/principles.md) — how to get
+  reliable output from an LLM (context, iteration, checkpointing, tests as
+  spec, negative knowledge).
+- [`.agent-room/workflow-classifier.md`](.agent-room/workflow-classifier.md) —
+  how to size the process to the work (Bug / Enhancement / Feature / Product).
+- [`.agent-room/anti-patterns.md`](.agent-room/anti-patterns.md) — things that
+  have already gone wrong in this project. Check before repeating a mistake;
+  append after fixing one.
+- [`.agent-room/decisions.md`](.agent-room/decisions.md) — short log of
+  architecture/design decisions and why. Append when you make one that future
+  sessions would otherwise have to re-derive.
+- [`.agent-room/skills/`](.agent-room/skills/) — procedures to follow, not
+  just read: `brainstorming`, `writing-plans`, `test-driven-development`,
+  `systematic-debugging`, `verification-before-completion`,
+  `closing-the-loop`.
+
+## The default workflow
+
+1. **Classify the work** using `.agent-room/workflow-classifier.md`. Don't
+   apply Feature-weight process to a one-line bug fix, and don't skip design
+   for a "simple" feature.
+2. **For anything beyond a trivial bug fix**, brainstorm before building: ask
+   clarifying questions, propose 2-3 approaches with trade-offs, get the
+   design approved, *then* write a short design note under `docs/plans/`.
+3. **Use TDD**: write the failing test first, watch it fail, write the
+   minimal code to pass, refactor, commit. No production code without a
+   failing test first.
+4. **Debug systematically**: find the root cause before proposing a fix.
+   Reproduce, check recent changes, gather evidence at component boundaries.
+   No fixes without root-cause investigation.
+5. **Verify before claiming done**: run the actual test/build/lint command in
+   this turn and read its output before saying "tests pass" or "fixed."
+   "Should work" is not evidence.
+6. **Close the loop — before ending the turn, not after**: this is a gate,
+   not a suggestion. Follow `.agent-room/skills/closing-the-loop.md`. If the
+   turn fixed a bug, found a root cause, or made a non-obvious design call,
+   append it to `.agent-room/anti-patterns.md` or `.agent-room/decisions.md`
+   *before* claiming the task is done. If nothing qualifies, say so
+   explicitly rather than silently skipping the check — in a project with
+   the Claude Code hook installed, an unaddressed check will block you from
+   finishing the turn (see `CLAUDE.md`).
+
+## Project-specific notes
+
+<!-- Add stack, conventions, commands (test/lint/build), and anything else
+     an agent needs that isn't derivable from reading the code. Keep this
+     section current — it decays fastest. -->
