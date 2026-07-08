@@ -17,6 +17,27 @@
     "node": ">=18"
   },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sipandey/create-agent-room.git"
+  },
+  "homepage": "https://github.com/sipandey/create-agent-room#readme",
+  "bugs": {
+    "url": "https://github.com/sipandey/create-agent-room/issues"
+  },
+  "keywords": [
+    "llm",
+    "agents",
+    "ai-agents",
+    "claude",
+    "cursor",
+    "windsurf",
+    "scaffold",
+    "cli",
+    "agents-md",
+    "governance"
+  ],
+  "author": "Siddharth Pandey",
   "scripts": {
     "test": "node --test test/**/*.test.js",
     "lint": "eslint ."
