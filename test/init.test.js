@@ -150,12 +150,15 @@ test('runInit: scaffolds with custom parameters and optional skill packs', async
     force: true
   });
 
+  // The python stack override (templates/stacks/python/AGENTS.md.tmpl) fully
+  // replaces the generic base AGENTS.md.tmpl for this language, so assert
+  // against its actual Python-specific content rather than the base template's.
   const agentsContent = fs.readFileSync(path.join(tmpDir, 'AGENTS.md'), 'utf8');
-  assert.match(agentsContent, /Language.*python/);
+  assert.match(agentsContent, /\(Python\)/);
+  assert.match(agentsContent, /PEP 8 compliance/);
   assert.match(agentsContent, /Package Manager.*pipenv/);
-  assert.match(agentsContent, /Default Branch.*develop/);
-  assert.match(agentsContent, /Run tests.*pipenv run pytest/);
-  assert.match(agentsContent, /Run linting.*pipenv run flake8 \./);
+  assert.match(agentsContent, /Test Command.*pipenv run pytest/);
+  assert.match(agentsContent, /Lint Command.*pipenv run flake8 \./);
 
   assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room.json')), '.agent-room.json should exist');
   const config = JSON.parse(fs.readFileSync(path.join(tmpDir, '.agent-room.json'), 'utf8'));
@@ -173,6 +176,32 @@ test('runInit: scaffolds with custom parameters and optional skill packs', async
   assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'skills', 'observability.md')), 'observability skill should exist');
   assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'skills', 'documentation.md')), 'documentation skill should exist');
   assert.ok(!fs.existsSync(path.join(tmpDir, '.agent-room', 'skills', 'release-management.md')), 'release-management skill should NOT exist');
+});
+
+test('runInit: packaged templates/stacks/python override is actually used for --language python', async (t) => {
+  // Regression test: templates/ (the real packaged template root, not a
+  // synthetic fixture) has AGENTS.md.tmpl at its root plus a stacks/
+  // subdirectory, with no base/ subdirectory. getLayers() must still treat
+  // it as structured so templates/stacks/python/AGENTS.md.tmpl is picked up
+  // instead of silently falling back to the generic root template.
+  const tmpDir = path.join(__dirname, 'tmp-packaged-python-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  t.after(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  await runInit(tmpDir, {
+    yes: true,
+    tools: 'none',
+    name: 'PackagedPythonTest',
+    language: 'python',
+    force: true
+  });
+
+  const agentsContent = fs.readFileSync(path.join(tmpDir, 'AGENTS.md'), 'utf8');
+  assert.match(agentsContent, /PEP 8 compliance/, 'AGENTS.md should contain Python-specific content, not the generic base template');
+  assert.match(agentsContent, /Virtual Environment/, 'AGENTS.md should contain Python-specific content, not the generic base template');
 });
 
 const { detectWorkspace } = require('../lib/init');

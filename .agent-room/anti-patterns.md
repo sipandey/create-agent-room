@@ -210,3 +210,34 @@ downstream evidence, not a separate bug.
 so a future `git log` reader isn't confused about why sessions/ briefly
 had content dated before this repo had ever been scaffolded with
 `create-agent-room` on itself.
+
+### 2026-07-09 — templates/stacks/<language>/AGENTS.md.tmpl were dead code: getLayers() required a base/ subdir that the packaged templates/ never had
+
+**What happened:** `lib/fsutil.js`'s `getLayers(R, ...)` only treated a
+template root as "structured" (and looked inside `stacks/<lang>/`) when
+`R/base/` existed. The packaged `templates/` directory has `AGENTS.md.tmpl`
+directly at its root plus a `stacks/` subdirectory, but no `templates/base/`
+— so `isStructured` was always false and `getLayers(templates, ...)`
+returned just `[templates]`, never `[templates, templates/stacks/python]`.
+Every `init --language python|typescript|react` silently scaffolded the
+generic base `AGENTS.md`, and the three stack-specific template files
+(with real content like "PEP 8 compliance", "Virtual Environment") were
+never delivered to any user despite existing in the package. An existing
+test (`runInit: template inheritance layers merge correctly`) passed the
+whole time because it built a synthetic `base/`+`stacks/`+`org/` fixture
+by hand — it proved the merge logic works, not that the real `templates/`
+directory used it.
+**Root cause:** `getLayers()`'s structured-vs-flat check assumed every
+template root would mirror the synthetic test fixture's `base/` layout;
+nobody checked it against the actual packaged `templates/` layout, which
+puts base-layer files at `R` itself.
+**Fix:** `getLayers()` now also treats a root as structured if it has a
+`stacks/` or `org/` subdirectory (not just `base/`), and falls back to
+`R` itself as the base layer when there's no explicit `base/` dir. See
+the corresponding entry in `decisions.md` for why this option was chosen
+over restructuring `templates/` into `base/`+`stacks/`+`org/`.
+**Avoid:** when adding "does X exist" tests for template/config discovery,
+run them against the real shipped directory in `templates/`/`examples/`
+at least once, not only synthetic fixtures built in the test file —
+fixtures encode the author's assumption about the shape, which is exactly
+what can be wrong.

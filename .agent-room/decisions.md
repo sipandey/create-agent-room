@@ -115,3 +115,25 @@ and had already drifted once (`package-lock.json` was stale relative to
 `package.json` until an audit caught it).
 **Rejected:** an `.npmignore` file — redundant since `files` already takes
 precedence over it, and would only add a second place to keep in sync.
+
+### 2026-07-09 — getLayers() treats stacks/org subdirs as structured, instead of restructuring templates/ into base/
+
+**Decision:** fixed `getLayers()` in `lib/fsutil.js` to also recognize a
+template root as "structured" (needing layer merging) when it has a
+`stacks/` or `org/` subdirectory, not only a `base/` subdirectory — and to
+use the root itself as the implicit base layer in that case. Left the
+packaged `templates/` directory layout unchanged (files at its root,
+`stacks/<language>/` and future `org/<name>/` as siblings).
+**Why:** the alternative — restructuring `templates/` into
+`templates/base/` + `templates/stacks/` + `templates/org/` to match what
+`getLayers()` originally expected — touches every `relativePath` argument
+passed into `copyFileInherited`/`copyDirInherited` in `lib/init.js`, plus
+anything (docs, `examples/`, packaging) that assumes today's flat root
+layout. The `getLayers()` change is a single function, is backward
+compatible with the synthetic `base/`+`stacks/`+`org/` layout the existing
+"template inheritance layers merge correctly" test already covers, and has
+no blast radius outside `fsutil.js`.
+**Rejected:** restructuring `templates/` to have an explicit `base/` dir —
+correct in the abstract (makes "structured" detection unambiguous) but a
+much larger diff for the same outcome, with no functional benefit since
+`getLayers()` can absorb the ambiguity in one place instead.
