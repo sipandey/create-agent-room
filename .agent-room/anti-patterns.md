@@ -21,6 +21,27 @@ Append a new entry every time:
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-07-09 — guardrails-check.js could self-weaken via a single commit
+
+**What happened:** `guardrails-check.js` reads `guardrails.json` live at
+hook-run time and evaluates `protectedPaths` against the version of the
+file *being committed*, not the version at HEAD. A single commit that both
+edited `guardrails.json` and removed its own path from `protectedPaths` in
+that same edit passed the check — the hook checked the newly-weakened
+rules against themselves and found nothing wrong, since by the time it ran
+the self-protecting entry was already gone from the file it read.
+**Root cause:** the check trusted the staged content of the very file that
+defines what's protected, with no comparison against the prior, presumably
+still-trusted state (HEAD) of that same file.
+**Avoid:** when a config file's own rules govern whether edits to that
+config file are allowed, don't evaluate a staged edit purely against
+itself — diff it against the last-committed version and flag edits that
+remove protection the previous version had, regardless of what the new
+version now claims. `guardrails-check.js` does this for `guardrails.json`
+via `git show HEAD:.agent-room/guardrails.json`, falling back to "no prior
+protection" (not a crash) when there's no HEAD yet or HEAD's copy doesn't
+parse.
+
 ### 2026-07-09 — shell injection via string-interpolated execSync in git hooks
 
 **What happened:** `templates/adapters/git-hooks/guardrails-check.js` and

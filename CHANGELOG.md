@@ -10,6 +10,18 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+### Fixed
+
+- `guardrails-check.js` evaluated `protectedPaths` against the version of
+  `guardrails.json` being committed, not the previous (HEAD) version, so a
+  commit that both edited `guardrails.json` and removed its own path from
+  `protectedPaths` in the same edit was not caught — the newly-weakened
+  rules approved themselves. When `guardrails.json` is staged, the hook now
+  also compares against `git show HEAD:.agent-room/guardrails.json`: if
+  HEAD's `protectedPaths` protected the file but the staged version no
+  longer does, the commit is still blocked. Handles the genesis commit (no
+  HEAD) and an unparseable HEAD copy without crashing.
+
 ### Docs
 
 - README usage examples now lead with `npx create-agent-room ...` (the

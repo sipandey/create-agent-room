@@ -17,6 +17,7 @@ These features **actively block, fail, or prevent** operations if violated:
 - **How it fails:** Exit code 1; blocks the commit
 - **User action:** Requires `--tools git` during `init`
 - **Bypass:** Set `GUARDRAILS_BYPASS=1` environment variable for emergency commits (requires human decision)
+- **Known limitation:** if `guardrails.json` itself is listed in `protectedPaths`, a commit that both edits `guardrails.json` and removes its own path from `protectedPaths` in that same edit is compared against HEAD's prior `protectedPaths` (via `git show HEAD:.agent-room/guardrails.json`) specifically to catch this self-weakening case — but only for `guardrails.json` itself, not for other rules weakened in the same commit (e.g. narrowing a glob or dropping an unrelated forbidden pattern still succeeds silently).
 
 ### Session Log Format Validation
 

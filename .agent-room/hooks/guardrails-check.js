@@ -58,6 +58,27 @@ for (const file of stagedFiles) {
   }
 }
 
+// Self-protect guardrails.json: the check above only evaluates staged files
+// against the protectedPaths in the version of guardrails.json being
+// committed. If a single commit both edits guardrails.json and removes its
+// own path from protectedPaths in that same edit, the newly-weakened rules
+// approve themselves. Compare against HEAD's protectedPaths (the rules that
+// applied before this commit) so that scenario is still caught.
+const guardrailsRelPath = path.relative(projectRoot, guardrailsPath).replace(/\\/g, '/');
+if (stagedFiles.includes(guardrailsRelPath)) {
+  const headGuardrails = getHeadGuardrails();
+  if (headGuardrails) {
+    const headProtectedPaths = headGuardrails.protectedPaths || [];
+    const wasProtected = headProtectedPaths.some((p) => isPathProtected(guardrailsRelPath, p));
+    const isStillProtected = protectedPaths.some((p) => isPathProtected(guardrailsRelPath, p));
+    if (wasProtected && !isStillProtected) {
+      violations.push(
+        `Protected path violation: ${guardrailsRelPath} (removed from protectedPaths in the same commit that edits it)`
+      );
+    }
+  }
+}
+
 // The guardrails config/docs themselves legitimately contain the forbidden-
 // pattern strings as data (that's how they're defined) - scanning their own
 // content would always self-trigger, so they're exempt from this check.
@@ -141,6 +162,24 @@ function isPathProtected(filePath, protectedPattern) {
 
   // Direct match or prefix match
   return normalized === pattern || normalized.startsWith(pattern + '/');
+}
+
+function getHeadGuardrails() {
+  let headContent;
+  try {
+    headContent = execFileSync('git', ['show', 'HEAD:.agent-room/guardrails.json'], { encoding: 'utf8' });
+  } catch (err) {
+    // No HEAD yet (genesis commit) or guardrails.json didn't exist at HEAD -
+    // nothing to compare against.
+    return null;
+  }
+  try {
+    return JSON.parse(headContent);
+  } catch (err) {
+    // HEAD's guardrails.json doesn't parse cleanly - treat as no prior
+    // protection to compare against rather than crashing the hook.
+    return null;
+  }
 }
 
 function isBinaryFile(filePath) {
