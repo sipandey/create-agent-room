@@ -101,8 +101,11 @@ mid-session can silently reset it.
 ### Release process
 
 This package is published to npm as `create-agent-room`
-(https://www.npmjs.com/package/create-agent-room). The version lives in
-exactly one place: the `version` field in `package.json`. To cut a release:
+(https://www.npmjs.com/package/create-agent-room). The version is
+authoritative in one place, the `version` field in `package.json` — but
+`action.yml`'s `version` input default is a deliberate pinned copy (see
+"Why the version is pinned by default" in `docs/github-action.md`) that
+must be bumped in lockstep, not left to drift. To cut a release:
 
 1. **Pick the version bump** (semver): patch for fixes, minor for
    backward-compatible additions (new flags, templates, skill packs),
@@ -129,12 +132,24 @@ exactly one place: the `version` field in `package.json`. To cut a release:
    files stay as historical record.)
 6. **Update `README.md`** (and `CAPABILITIES.md` if enforcement behavior
    changed) if commands, flags, or capabilities changed.
-7. **Commit** the version bump, lockfile, changelog, and any doc updates.
-   Either as part of the feature commit that earns the bump, or as a
-   dedicated `chore: release vX.Y.Z` commit — either is fine, just don't
-   silently fold a version bump into an unrelated commit's message.
-8. **Tag the release commit:** `git tag vX.Y.Z` (matches existing tags:
-   `v1.2.1`, `v1.3.0`).
+7. **Bump `action.yml`'s `inputs.version.default`** to match. It's a
+   separate hardcoded string (composite `action.yml` can't reference
+   `package.json` at "compile" time), so it doesn't get updated by step 2
+   — easy to forget, which is exactly the kind of drift this checklist
+   exists to prevent (see the `package-lock.json` version-drift entry in
+   `.agent-room/anti-patterns.md` for what happens when a step like this
+   gets skipped).
+8. **Commit** the version bump, lockfile, changelog, `action.yml`, and any
+   doc updates. Either as part of the feature commit that earns the bump,
+   or as a dedicated `chore: release vX.Y.Z` commit — either is fine, just
+   don't silently fold a version bump into an unrelated commit's message.
+9. **Tag the release commit:** `git tag vX.Y.Z` (matches existing tags:
+   `v1.2.1`, `v1.3.0`). Marketplace consumers pin to major-version tags
+   (`sipandey/create-agent-room@v1`), so also move/create the rolling
+   `v1` tag to point at the new release commit if this is a `v1.x.y`
+   release — see `docs/github-action.md` for consumer-facing detail. (Tag
+   management for the Action is a human/CD step, not something this
+   session performs — see the "Do not run" note below.)
 
 **Do not run `npm publish`, `git push`, or `git push --tags` yourself.**
 Publishing and pushing a tag are irreversible and externally visible —

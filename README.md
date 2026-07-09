@@ -5,6 +5,10 @@
 
 **Define your agent governance rules once. `create-agent-room` enforces them at every layer an agent passes through — while it's working, when it commits, and in CI — instead of just documenting them and hoping.**
 
+![Demo: a scaffolded pre-commit hook blocking a staged AWS key, then the Claude Code Stop hook blocking an agent turn without a logged decision](docs/demo.gif)
+
+*A staged AWS key blocked at commit time, then the same for an agent turn ending without a logged decision — both real, unmocked output. Reproduce it yourself with `bash scripts/demo.sh`.*
+
 Most "AI agent guidelines" are a Markdown file an agent may or may not read. `create-agent-room` scaffolds that documentation (`AGENTS.md`, a principles playbook, a workflow classifier, multi-agent coordination protocols) but backs the parts that matter with three concrete enforcement points, each catching a different failure mode:
 
 1. **While the agent is working** — a Claude Code `Stop` hook blocks the agent from ending its turn if it changed files without logging a decision or anti-pattern. This is the most differentiated piece of the tool: it runs *inside the agent's own loop*, before there's even anything to commit, so there's no `--no-verify` equivalent for it — a genuinely stronger enforcement category than a commit-time or CI-time check.
@@ -116,6 +120,9 @@ node bin/cli.js metrics .
 node bin/cli.js pr-desc . --write
 ```
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, tests/lint, and
+scope guidelines before opening a PR.
+
 ---
 
 ## Directory Structure
@@ -212,6 +219,27 @@ Validates all session logs in `.agent-room/sessions/` against the required schem
 - name: Validate Session Logs
   run: npx create-agent-room lint-sessions .
 ```
+
+Already ran `init --tools git`? Use the workflow file it scaffolded
+instead of writing this by hand — see [GitHub Action](#github-action)
+below for when to use which.
+
+---
+
+## GitHub Action
+
+For repos that want CI validation without running `create-agent-room init`
+at all, `validate` and `lint-sessions` are also published as a composite
+[GitHub Action](action.yml):
+
+```yaml
+- uses: actions/checkout@v4
+- uses: sipandey/create-agent-room@v1
+```
+
+This does the same thing as the `init --tools git`-scaffolded workflow
+above — use whichever fits how the repo was set up, not both. Full input
+reference and examples: [docs/github-action.md](docs/github-action.md).
 
 ---
 

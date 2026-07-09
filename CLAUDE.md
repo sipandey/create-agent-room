@@ -50,13 +50,16 @@ mid-session can silently reset it.
 
 ## Release process
 
-The version lives in exactly one place: `version` in `package.json`. To
-cut a release: bump it (semver), then run `npm install` immediately to
-re-sync `package-lock.json` (this has drifted out of sync before when that
-step was skipped), run `npm run lint && npm test`, move `CHANGELOG.md`'s
-`[Unreleased]` section to a new `[X.Y.Z] - YYYY-MM-DD` section (per-version
-`RELEASE_NOTES_*.md` files are retired — don't create new ones), update
-`README.md`/`CAPABILITIES.md` if behavior changed, commit, and tag
+The version is authoritative in `version` in `package.json`, but
+`action.yml`'s `inputs.version.default` is a separate pinned copy that
+must be bumped in lockstep (composite actions can't read `package.json`).
+To cut a release: bump `package.json`'s version (semver), then run `npm
+install` immediately to re-sync `package-lock.json` (this has drifted out
+of sync before when that step was skipped), run `npm run lint && npm
+test`, move `CHANGELOG.md`'s `[Unreleased]` section to a new
+`[X.Y.Z] - YYYY-MM-DD` section (per-version `RELEASE_NOTES_*.md` files are
+retired — don't create new ones), update `README.md`/`CAPABILITIES.md` if
+behavior changed, bump `action.yml`'s pinned version, commit, and tag
 (`git tag vX.Y.Z`, matching `v1.2.1`, `v1.3.0`). See "Release process" in
 [`AGENTS.md`](AGENTS.md) for the full checklist.
 

@@ -2,6 +2,8 @@
 
 const test = require('node:test');
 const assert = require('node:assert');
+const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 
 // We will temporarily define the parser here to test it, or we can load it from bin/cli.js if exported.
 // Since cli.js is run as an executable, we can extract/export parseArgs or test it via child process,
@@ -113,4 +115,35 @@ test('parseArgs: --dry-run and --profile combine with other init options', () =>
   assert.strictEqual(result.profile, 'full');
   assert.strictEqual(result['dry-run'], true);
   assert.strictEqual(result.yes, true);
+});
+
+test('parseArgs: parses --version and -v flags', () => {
+  assert.strictEqual(parseArgs(['--version']).version, true);
+  assert.strictEqual(parseArgs(['-v']).version, true);
+});
+
+// End-to-end (spawns the real CLI) rather than just parseArgs, since the
+// actual contract is "prints the version and exits 0" - behavior that
+// lives in main(), not the argument parser.
+const CLI_PATH = path.join(__dirname, '..', 'bin', 'cli.js');
+const PKG_VERSION = require('../package.json').version;
+
+test('CLI: --version prints just the version string and exits 0', () => {
+  const output = execFileSync('node', [CLI_PATH, '--version'], { encoding: 'utf8' });
+  assert.strictEqual(output.trim(), PKG_VERSION);
+});
+
+test('CLI: -v prints just the version string and exits 0', () => {
+  const output = execFileSync('node', [CLI_PATH, '-v'], { encoding: 'utf8' });
+  assert.strictEqual(output.trim(), PKG_VERSION);
+});
+
+test('CLI: version subcommand prints just the version string and exits 0', () => {
+  const output = execFileSync('node', [CLI_PATH, 'version'], { encoding: 'utf8' });
+  assert.strictEqual(output.trim(), PKG_VERSION);
+});
+
+test('CLI: --version short-circuits even after a subcommand and its flags', () => {
+  const output = execFileSync('node', [CLI_PATH, 'init', '--yes', '--version'], { encoding: 'utf8' });
+  assert.strictEqual(output.trim(), PKG_VERSION);
 });

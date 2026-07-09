@@ -1,0 +1,69 @@
+name: 'create-agent-room Validate'
+description: >-
+  Validate an agent-room scaffold's guardrails.json schema and skill
+  frontmatter, and lint session logs — without needing to run
+  `create-agent-room init` first. For repos that already ran
+  `init --tools git`, prefer the workflow file it scaffolds
+  (.github/workflows/agent-room-validate.yml) over this action; both call
+  the same underlying commands, so use whichever fits how the repo was set
+  up rather than both.
+author: 'Siddharth Pandey'
+
+branding:
+  icon: 'shield'
+  color: 'green'
+
+inputs:
+  target-dir:
+    description: >-
+      Directory containing the agent-room scaffold to check (must have a
+      .agent-room/ directory). Relative to the job's working directory.
+    required: false
+    default: '.'
+  checks:
+    description: >-
+      Which checks to run: "both" (default), "validate" (guardrails
+      schema + skill frontmatter only), or "lint-sessions" (session log
+      format only).
+    required: false
+    default: 'both'
+  version:
+    description: >-
+      create-agent-room version to run via npx, e.g. "1.3.1" or "latest".
+      Pinned by default so CI results stay reproducible across runs
+      instead of silently changing behavior when a new version ships —
+      see the version-pinning rationale in
+      templates/adapters/ci/github-actions.yml.tmpl for why. Bumped in
+      lockstep with package.json's version at release time (see
+      "Release process" in AGENTS.md/CLAUDE.md).
+    required: false
+    default: '1.3.1'
+  node-version:
+    description: 'Node.js version to set up before running npx.'
+    required: false
+    default: '20'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Reject an unknown "checks" input
+      if: inputs.checks != 'both' && inputs.checks != 'validate' && inputs.checks != 'lint-sessions'
+      shell: bash
+      run: |
+        echo "::error::Invalid 'checks' input: '${{ inputs.checks }}'. Must be 'both', 'validate', or 'lint-sessions'."
+        exit 1
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Validate agent-room structure
+      if: inputs.checks == 'both' || inputs.checks == 'validate'
+      shell: bash
+      run: npx --yes "create-agent-room@${{ inputs.version }}" validate "${{ inputs.target-dir }}"
+
+    - name: Lint session logs
+      if: inputs.checks == 'both' || inputs.checks == 'lint-sessions'
+      shell: bash
+      run: npx --yes "create-agent-room@${{ inputs.version }}" lint-sessions "${{ inputs.target-dir }}"

@@ -101,6 +101,8 @@ function parseArgs(argv) {
       args.profile = a.slice('--profile='.length);
     } else if (a === '--help' || a === '-h' || a === 'help') {
       args.help = true;
+    } else if (a === '--version' || a === '-v') {
+      args.version = true;
     } else if (a.startsWith('-')) {
       throw new Error(`Error: Unknown option: ${a}`);
     } else {
@@ -139,6 +141,7 @@ Options:
   --verbose                 Print detailed stack traces on failure
   --write, -w               Save generated PR description to .agent-room/pr-description.md
   -y, --yes                 Don't prompt; use defaults for anything unspecified
+  -v, --version             Print the installed create-agent-room version and exit
 
 --profile minimal (default) scaffolds AGENTS.md, guardrails, skills, and
 the Stop/pre-commit hooks (if applicable), skipping principles.md,
@@ -155,6 +158,7 @@ Examples:
   create-agent-room validate .
   create-agent-room lint-sessions .
   create-agent-room pr-desc . --write
+  create-agent-room --version
 `);
 }
 
@@ -162,6 +166,11 @@ async function main() {
   const argv = process.argv.slice(2);
   const command = argv[0];
   const args = parseArgs(argv.slice(1));
+
+  if (argv.includes('--version') || argv.includes('-v') || command === 'version') {
+    console.log(require('../package.json').version);
+    return;
+  }
 
   if (!command || argv.includes('--help') || argv.includes('-h') || command === 'help') {
     printHelp();

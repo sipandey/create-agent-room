@@ -12,6 +12,47 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ### Added
 
+- `--version`/`-v` flag (and a `version` subcommand) to the CLI, printing
+  the installed `create-agent-room` version and exiting. Previously
+  there was no way to check this — `.github/ISSUE_TEMPLATE/bug_report.md`
+  even had to tell reporters to run `--help` or check `package.json`
+  directly as a workaround. Short-circuits in `main()` the same way
+  `--help` already does, so it works regardless of position (e.g.
+  `create-agent-room init --yes --version` still just prints the version).
+- `action.yml`: a composite GitHub Action publishing `validate` and
+  `lint-sessions` for repos that want the CI check without running
+  `create-agent-room init` at all (checking out someone else's already-
+  scaffolded repo, or a hand-scaffolded subdirectory). Inputs:
+  `target-dir` (default `.`), `checks` (`both`/`validate`/`lint-sessions`,
+  default `both`), `version` (pinned, default `1.3.1`, matching the same
+  reproducibility reasoning as the scaffolded workflow's `{{CAR_VERSION}}`
+  interpolation), and `node-version` (default `20`). An invalid `checks`
+  value fails fast with a clear `::error::` annotation instead of silently
+  skipping both checks. Deliberately does not run `actions/checkout`
+  itself (the calling workflow's job, per composite-action convention)
+  and is explicitly documented as an alternative to — not additive with —
+  the workflow file `init --tools git` already scaffolds; see
+  `docs/github-action.md` for the full input reference, examples, and
+  when to use which. Not yet published to the Marketplace — that's a
+  human step (tagging `v1`, GitHub's publish flow), tracked in
+  `ROADMAP.md`. The "Release process" checklist in `AGENTS.md`/`CLAUDE.md`
+  now includes bumping `action.yml`'s pinned version default alongside
+  `package.json`'s, since composite actions can't read `package.json` at
+  "compile" time and this is a second place the version now lives.
+- `scripts/demo.sh` and `docs/demo.gif`: a ~17-second terminal recording
+  embedded at the top of README.md showing the guardrails pre-commit hook
+  actually blocking a staged fake AWS key (`AKIAIOSFODNN7EXAMPLE`, AWS's
+  own documentation example key — never real), then the Claude Code Stop
+  hook blocking an agent turn that changed files without logging a
+  decision. `scripts/demo.sh` is real, unmocked output: it runs `init`
+  and `git commit` for real inside a throwaway temp directory it creates
+  and removes on exit (safe to re-run). The Stop hook segment invokes
+  `.agent-room/hooks/close-the-loop-check.js` directly, since there's no
+  way to trigger Claude Code's Stop hook *mechanism* from a plain shell
+  script outside an actual agent turn — it's the same file Claude Code
+  runs automatically, just invoked manually instead of by the harness.
+  `docs/demo.tape` is the [VHS](https://github.com/charmbracelet/vhs)
+  source used to regenerate the GIF (`vhs docs/demo.tape`).
 - `SECURITY.md`: a standard vulnerability-disclosure process (private
   reporting via GitHub Security Advisories, expected response times,
   supported-versions policy). Previously listed as missing in

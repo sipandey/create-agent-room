@@ -16,6 +16,108 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+<!-- no-log: added --version/-v to bin/cli.js - a standard CLI convention that was simply missing, mirrors the existing --help short-circuit pattern exactly, no non-obvious design call or bug root-cause to record. -->
+
+### 2026-07-09 — action.yml doesn't check out the repo itself, and version is a second pinned copy of package.json's
+
+**Decision:** the composite `action.yml` requires the calling workflow to
+run `actions/checkout@v4` before it — it does not include a checkout
+step itself. Its `version` input defaults to a hardcoded `'1.3.1'`,
+duplicating (not deriving from) `package.json`'s version, and the
+"Release process" checklist in `AGENTS.md`/`CLAUDE.md` was updated with
+an explicit step to bump both in lockstep.
+**Why:** composite actions that check out the repo internally are a
+known anti-pattern — the calling job may already be several steps into
+its own checkout/setup sequence (submodules, sparse-checkout, a specific
+ref), and a composite action silently re-checking-out over that is
+surprising and hard to debug. Checkout is the caller's responsibility;
+this action only needs the files to already be present. On the version:
+a composite `action.yml` is static YAML evaluated by GitHub's runner,
+not Node — it cannot `require('./package.json')` to compute a default
+at "compile time," so there was no way to make the two automatically
+stay in sync short of a build step (which this project doesn't have and
+isn't taking on for one string). Pinning by default was itself a
+requirement from the task (mirroring the `{{CAR_VERSION}}` fix for the
+scaffolded workflow template), not just a style choice.
+**Rejected:** defaulting `version` to `latest` — would reintroduce
+exactly the CI-reproducibility problem the scaffolded workflow's
+`{{CAR_VERSION}}` interpolation was fixed to avoid earlier this session,
+for the one distribution channel (a versioned Marketplace Action) where
+users most expect pinned-by-default behavior. `latest` remains available
+as an explicit opt-in via the `version` input for people who want it.
+
+### 2026-07-09 — tested action.yml by extracting and running its `run:` steps directly, not with `act`
+
+**Decision:** `act` (`nektos/act`, brew-installed) was available but its
+Docker backend wasn't running on this machine, and starting Docker
+Desktop for one test run was judged too heavy a detour. Instead: parsed
+`action.yml` with `js-yaml` to prove structural validity, extracted each
+step's `run:` script body programmatically (not hand-copied — read
+straight from the parsed YAML, so the test exercises exactly what's
+committed), substituted `${{ inputs.* }}` the way GitHub's runner would,
+and executed the resulting scripts against a real scaffolded room (a
+clean one and one deliberately missing `guardrails.json`) via a fake
+`npx` shim on `PATH` that forwards to the local `bin/cli.js`. Also
+independently re-evaluated every step's `if:` condition in Node for all
+four `checks` values (`both`/`validate`/`lint-sessions`/an invalid
+value) to confirm the right steps fire, and did one real (non-mocked)
+`npm view create-agent-room@1.3.1 version` to confirm the pinned default
+actually resolves on the registry.
+**Why:** the task explicitly allowed "just validate the YAML schema
+carefully" as a fallback when `act` isn't available, but schema-only
+validation wouldn't catch a broken `if:` expression, a wrong input
+substitution, or the reject-unknown-input step exiting 0 by mistake —
+all real bugs a composite action can ship with despite valid YAML. This
+approach still lacks `act`'s ability to spin up an actual `ubuntu-latest`
+container and run the real `runs.using: composite` step sequencer (step
+ordering, `actions/setup-node@v4` resolution, context injection) — that
+part is unverified and should be confirmed with `act` or a real workflow
+run before publishing.
+**Rejected:** starting Docker Desktop just for this — reasonable to do,
+but a heavier, slower action than the task's own stated fallback
+required; left as a note here rather than done silently, in case a
+future session has Docker already running and can close this gap cheaply.
+
+### 2026-07-09 — README demo GIF shows the Stop hook via direct script invocation, not a simulated Claude Code turn
+
+**Decision:** `scripts/demo.sh` demonstrates the Claude Code Stop hook by
+running `node .agent-room/hooks/close-the-loop-check.js` directly against
+an uncommitted change, rather than attempting to fake or narrate what a
+live Claude Code session would show.
+**Why:** there is no way to trigger Claude Code's Stop hook *mechanism*
+from a plain shell script — it's Claude Code's own harness that invokes
+it at the end of an agent turn, and no such turn exists in a scripted
+demo. The alternative was either skip the Stop hook entirely or fake it
+with a canned message, but running the real hook script directly is
+neither: it's the exact file the harness would run, exercising its real
+blocking logic (including the real exit code and the real waiver
+mechanism), just invoked manually instead of automatically. This was an
+explicit instruction from whoever requested the demo (tell them if it
+can't be scripted rather than faking it) — direct invocation threads
+that needle without omitting the tool's most differentiated feature from
+its own demo.
+**Rejected:** faking a "simulated Claude Code session" transcript —
+would misrepresent the demo as more automated than it is, and the whole
+point of this GIF is proving real, unmocked behavior (a real secret
+actually gets blocked, not described).
+
+### 2026-07-09 — used VHS (not asciinema+agg) to render the demo GIF
+
+**Decision:** installed [VHS](https://github.com/charmbracelet/vhs)
+(`brew install vhs`) and wrote `docs/demo.tape` to record and render
+`docs/demo.gif` directly, rather than recording with `asciinema` and
+converting the `.cast` file separately.
+**Why:** VHS renders straight to GIF from a declarative `.tape` script
+(shell + typing speed + sleeps + theme, all in one file), with no
+separate conversion step or extra runtime dependency (`agg`,
+`asciicast2gif`) to install and keep working. The `.tape` file is also
+the reproducible recipe for regenerating the GIF after `scripts/demo.sh`
+changes — check it in alongside the GIF for that reason.
+**Rejected:** `asciinema` + `agg` — an extra tool in the pipeline for no
+capability VHS didn't already provide here; also produces an SVG/cast
+format that still needs converting to GIF for a plain `![]()` README
+embed.
+
 ### 2026-07-09 — `init` defaults to `--profile minimal`; summary functions and validate.js made profile-aware
 
 **Decision:** added `--profile minimal|full` to `init`, defaulting to
