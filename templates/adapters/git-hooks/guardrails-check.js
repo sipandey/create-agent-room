@@ -13,7 +13,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execSync, execFileSync } = require('child_process');
 
 const projectRoot = process.cwd();
 const guardrailsPath = path.join(projectRoot, '.agent-room', 'guardrails.json');
@@ -69,7 +69,7 @@ for (const file of stagedFiles) {
 
   try {
     // Get staged content (not working tree)
-    const stagedContent = execSync(`git show :${file}`, { encoding: 'utf8' });
+    const stagedContent = execFileSync('git', ['show', `:${file}`], { encoding: 'utf8' });
 
     for (const pattern of forbiddenPatterns) {
       if (pattern.match(/^\/.*\/[gimuy]*$/) || pattern.startsWith('(?:') || pattern.includes('(?:')) {
