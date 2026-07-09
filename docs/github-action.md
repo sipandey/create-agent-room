@@ -21,7 +21,7 @@ Use this Action instead when:
   this repo, but want the CI check anyway.
 - You're checking a subdirectory or a repo someone else scaffolded.
 - You want Marketplace-style discoverability (`uses:
-  sipandey/create-agent-room@v1`) instead of a `run: npx ...` step.
+  sipandey/create-agent-room@v2`) instead of a `run: npx ...` step.
 
 Either path runs identical checks — pick one per repo, not both.
 
@@ -41,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: sipandey/create-agent-room@v1
+      - uses: sipandey/create-agent-room@v2
 ```
 
 That's `validate` and `lint-sessions` against `.` with no further
@@ -55,7 +55,7 @@ calling workflow's job).
 | --------------- | ------- | ---------------------------------------------------------------------- |
 | `target-dir`    | `.`     | Directory containing the `.agent-room/` scaffold to check              |
 | `checks`        | `both`  | `both`, `validate`, or `lint-sessions`                                 |
-| `version`       | pinned to the version this Action ships with | `create-agent-room` version to run via `npx`, e.g. `1.3.1` or `latest` |
+| `version`       | pinned to the version this Action ships with | `create-agent-room` version to run via `npx`, e.g. `2.0.0` or `latest` |
 | `node-version`  | `20`    | Node.js version set up before running `npx`                            |
 
 None of these are required — omit anything you don't need to override.
@@ -67,7 +67,7 @@ session log linting):
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: sipandey/create-agent-room@v1
+- uses: sipandey/create-agent-room@v2
   with:
     target-dir: packages/agent-workspace
     checks: validate
@@ -79,7 +79,7 @@ unreleased fix):
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: sipandey/create-agent-room@v1
+- uses: sipandey/create-agent-room@v2
   with:
     version: latest
 ```

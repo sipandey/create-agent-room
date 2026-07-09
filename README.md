@@ -238,7 +238,7 @@ at all, `validate` and `lint-sessions` are also published as a composite
 
 ```yaml
 - uses: actions/checkout@v4
-- uses: sipandey/create-agent-room@v1
+- uses: sipandey/create-agent-room@v2
 ```
 
 This does the same thing as the `init --tools git`-scaffolded workflow

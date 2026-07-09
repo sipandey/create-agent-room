@@ -47,12 +47,13 @@ Worth doing, more effort, still in keeping with the project's scope:
   composite GitHub Action) already covers the narrower "check a repo that
   never ran `init`" case this would generalize.
 - **Publish `action.yml` to the GitHub Marketplace** — the Action itself
-  is written, tested, and documented (`docs/github-action.md`); publishing
-  requires tagging a release (`v1`, kept rolling per SemVer major per
-  Marketplace convention) and clicking through GitHub's "Draft a release"
-  → "Publish this Action to the GitHub Marketplace" flow. Both are
-  human/CD steps, not something a session should do unasked — see
-  "Release process" in `AGENTS.md`.
+  is written, tested, and documented (`docs/github-action.md`); the
+  `v2.0.0` release created a rolling `v2` major tag (per Marketplace
+  convention — bumped to `v2` from the originally-planned `v1` once the
+  first release turned out to be v2.0.0, not v1.x). What's left is
+  clicking through GitHub's "Publish this Action to the GitHub
+  Marketplace" flow on that release — a human/CD step, not something a
+  session should do unasked — see "Release process" in `AGENTS.md`.
 
 ## Later / needs a real signal first
 

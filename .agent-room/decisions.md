@@ -16,6 +16,37 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-07-09 — v2.0.0: major bump for the --profile minimal default, not minor
+
+**Decision:** the release accumulated in `CHANGELOG.md`'s `[Unreleased]`
+since `1.3.1` (dry-run, `--profile`, the GitHub Action, `--version`,
+demo GIF, comparisons doc, CI fix) shipped as `2.0.0`, not `1.4.0`,
+specifically because of one item in that list: `init` now defaults to
+`--profile minimal` instead of scaffolding everything. The GitHub
+Action's rolling Marketplace tag is `v2` as a direct consequence — every
+`@v1`-style usage example across `README.md`, `docs/github-action.md`,
+and `docs/comparisons.md` was updated to `@v2` in the same commit, and
+`ROADMAP.md`'s "publish to Marketplace" item (which had assumed `v1`)
+was corrected.
+**Why:** everything else accumulated this cycle is additive — a new
+flag, a new file, a new doc, a bug fix. The profile default is
+different in kind: it changes what a bare `create-agent-room init`
+*does* with no flags passed, which is a change to default CLI behavior,
+not a new capability layered on top. Per this project's own semver
+policy (documented in `AGENTS.md`'s Release process: "major for breaking
+changes to the CLI, flags, or scaffolded output"), that's a major bump
+by the project's own stated rule, not just a judgment call invented for
+this release.
+**Rejected:** `1.4.0` (minor) — considered, since most of the release is
+genuinely additive and a major bump makes the release look bigger than
+it "feels." Rejected because shipping a default-behavior change under a
+minor version would violate the semver contract this project has
+already committed to in writing, and an npm/Action consumer pinning to
+`^1.x` would silently get different scaffolded output on their next
+install — exactly the kind of surprise semver exists to prevent.
+
+<!-- no-log: this commit's own version-bump/lockfile-sync/changelog-promotion/action.yml-version-bump mechanics follow the documented release process exactly (see AGENTS.md "Release process"); the one substantive decision this release involved (major vs. minor bump) is logged above. -->
+
 ### 2026-07-09 — docs/comparisons.md: don't compare agentic-os's lifecycle token benchmark against our static corpus-size number
 
 **Decision:** `docs/comparisons.md` explicitly states that agentic-os's

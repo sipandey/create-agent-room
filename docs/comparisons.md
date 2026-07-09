@@ -163,14 +163,15 @@ be aware of that maturity gap reading the rest of this section.
   surface area to adopt for that. create-agent-room is deliberately
   narrower.
 - **Composite GitHub Action.** create-agent-room ships `action.yml` for
-  a `uses: sipandey/create-agent-room@v1`-style workflow step with no
+  a `uses: sipandey/create-agent-room@v2`-style workflow step with no
   clone step at all — written, tested, and documented in
-  [docs/github-action.md](github-action.md), though not yet tagged or
-  published to the Marketplace as of this writing (see
-  [ROADMAP.md](../ROADMAP.md); the `v1` tag referenced there doesn't
-  exist yet, so that exact usage doesn't work today). **[VERIFY]** —
-  agentic-os's repo wasn't checked for an equivalent published Action;
-  it may have one.
+  [docs/github-action.md](github-action.md). As of the `v2.0.0` release
+  the `v2` tag exists; whether it's actually listed on the GitHub
+  Marketplace yet depends on whether the "Publish this Action" step in
+  the release flow (see [ROADMAP.md](../ROADMAP.md)) has been completed
+  — check the repo's Marketplace listing directly rather than assuming
+  from this doc. **[VERIFY]** — agentic-os's repo wasn't checked for an
+  equivalent published Action; it may have one.
 
 **Where it's a wash, not a win for either side:**
 

@@ -10,6 +10,17 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-07-09
+
+**Why a major bump:** `init` now defaults to `--profile minimal` instead
+of scaffolding the full guidance corpus — a change to default CLI
+*behavior* (what gets written to disk with no flags passed), not just an
+addition. Existing automation that assumed the old always-everything
+default (e.g. a script asserting `principles.md` exists after a bare
+`init`) will need `--profile full` to keep working unchanged. See
+"Profiles: `minimal` vs `full`" in `README.md` and
+`.agent-room/decisions.md` for the reasoning.
+
 ### Added
 
 - `docs/comparisons.md`, linked from `README.md`: an honest comparison
@@ -34,7 +45,7 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
   `create-agent-room init` at all (checking out someone else's already-
   scaffolded repo, or a hand-scaffolded subdirectory). Inputs:
   `target-dir` (default `.`), `checks` (`both`/`validate`/`lint-sessions`,
-  default `both`), `version` (pinned, default `1.3.1`, matching the same
+  default `both`), `version` (pinned, default `2.0.0`, matching the same
   reproducibility reasoning as the scaffolded workflow's `{{CAR_VERSION}}`
   interpolation), and `node-version` (default `20`). An invalid `checks`
   value fails fast with a clear `::error::` annotation instead of silently
@@ -43,8 +54,10 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
   and is explicitly documented as an alternative to — not additive with —
   the workflow file `init --tools git` already scaffolds; see
   `docs/github-action.md` for the full input reference, examples, and
-  when to use which. Not yet published to the Marketplace — that's a
-  human step (tagging `v1`, GitHub's publish flow), tracked in
+  when to use which. This release tags the rolling `v2` major version
+  Marketplace consumers pin to (`sipandey/create-agent-room@v2`);
+  whether it's actually *listed* on the Marketplace depends on a
+  separate human step (GitHub's "Publish this Action" flow) tracked in
   `ROADMAP.md`. The "Release process" checklist in `AGENTS.md`/`CLAUDE.md`
   now includes bumping `action.yml`'s pinned version default alongside
   `package.json`'s, since composite actions can't read `package.json` at
@@ -318,7 +331,8 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 - `package.json` now includes `repository`, `homepage`, `bugs`,
   `keywords`, and `author` metadata for npm.
 
-[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/sipandey/create-agent-room/compare/v1.3.1...v2.0.0
 [1.3.1]: https://github.com/sipandey/create-agent-room/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/sipandey/create-agent-room/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/sipandey/create-agent-room/releases/tag/v1.2.1
