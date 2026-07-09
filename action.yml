@@ -1,12 +1,10 @@
 name: 'create-agent-room Validate'
-description: >-
-  Validate an agent-room scaffold's guardrails.json schema and skill
-  frontmatter, and lint session logs — without needing to run
-  `create-agent-room init` first. For repos that already ran
-  `init --tools git`, prefer the workflow file it scaffolds
-  (.github/workflows/agent-room-validate.yml) over this action; both call
-  the same underlying commands, so use whichever fits how the repo was set
-  up rather than both.
+# GitHub Marketplace enforces a 125-character limit on this field (the
+# Marketplace listing form rejects longer text) - keep it terse. The fuller
+# explanation, including when to prefer the init --tools git-scaffolded
+# workflow instead of this action, lives in docs/github-action.md and
+# README.md's "GitHub Action" section.
+description: "Validates an agent-room scaffold's guardrails.json schema, skill frontmatter, and session logs — no init required."
 author: 'Siddharth Pandey'
 
 branding:

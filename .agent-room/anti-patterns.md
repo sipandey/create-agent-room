@@ -21,6 +21,30 @@ Append a new entry every time:
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-07-09 — action.yml's description exceeded the GitHub Marketplace's undocumented-until-you-hit-it 125-character limit
+
+**What happened:** `action.yml`'s `description` field was written as a
+multi-sentence explanation (~340 characters) covering what the Action
+checks and when to prefer the `init --tools git`-scaffolded workflow
+instead. That's valid `action.yml` YAML and works fine for the Action
+itself, but the GitHub Marketplace listing form rejects any
+`description` over 125 characters — only surfaced when actually
+clicking through the "Publish this Action to the GitHub Marketplace"
+flow on the draft release, not at any point before that (no schema
+validator, `gh` CLI, or local test in this repo catches it).
+**Root cause:** `action.yml`'s `description` field serves two different
+audiences with different constraints — the field itself (unlimited
+length, read by anyone viewing the file or a `uses:` step's docs) and
+the Marketplace listing UI (125-character hard cap, only enforced at
+publish time) — and nothing signals the stricter constraint until the
+publish flow itself rejects it.
+**Avoid:** keep `action.yml`'s `description` under 125 characters from
+the start if there's any intent to publish to the Marketplace, and put
+the fuller explanation (when to use this vs. alternatives, etc.)
+in the repo's own docs instead, linked from `README.md`/`docs/`. A code
+comment now sits directly above the field in `action.yml` stating the
+limit, so a future edit doesn't silently regress this.
+
 ### 2026-07-09 — CI failed on a test that passes locally: no git identity on a fresh runner
 
 **What happened:** `test/init.test.js`'s genesis-commit regression test
