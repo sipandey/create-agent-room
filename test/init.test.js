@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const path = require('node:path');
 const fs = require('node:fs');
 const { execFileSync } = require('node:child_process');
-const { parseSafeJSON, runInit } = require('../lib/init');
+const { parseSafeJSON, runInit, computeEnforcedFeatures, computeGuidanceSummary, estimateGuidanceTokens } = require('../lib/init');
 const { version: CAR_VERSION } = require('../package.json');
 
 test('parseSafeJSON: parses standard JSON', () => {
@@ -256,6 +256,10 @@ test('runInit: template inheritance layers merge correctly', async (t) => {
     language: 'python',
     org: 'acme',
     'template-source': tmplDir,
+    // This test is about layer-priority resolution, not the --profile
+    // feature - principles.md is only scaffolded under "full", and the
+    // default changed to "minimal" after --profile was added.
+    profile: 'full',
     force: true
   });
 
@@ -305,6 +309,324 @@ test('runInit: resolves local external skill pack correctly', async (t) => {
 
   // Verify README.md was skipped
   assert.ok(!fs.existsSync(path.join(tmpDir, '.agent-room', 'skills', 'README.md')), 'README.md should be skipped');
+});
+
+async function captureConsoleLog(asyncFn) {
+  const lines = [];
+  const original = console.log;
+  console.log = (...args) => lines.push(args.join(' '));
+  try {
+    await asyncFn();
+  } finally {
+    console.log = original;
+  }
+  return lines.join('\n');
+}
+
+// computeEnforcedFeatures/computeGuidanceSummary/estimateGuidanceTokens are
+// now pure functions of the accumulated `results` array (see lib/init.js
+// for why - dry-run and re-run correctness), so they're tested directly
+// against synthetic results arrays rather than through a full runInit.
+// End-to-end wiring (that runInit actually builds the right results array
+// and prints the right summary) is covered by the "prints enforced/
+// guidance summary" tests below.
+
+test('computeEnforcedFeatures: reports nothing when no matching results entries exist', () => {
+  const enforced = computeEnforcedFeatures([{ path: 'AGENTS.md', written: true }]);
+  assert.deepStrictEqual(enforced, []);
+});
+
+test('computeEnforcedFeatures: reports the Stop hook when its results entry is present', () => {
+  const enforced = computeEnforcedFeatures([
+    { path: 'AGENTS.md', written: true },
+    { path: '.agent-room/hooks/close-the-loop-check.js', written: true }
+  ]);
+  assert.strictEqual(enforced.length, 1);
+  assert.match(enforced[0].label, /Stop hook/);
+  assert.strictEqual(enforced[0].file, '.agent-room/hooks/close-the-loop-check.js');
+});
+
+test('computeEnforcedFeatures: reports guardrails hook and CI workflow when both results entries are present', () => {
+  const enforced = computeEnforcedFeatures([
+    { path: 'AGENTS.md', written: true },
+    { path: '.git/hooks/pre-commit', written: true },
+    { path: '.github/workflows/agent-room-validate.yml', written: true }
+  ]);
+  const labels = enforced.map((e) => e.label);
+  assert.deepStrictEqual(labels, ['Guardrails pre-commit hook', 'CI validation workflow']);
+});
+
+test('computeEnforcedFeatures: also counts a "skipped, already exists" results entry as active', () => {
+  // A file skipped because it already existed on a re-run is still an
+  // active mechanism - `written` must not gate this.
+  const enforced = computeEnforcedFeatures([
+    { path: '.agent-room/hooks/close-the-loop-check.js', written: false, reason: 'exists' }
+  ]);
+  assert.strictEqual(enforced.length, 1);
+});
+
+test('computeGuidanceSummary: lists guidance docs present in results, with skill/coordination counts', () => {
+  const lines = computeGuidanceSummary([
+    { path: 'AGENTS.md', written: true },
+    { path: '.agent-room/principles.md', written: true },
+    { path: '.agent-room/guardrails.md', written: true },
+    { path: '.agent-room/skills/brainstorming.md', written: true },
+    { path: '.agent-room/skills/writing-plans.md', written: false, reason: 'exists' },
+    { path: '.agent-room/coordination/handoff-protocol.md', written: true }
+  ]);
+
+  assert.ok(lines.some((l) => l.startsWith('AGENTS.md')), 'should mention AGENTS.md');
+  assert.ok(lines.some((l) => l.includes('principles.md')), 'should mention principles.md');
+  assert.ok(lines.some((l) => l.includes('guardrails.md')), 'should mention guardrails.md');
+  assert.ok(lines.some((l) => l.includes('.agent-room/skills/ — 2 skill file(s)')), 'should count both written and skipped skill files');
+  assert.ok(lines.some((l) => l.includes('.agent-room/coordination/ — 1 protocol doc(s)')), 'should report a coordination doc count');
+});
+
+test('computeGuidanceSummary: omits principles/workflow-classifier/coordination when absent from results (minimal profile)', () => {
+  const lines = computeGuidanceSummary([
+    { path: 'AGENTS.md', written: true },
+    { path: '.agent-room/guardrails.md', written: true },
+    { path: '.agent-room/skills/brainstorming.md', written: true }
+  ]);
+
+  assert.ok(!lines.some((l) => l.includes('principles.md')), 'must not mention principles.md when it was excluded');
+  assert.ok(!lines.some((l) => l.includes('workflow-classifier.md')), 'must not mention workflow-classifier.md when it was excluded');
+  assert.ok(!lines.some((l) => l.includes('coordination')), 'must not mention coordination/ when it was excluded');
+});
+
+test('estimateGuidanceTokens: sums size fields for corpus files and excludes hooks/config/non-.agent-room paths', () => {
+  const results = [
+    { path: 'AGENTS.md', written: true, size: 400 },
+    { path: '.agent-room/guardrails.md', written: true, size: 200 },
+    { path: '.agent-room/hooks/guardrails-check.js', written: true, size: 5000 }, // excluded: hooks/
+    { path: '.agent-room.json', written: true, size: 150 }, // excluded: not under .agent-room/
+    { path: '.claude/skills/brainstorming/SKILL.md', written: true, size: 900 } // excluded: not .agent-room/ or AGENTS.md
+  ];
+  const estimate = estimateGuidanceTokens('/irrelevant-unused-target', results);
+  assert.strictEqual(estimate, Math.round((400 + 200) / 4));
+});
+
+test('estimateGuidanceTokens: falls back to statting the file on disk when a results entry has no size (skipped-exists)', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-tokens-fallback-' + Date.now());
+  fs.mkdirSync(path.join(tmpDir, '.agent-room'), { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  fs.writeFileSync(path.join(tmpDir, 'AGENTS.md'), 'x'.repeat(40));
+  fs.writeFileSync(path.join(tmpDir, '.agent-room', 'guardrails.md'), 'y'.repeat(60));
+
+  const results = [
+    { path: 'AGENTS.md', written: false, reason: 'exists' }, // no `size` - must stat disk
+    { path: '.agent-room/guardrails.md', written: false, reason: 'exists' }
+  ];
+  const estimate = estimateGuidanceTokens(tmpDir, results);
+  assert.strictEqual(estimate, Math.round((40 + 60) / 4));
+});
+
+test('estimateGuidanceTokens: growing the corpus (more results entries) increases the estimate', () => {
+  const small = estimateGuidanceTokens('/irrelevant', [{ path: 'AGENTS.md', written: true, size: 400 }]);
+  const big = estimateGuidanceTokens('/irrelevant', [
+    { path: 'AGENTS.md', written: true, size: 400 },
+    { path: '.agent-room/skills/brainstorming.md', written: true, size: 2000 },
+    { path: '.agent-room/skills/writing-plans.md', written: true, size: 2000 }
+  ]);
+  assert.ok(big > small, 'adding guidance-tier files should increase the estimate');
+});
+
+test('runInit: prints enforced/guidance summary with a single next-step command (git + claude)', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-summary-git-claude-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  const output = await captureConsoleLog(() =>
+    runInit(tmpDir, { yes: true, tools: 'git,claude', git: true, name: 'SummaryGitClaudeTest', force: true })
+  );
+
+  assert.match(output, /What actually enforces something/);
+  assert.match(output, /🟢 Enforced \(works automatically\):/);
+  assert.match(output, /Claude Code Stop hook/);
+  assert.match(output, /Guardrails pre-commit hook/);
+  assert.match(output, /CI validation workflow/);
+  assert.match(output, /🟡 Guidance \(requires reading\):/);
+  assert.match(output, /Guidance corpus size: ~[\d,]+ tokens \(approximate/);
+  assert.match(output, /Next: commit your changes — the guardrails pre-commit hook runs automatically\./);
+});
+
+test('runInit: prints the validate-command next step when no git adapter is active', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-summary-none-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  const output = await captureConsoleLog(() =>
+    runInit(tmpDir, { yes: true, tools: 'none', name: 'SummaryNoneTest', force: true })
+  );
+
+  assert.match(output, /Nothing is actively enforced yet/);
+  assert.match(output, /Next: run npx create-agent-room validate \. to check the room before you start working\./);
+});
+
+// --dry-run
+
+test('runInit --dry-run: writes nothing to disk but reports what would be created', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-dry-run-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  const output = await captureConsoleLog(() =>
+    runInit(tmpDir, { yes: true, tools: 'claude', name: 'DryRunTest', 'dry-run': true, force: true })
+  );
+
+  assert.match(output, /DRY RUN/);
+  assert.match(output, /created {2}AGENTS\.md/);
+  assert.match(output, /created {2}\.agent-room\/hooks\/close-the-loop-check\.js/);
+  assert.match(output, /Dry Run Complete — Nothing Written/);
+  assert.match(output, /Next: re-run without --dry-run to actually scaffold this\./);
+
+  // The actual point of --dry-run: nothing on disk.
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, 'AGENTS.md')), false, 'AGENTS.md must not be written');
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.agent-room')), false, '.agent-room must not be written');
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.claude')), false, '.claude must not be written');
+});
+
+test('runInit --dry-run: does not run real git commands even with --git', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-dry-run-git-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  const output = await captureConsoleLog(() =>
+    runInit(tmpDir, { yes: true, tools: 'git', git: true, name: 'DryRunGitTest', 'dry-run': true, force: true })
+  );
+
+  assert.match(output, /Dry run: would run "git init" and create an initial commit \(skipped\)\./);
+  assert.match(output, /created {2}\.git\/hooks\/pre-commit/);
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.git')), false, 'no real .git directory should be created');
+});
+
+test('runInit --dry-run: reports the enforced/guidance summary identically in shape to a real run', async (t) => {
+  const dryDir = path.join(__dirname, 'tmp-dry-shape-dry-' + Date.now());
+  const realDir = path.join(__dirname, 'tmp-dry-shape-real-' + Date.now());
+  fs.mkdirSync(dryDir, { recursive: true });
+  fs.mkdirSync(realDir, { recursive: true });
+  t.after(() => {
+    fs.rmSync(dryDir, { recursive: true, force: true });
+    fs.rmSync(realDir, { recursive: true, force: true });
+  });
+
+  const dryOutput = await captureConsoleLog(() =>
+    runInit(dryDir, { yes: true, tools: 'git,claude', git: true, name: 'X', 'dry-run': true, force: true })
+  );
+  const realOutput = await captureConsoleLog(() =>
+    runInit(realDir, { yes: true, tools: 'git,claude', git: true, name: 'X', force: true })
+  );
+
+  for (const heading of [
+    'What actually enforces something',
+    '🟢 Enforced (works automatically):',
+    'Claude Code Stop hook',
+    'Guardrails pre-commit hook',
+    'CI validation workflow',
+    '🟡 Guidance (requires reading):',
+    'Guidance corpus size:'
+  ]) {
+    assert.ok(dryOutput.includes(heading), `dry run output missing: ${heading}`);
+    assert.ok(realOutput.includes(heading), `real run output missing: ${heading}`);
+  }
+});
+
+// --profile
+
+test('runInit: defaults to --profile minimal, skipping principles/workflow-classifier/coordination', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-profile-default-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'ProfileDefaultTest', force: true });
+
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.agent-room', 'principles.md')), false);
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.agent-room', 'workflow-classifier.md')), false);
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.agent-room', 'coordination')), false);
+  // Always-included files must still be present.
+  assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'guardrails.md')));
+  assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'guardrails.json')));
+  assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'skills', 'brainstorming.md')));
+
+  const config = JSON.parse(fs.readFileSync(path.join(tmpDir, '.agent-room.json'), 'utf8'));
+  assert.strictEqual(config.profile, 'minimal');
+});
+
+test('runInit --profile full: scaffolds principles/workflow-classifier/coordination', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-profile-full-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'ProfileFullTest', profile: 'full', force: true });
+
+  assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'principles.md')));
+  assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'workflow-classifier.md')));
+  assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'coordination', 'handoff-protocol.md')));
+
+  const config = JSON.parse(fs.readFileSync(path.join(tmpDir, '.agent-room.json'), 'utf8'));
+  assert.strictEqual(config.profile, 'full');
+});
+
+test('runInit --profile minimal: an explicitly requested --skill-packs is still scaffolded', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-profile-minimal-skillpacks-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, {
+    yes: true,
+    tools: 'none',
+    name: 'ProfileMinimalSkillPacksTest',
+    'skill-packs': 'testing',
+    force: true
+  });
+
+  assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'skills', 'integration-testing.md')));
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.agent-room', 'principles.md')), false);
+});
+
+test('runInit: rejects an unknown --profile value', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-profile-invalid-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await assert.rejects(
+    () => runInit(tmpDir, { yes: true, tools: 'none', name: 'ProfileInvalidTest', profile: 'bogus', force: true }),
+    /Unknown profile: bogus/
+  );
+});
+
+test('runInit --profile minimal: AGENTS.md does not reference principles.md/workflow-classifier.md/coordination/', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-profile-agents-minimal-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'ProfileAgentsMinimalTest', force: true });
+  const agentsContent = fs.readFileSync(path.join(tmpDir, 'AGENTS.md'), 'utf8');
+
+  // No dangling links/instructions pointing at files that don't exist under
+  // minimal. A plain-text "these were skipped, here's how to get them" note
+  // is fine and expected - only the markdown-link/reference form matters.
+  assert.doesNotMatch(agentsContent, /\[`\.agent-room\/principles\.md`\]/);
+  assert.doesNotMatch(agentsContent, /\[`\.agent-room\/workflow-classifier\.md`\]/);
+  assert.doesNotMatch(agentsContent, /\[`\.agent-room\/coordination\/`\]/);
+  assert.doesNotMatch(agentsContent, /Use `\.agent-room\/workflow-classifier\.md`/);
+  assert.doesNotMatch(agentsContent, /Read `\.agent-room\/coordination\/handoff-protocol\.md`/);
+  assert.match(agentsContent, /guardrails\.md/);
+  assert.match(agentsContent, /closing-the-loop/);
+});
+
+test('runInit --profile full: AGENTS.md references principles.md/workflow-classifier.md/coordination/', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-profile-agents-full-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'ProfileAgentsFullTest', profile: 'full', force: true });
+  const agentsContent = fs.readFileSync(path.join(tmpDir, 'AGENTS.md'), 'utf8');
+
+  assert.match(agentsContent, /principles\.md/);
+  assert.match(agentsContent, /workflow-classifier\.md/);
+  assert.match(agentsContent, /coordination\//);
 });
 
 

@@ -89,3 +89,28 @@ test('parseArgs: parses verbose flag', () => {
   const result = parseArgs(['--verbose']);
   assert.strictEqual(result.verbose, true);
 });
+
+test('parseArgs: parses --dry-run flag', () => {
+  const result = parseArgs(['--dry-run']);
+  assert.strictEqual(result['dry-run'], true);
+});
+
+test('parseArgs: parses --profile option (space and equals forms)', () => {
+  const result1 = parseArgs(['--profile', 'full']);
+  assert.strictEqual(result1.profile, 'full');
+
+  const result2 = parseArgs(['--profile=minimal']);
+  assert.strictEqual(result2.profile, 'minimal');
+});
+
+test('parseArgs: throws error on missing --profile value', () => {
+  assert.throws(() => parseArgs(['--profile']), /Error: --profile option requires/);
+});
+
+test('parseArgs: --dry-run and --profile combine with other init options', () => {
+  const result = parseArgs(['--tools', 'git,claude', '--profile', 'full', '--dry-run', '--yes']);
+  assert.strictEqual(result.tools, 'git,claude');
+  assert.strictEqual(result.profile, 'full');
+  assert.strictEqual(result['dry-run'], true);
+  assert.strictEqual(result.yes, true);
+});

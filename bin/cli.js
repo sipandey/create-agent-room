@@ -19,6 +19,8 @@ function parseArgs(argv) {
       args.git = true;
     } else if (a === '--force') {
       args.force = true;
+    } else if (a === '--dry-run') {
+      args['dry-run'] = true;
     } else if (a === '--check' || a === '-c') {
       args.check = true;
     } else if (a === '--verbose') {
@@ -73,6 +75,12 @@ function parseArgs(argv) {
       } else {
         throw new Error('Error: --org option requires an organization name.');
       }
+    } else if (a === '--profile') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.profile = argv[++i];
+      } else {
+        throw new Error('Error: --profile option requires "minimal" or "full".');
+      }
     } else if (a.startsWith('--tools=')) {
       args.tools = a.slice('--tools='.length);
     } else if (a.startsWith('--name=')) {
@@ -89,6 +97,8 @@ function parseArgs(argv) {
       args['skill-packs'] = a.slice('--skill-packs='.length);
     } else if (a.startsWith('--org=')) {
       args.org = a.slice('--org='.length);
+    } else if (a.startsWith('--profile=')) {
+      args.profile = a.slice('--profile='.length);
     } else if (a === '--help' || a === '-h' || a === 'help') {
       args.help = true;
     } else if (a.startsWith('-')) {
@@ -121,16 +131,25 @@ Options:
   --branch <name>           Default branch name (default: main)
   --skill-packs <list>      Comma-separated optional skill packs: testing,security,release (default: none)
   --org <name>              Organization layer name for template inheritance (default: none)
+  --profile <name>          minimal|full - how much of the guidance corpus to scaffold (default: minimal)
   --git                     Run "git init" and create an initial commit in target-dir
   --force                   Overwrite existing files instead of skipping them
+  --dry-run                 Print what init would create/skip; write nothing to disk
   --check, -c               Check if mirrored files are out of sync without writing changes
   --verbose                 Print detailed stack traces on failure
   --write, -w               Save generated PR description to .agent-room/pr-description.md
   -y, --yes                 Don't prompt; use defaults for anything unspecified
 
+--profile minimal (default) scaffolds AGENTS.md, guardrails, skills, and
+the Stop/pre-commit hooks (if applicable), skipping principles.md,
+workflow-classifier.md, coordination/, and skill packs unless requested
+via --skill-packs. --profile full restores everything.
+
 Examples:
   create-agent-room init my-new-project --tools claude,cursor,git --git
   create-agent-room init . --yes --language python --package-manager pip --skill-packs testing
+  create-agent-room init . --yes --profile full --tools claude,git --git
+  create-agent-room init . --dry-run --tools claude,git
   create-agent-room sync . --check
   create-agent-room metrics .
   create-agent-room validate .

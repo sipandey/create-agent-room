@@ -21,6 +21,38 @@ Append a new entry every time:
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-07-09 — changing init's default profile would have broken validate/CI for every default user
+
+**What happened:** while implementing `--profile minimal|full` for
+`init`, discovered that `lib/validate.js` unconditionally requires
+`.agent-room/principles.md`, `.agent-room/workflow-classifier.md`, and
+`.agent-room/coordination/*` — treating their absence as a hard error
+(exit code 1), not a warning. Since `--profile minimal` (the new
+default) deliberately skips scaffolding those three, a plain
+`create-agent-room init` followed immediately by `create-agent-room
+validate .` — the exact next-step the tool's own post-init summary
+recommends — would have failed on every default-profile room. Worse,
+the scaffolded `.github/workflows/agent-room-validate.yml` runs
+`validate` in CI whenever the git adapter is selected, so this would
+have broken CI for every new project using the new default, silently,
+until someone actually ran it and hit the failure.
+**Root cause:** `validate.js` was written when "everything gets
+scaffolded" was the only possible state, so it had no way to represent
+"this file is optional depending on how the room was configured." The
+new profile concept was added to `init` without checking whether
+anything downstream assumed the old always-everything invariant.
+**Avoid:** when a scaffolding tool's config becomes more granular (a
+new mode, flag, or profile that legitimately produces less/different
+output), audit every OTHER command that reads that scaffolded output
+and asserts things about it — not just the command that changed. Grep
+for the specific paths/filenames being made optional across the whole
+codebase, not just the file being edited. `checkFile(path, false)` in
+`validate.js` already supported a warning-not-error mode; the fix was
+threading the actual scaffolded profile (now persisted in
+`.agent-room.json`) into that existing mechanism, not inventing a new
+one — worth checking for an existing "optional" primitive before adding
+new logic.
+
 ### 2026-07-09 — guardrails-check.js could self-weaken via a single commit
 
 **What happened:** `guardrails-check.js` reads `guardrails.json` live at

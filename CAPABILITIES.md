@@ -2,6 +2,13 @@
 
 This document clarifies which features are actively enforced, which are prescriptive guidance, and which are aspirational frameworks requiring additional setup.
 
+**Note on `--profile`:** `init` defaults to `--profile minimal`, which
+skips `principles.md`, `workflow-classifier.md`, and `coordination/`
+(described below as 🟡 guidance features) unless `--profile full` is
+passed. `validate` reads the profile a room was scaffolded with from
+`.agent-room.json` and only requires those files under `full` — see
+README.md's [Profiles](../README.md#profiles-minimal-vs-full) section.
+
 ---
 
 ## 🟢 Actively Enforced Features
@@ -49,6 +56,34 @@ These features **actively block, fail, or prevent** operations if violated:
   `.agent-room/guardrails.json` as requiring manual review regardless of
   what the hook reports.
 
+### Anti-patterns & Decisions Logs (Claude Code Stop Hook)
+
+- **What it does:** When using Claude Code, a `Stop` hook
+  (`.agent-room/hooks/close-the-loop-check.js`) inspects `git status
+  --porcelain` at the end of every agent turn. If the turn changed
+  tracked files outside the `.agent-room` scaffold but touched neither
+  `.agent-room/anti-patterns.md` nor `.agent-room/decisions.md`, it
+  blocks the turn from ending.
+- **Why this is a stronger enforcement point than the pre-commit hook
+  above:** it runs *inside the agent's own loop*, before there's
+  necessarily even a commit to gate. A pre-commit or CI check only sees
+  work once it's staged or pushed; this one can stop an agent
+  mid-session. There's no `--no-verify` equivalent for a Stop hook.
+- **How it fails:** Exit code 2 to Claude Code, which feeds the
+  explanation back to the model as the reason it can't stop yet.
+- **Scope:** Claude Code agent sessions only — not a git-level gate, so
+  it doesn't fire for manual/human commits or other tool adapters
+  (Cursor, Windsurf, etc. get the rule files but no equivalent runtime
+  hook). It also deliberately doesn't share a hook with the
+  security-relevant guardrails check above, so a heavy shared gate can't
+  teach anyone to reach for `--no-verify` and bypass guardrails along
+  with it.
+- **Bypass:** A one-line waiver comment in `decisions.md`
+  (`<!-- no-log: ... -->`), not an environment variable — intentionally
+  lower-friction than `GUARDRAILS_BYPASS`, since this check is about
+  logging discipline, not blocking a security-relevant action.
+- **User action:** Requires `--tools claude` during `init`.
+
 ### Session Log Format Validation
 
 - **What it does:** `lint-sessions` command validates all logs in `.agent-room/sessions/` against required schema:
@@ -89,22 +124,6 @@ These features provide templates and protocols that agents must choose to follow
   - `.agent-room/coordination/session-log-format.md`
 - **Enforcement:** None; agents must follow these protocols manually
 - **Reality:** Handoff success depends on agents reading and following the docs
-
-### Anti-patterns & Decisions Logs
-
-- **What it is:** Append-only logs for recording negative knowledge and decisions
-- **Locations:** `.agent-room/anti-patterns.md`, `.agent-room/decisions.md`
-- **Enforcement:** When using Claude Code, the Stop hook
-  (`.agent-room/hooks/close-the-loop-check.js`) blocks an agent from
-  ending its turn if it changed files outside the scaffold without
-  touching one of these logs. This is intentionally scoped to Claude
-  Code agent sessions, not a git pre-commit gate — it doesn't fire for
-  manual/human commits or other tool adapters, and it doesn't share a
-  hook with the security-relevant guardrails check (see "Agent
-  Guardrails" above), so a heavy local commit-time gate here can't teach
-  anyone to reach for `git commit --no-verify` and bypass guardrails
-  along with it.
-- **User action:** Requires manual updates by agents; not automatically populated
 
 ### Principles Playbook
 
@@ -185,9 +204,10 @@ These provide a framework that requires external setup or effort:
 ### For Agents
 
 1. **Read and follow guidance files:** The tool won't enforce them, but they exist for good reason.
-2. **Expect guardrails to block some commits:** Pre-commit hooks will catch violations; respect the `GUARDRAILS_BYPASS` protocol for emergencies.
-3. **Write well-formed session logs:** Validation will fail malformed logs; aim for the schema.
-4. **Refer to your org's stack guidance:** If provided via layers 3-6 of the template system, they'll override defaults.
+2. **If you're Claude Code, expect the Stop hook to block you first:** it fires before there's anything to commit — log a decision/anti-pattern or add a waiver before ending the turn.
+3. **Expect guardrails to block some commits:** the pre-commit hook will catch protected-path edits and staged secrets; respect the `GUARDRAILS_BYPASS` protocol for emergencies.
+4. **Write well-formed session logs:** Validation will fail malformed logs; aim for the schema.
+5. **Refer to your org's stack guidance:** If provided via layers 3-6 of the template system, they'll override defaults.
 
 ---
 
@@ -202,8 +222,8 @@ These provide a framework that requires external setup or effort:
 
 ### Standard (Prescriptive + Guidance)
 
-1. `init . --tools git --language python --org my-org` (or appropriate language/org)
-2. Pre-commit hook enforces guardrails and decisions log updates
+1. `init . --tools git,claude --language python --org my-org` (or appropriate language/org)
+2. Git pre-commit hook enforces guardrails at commit time; Claude Code's Stop hook enforces decisions/anti-patterns logging at agent-runtime (requires the `claude` adapter — `--tools git` alone only gets you the pre-commit hook)
 3. CI includes `create-agent-room validate .` and `create-agent-room lint-sessions .`
 4. Agents manually follow coordination and workflow guidance
 

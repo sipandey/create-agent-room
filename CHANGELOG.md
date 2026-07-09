@@ -16,6 +16,45 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
   reporting via GitHub Security Advisories, expected response times,
   supported-versions policy). Previously listed as missing in
   `ROADMAP.md`'s "Now" section; removed from there now that it's done.
+- `init` now prints a summary after "Scaffolding Complete!" that
+  separates what was just scaffolded into 🟢 **Enforced (works
+  automatically)** — the Claude Code Stop hook, guardrails pre-commit
+  hook, and CI workflow, whichever are active based on the selected
+  adapters — versus 🟡 **Guidance (requires reading)** — AGENTS.md,
+  principles, skill packs, coordination docs. Also reports an
+  approximate token footprint of the guidance-tier corpus (chars/4 over
+  AGENTS.md + `.agent-room/**`, excluding `hooks/` and `sessions/`,
+  explicitly labeled as approximate) and names the single next command
+  to run (commit, if the guardrails hook is active; `validate .`
+  otherwise). Previously a first-time user had no way to tell which of
+  the ~20 scaffolded files actually enforce anything versus which are
+  advisory markdown.
+- `init --dry-run`: prints exactly what `init` would create/skip, in the
+  same format as a real run (including the enforced/guidance summary
+  above), without writing anything to disk. `git init`/`git commit` are
+  simulated, not actually run. Implemented by threading a `dryRun` option
+  through `copyFile`/`copyDirInherited`/`copyFileInherited` in
+  `lib/fsutil.js` (same pattern as the existing `force` option) — it
+  still renders template content and returns the same `{ path, written }`
+  result shape `reportResults()` expects, it just skips the actual
+  `fs.writeFileSync`.
+- `init --profile <minimal|full>` (default: `minimal`): controls how much
+  of the guidance corpus gets scaffolded. `minimal` ships `AGENTS.md`
+  (trimmed), `guardrails.md`/`guardrails.json`, the base skills, and the
+  Stop/pre-commit hooks (when applicable) — `principles.md`,
+  `workflow-classifier.md`, `coordination/`, and skill packs are skipped
+  unless `--skill-packs` is passed explicitly. `full` restores the
+  previous default (everything). This default is deliberately
+  opinionated: per Gloaguen et al. 2026 (ETH Zurich), verbose LLM-facing
+  context files measurably reduce agent performance and increase token
+  cost relative to minimal ones. `lib/validate.js` now reads the
+  `profile` recorded in `.agent-room.json` and only requires
+  `principles.md`/`workflow-classifier.md`/`coordination/` under `full`
+  — otherwise a freshly-scaffolded default room would fail its own
+  `validate` command (and CI) for correctly not having files it never
+  claimed to scaffold. A room with no `.agent-room.json` (or an
+  unreadable one) is treated as `full` for backward compatibility with
+  rooms scaffolded before this existed.
 
 ### Changed
 

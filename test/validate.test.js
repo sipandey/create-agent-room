@@ -157,3 +157,65 @@ description: "Missing name metadata completely"
     process.exitCode = originalExitCode;
   }
 });
+
+// Regression: `init` now defaults to --profile minimal, which deliberately
+// skips principles.md/workflow-classifier.md/coordination/. Before
+// runValidate learned to read the profile from .agent-room.json, a
+// freshly-scaffolded default room would fail its own `validate` command
+// (and the CI workflow that runs it) for correctly not having files it
+// never claimed to scaffold.
+test('runValidate: passes (with warnings, not errors) on a default --profile minimal room', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-validate-minimal-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'MinimalRoom', force: true });
+
+  assert.strictEqual(fs.existsSync(path.join(tmpDir, '.agent-room', 'principles.md')), false);
+
+  const originalExitCode = process.exitCode;
+  process.exitCode = undefined;
+  try {
+    runValidate(tmpDir);
+    assert.strictEqual(process.exitCode, undefined, 'a minimal-profile room must pass validate, not fail it');
+  } finally {
+    process.exitCode = originalExitCode;
+  }
+});
+
+test('runValidate: still requires principles.md/workflow-classifier.md/coordination/ for a --profile full room', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-validate-full-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'FullRoom', profile: 'full', force: true });
+  fs.rmSync(path.join(tmpDir, '.agent-room', 'principles.md'));
+
+  const originalExitCode = process.exitCode;
+  process.exitCode = undefined;
+  try {
+    runValidate(tmpDir);
+    assert.strictEqual(process.exitCode, 1, 'a full-profile room missing principles.md must still fail validate');
+  } finally {
+    process.exitCode = originalExitCode;
+  }
+});
+
+test('runValidate: treats a room with no .agent-room.json (or an unreadable one) as full-profile for backward compatibility', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-validate-legacy-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'LegacyRoom', profile: 'full', force: true });
+  fs.rmSync(path.join(tmpDir, '.agent-room.json'));
+  fs.rmSync(path.join(tmpDir, '.agent-room', 'principles.md'));
+
+  const originalExitCode = process.exitCode;
+  process.exitCode = undefined;
+  try {
+    runValidate(tmpDir);
+    assert.strictEqual(process.exitCode, 1, 'without .agent-room.json to say otherwise, missing principles.md must still be an error');
+  } finally {
+    process.exitCode = originalExitCode;
+  }
+});

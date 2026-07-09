@@ -16,6 +16,115 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-07-09 — `init` defaults to `--profile minimal`; summary functions and validate.js made profile-aware
+
+**Decision:** added `--profile minimal|full` to `init`, defaulting to
+`minimal`. Minimal scaffolds `AGENTS.md` (trimmed via computed
+`{{FIRST_FIVE_MINUTES}}`/`{{GUIDANCE_LINKS}}`/`{{DEFAULT_WORKFLOW}}` vars
+in `lib/init.js`, not a second template file), `guardrails.md`/
+`guardrails.json`, the base skills, and the Stop/pre-commit hooks where
+applicable; it skips `principles.md`, `workflow-classifier.md`, and
+`coordination/` (skill packs were already opt-in regardless of profile,
+so no change needed there). `lib/validate.js` now reads the `profile`
+field this run added to `.agent-room.json` and only requires those three
+things under `full` — defaulting to `full` when `.agent-room.json` is
+missing or unreadable, so rooms scaffolded before this feature existed
+keep their old (strict) validation behavior.
+**Why:** per Gloaguen et al. 2026 (ETH Zurich), verbose LLM-facing
+context files measurably reduce agent performance and increase token
+cost relative to minimal ones — the tool's own "actively enforced vs.
+guidance" framing (CAPABILITIES.md) already argues discipline-dependent
+guidance is the weaker category, so defaulting to less of it (with the
+Stop hook still shipping) is consistent with that stance, not a
+contradiction of it. `validate.js` needed the matching change because
+shipping "minimal by default" without it would have made every default
+`init` fail its own `validate` command and CI on the very first run —
+found during manual testing before writing any tests, not something the
+task explicitly called out.
+**Rejected:** trimming `AGENTS.md` by shipping a second, parallel
+`AGENTS.md.tmpl` for minimal — rejected because the project has no
+template-engine conditionals (deliberately, per the "Explicitly out of
+scope" section of `ROADMAP.md`) and two full copies of the same template
+would drift out of sync with each other over time. Computing the
+varying sections in JS and injecting them via the existing flat
+`{{VAR}}` substitution avoids a second file entirely, and also avoids
+touching the (separately broken — see anti-patterns.md) stack-specific
+`AGENTS.md.tmpl` layer, which isn't reachable by the packaged templates
+today anyway.
+
+### 2026-07-09 — `computeEnforcedFeatures`/`computeGuidanceSummary`/`estimateGuidanceTokens` moved from disk-scanning to the `results` array
+
+**Decision:** these three summary functions (added in the previous
+session for the post-`init` enforced/guidance summary) previously took
+`target` and scanned the filesystem directly. They now take the
+accumulated `results` array from `runInit` instead, and
+`mirrorSkillsToClaude` was changed to read its skill-file list from
+`results` rather than re-reading `target/.agent-room/skills` off disk.
+**Why:** implementing `--dry-run` exposed that disk-scanning breaks
+under a dry run — nothing is actually written, so a scan would report
+an empty room regardless of what tools/profile say. `copyFile` (via
+`copyDirInherited`/`copyFileInherited`) already produces a correct
+`{ path, written }` entry for every file candidate whether or not it
+physically writes (dry run or not), and — importantly — also for files
+skipped because they *already existed* on a real re-run (`written:
+false, reason: 'exists'`), so filtering `results` by path is strictly
+more correct than the disk-scan version was, not just dry-run-compatible:
+it doesn't require the file to exist under the exact cwd being checked,
+just to have been a real candidate this run considered.
+**Rejected:** keeping the disk-scan implementation for real runs and
+adding a parallel dry-run-only code path — rejected as exactly the kind
+of duplication the task asked to avoid; the `results`-based version
+handles both cases with one code path and no `dryRun` parameter needed
+on any of the three functions.
+
+### 2026-07-09 — post-init summary derives "enforced" from final on-disk state, not the run's write log
+
+**Decision:** the new post-`init` summary (`computeEnforcedFeatures`,
+`computeGuidanceSummary`, `estimateGuidanceTokens` in `lib/init.js`)
+determines what's enforced/guidance/token-heavy by checking final
+on-disk state (`tools` selection + `fs.existsSync` + directory walks)
+rather than diffing the `results`/`createdFiles` arrays already
+collected during this run.
+**Why:** `results` only reflects what *this specific run* wrote or
+skipped — on a re-run with `--force` omitted, files that already existed
+show up as "skipped," but the mechanisms they represent (Stop hook,
+guardrails hook, CI workflow) are still fully active. A summary based on
+the write log would tell returning users their protections were "not
+created" when they're actually already in place. Token estimation has
+the same requirement: it needs to reflect the whole guidance corpus
+present after scaffolding, not just files new to this run.
+**Rejected:** deriving the summary from `results` directly — simpler
+(no extra filesystem walk) but wrong on any run where files already
+existed, which is common (re-running `init` on a project that already
+has git/claude adapters configured, or a partial re-scaffold).
+
+### 2026-07-09 — recategorized the Stop hook from 🟡 guidance to 🟢 enforced in README/CAPABILITIES
+
+**Decision:** moved "Anti-patterns & Decisions Logs" (the Claude Code
+Stop hook, `close-the-loop-check.js`) from the 🟡 "Prescriptive Guidance
+— there is no automatic enforcement" bucket to the 🟢 "Actively
+Enforced" bucket in both `README.md` and `CAPABILITIES.md`, and gave it
+top billing as the lead feature in README's opening pitch and Features
+list. Also fixed `CAPABILITIES.md`'s "Recommended Setup" section, which
+claimed "pre-commit hook enforces guardrails and decisions log updates"
+— wrong on two counts: it attributed Stop-hook behavior to the git
+pre-commit hook, and the setup recipe above it only passed `--tools
+git`, which never installs the Stop hook at all (that requires `--tools
+claude`).
+**Why:** the 🟡 bucket's own entry text already said the Stop hook
+mechanically blocks an agent from ending its turn — leaving it filed
+under "no automatic enforcement" directly contradicted its own
+description. It also undersold the tool's most differentiated feature:
+the Stop hook runs inside the agent's own loop, before there's
+necessarily even a commit to gate, which is a stronger enforcement
+point than a commit-time or CI-time check (no `--no-verify` equivalent
+exists for it). Leaving it buried as one bullet among four in a
+"requires human discipline" list didn't reflect that.
+**Rejected:** keeping it in 🟡 with clarified wording only — considered,
+but the category label itself ("no automatic enforcement") was the
+misleading part, not just the surrounding prose; a reader skimming
+section headers would still walk away with the wrong impression.
+
 ### 2026-07-09 — closing-the-loop enforcement moved out of the git pre-commit hook entirely
 
 **Decision:** removed the `HAS_SOURCE_CHANGES`/`HAS_LOG_TOUCHED` logic

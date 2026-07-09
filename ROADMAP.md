@@ -6,6 +6,11 @@ feature, not an oversight — every item below is judged against **does this
 add real value without adding real weight**, not against "what would a
 generic enterprise CLI have."
 
+The same philosophy now applies to what gets scaffolded, not just the
+tool itself: `init` defaults to `--profile minimal` rather than scaffolding
+the full guidance corpus by default (`--profile full` opts back in). See
+`.agent-room/decisions.md` for the reasoning and citation.
+
 This file exists so scope decisions don't have to be re-litigated in every
 issue and PR. Check it before proposing something new. If you think an
 "explicitly out of scope" item deserves reconsidering, open an issue and
@@ -21,9 +26,6 @@ this says *what we're planning and why we're not planning Y*.
 
 Small, cheap, clearly worth it:
 
-- **`--dry-run` for `init`** — print what would be created/skipped without
-  writing anything. Fits the existing hand-rolled flag parser; no new
-  dependency needed.
 - **CI check for `package.json`/`package-lock.json` version drift** — the
   lockfile has gone stale across version bumps twice now (see
   `.agent-room/anti-patterns.md`); a one-line CI check closes it for good
