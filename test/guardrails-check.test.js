@@ -217,3 +217,114 @@ test('guardrails-check: does not block ordinary source content (no false positiv
 
   assert.strictEqual(result.code, 0, 'ordinary source content must not trip the default forbidden-pattern rules');
 });
+
+// Regression for the self-weakening gap found while writing the
+// self-protection test above: a single commit that both edits
+// guardrails.json and removes its own path from protectedPaths in that
+// same edit must still be blocked, by comparing against HEAD's prior
+// protectedPaths rather than evaluating the newly-staged rules against
+// themselves.
+test('guardrails-check: blocks a commit that removes guardrails.json from its own protectedPaths in the same edit', (t) => {
+  const dir = makeRepo('guardrails-self-weaken');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  // HEAD version protects guardrails.json itself.
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json', 'infrastructure/**'],
+    requireApprovalFor: [],
+    scopeGuidance: {},
+    forbiddenActions: []
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial guardrails'], { cwd: dir, stdio: 'ignore' });
+
+  // A single edit both changes guardrails.json AND removes its own path
+  // from protectedPaths, so the newly-staged rules no longer flag it.
+  writeGuardrails(dir, {
+    protectedPaths: ['infrastructure/**'],
+    requireApprovalFor: [],
+    scopeGuidance: {},
+    forbiddenActions: []
+  });
+  stageAll(dir);
+
+  const result = runHook(dir);
+
+  assert.strictEqual(result.code, 1, 'a commit that strips guardrails.json from its own protectedPaths must still be blocked');
+  assert.match(result.stderr, /guardrails\.json/);
+  assert.match(result.stderr, /removed from protectedPaths/);
+});
+
+test('guardrails-check: allows editing guardrails.json when it was not previously self-protected', (t) => {
+  const dir = makeRepo('guardrails-no-prior-protection');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  // HEAD version never protected guardrails.json itself.
+  writeGuardrails(dir, {
+    protectedPaths: ['infrastructure/**'],
+    requireApprovalFor: [],
+    scopeGuidance: {},
+    forbiddenActions: []
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial guardrails'], { cwd: dir, stdio: 'ignore' });
+
+  writeGuardrails(dir, {
+    protectedPaths: ['infrastructure/**', 'other/**'],
+    requireApprovalFor: [],
+    scopeGuidance: {},
+    forbiddenActions: []
+  });
+  stageAll(dir);
+
+  const result = runHook(dir);
+
+  assert.strictEqual(result.code, 0, 'editing guardrails.json should be allowed when it was never self-protected at HEAD');
+});
+
+test('guardrails-check: does not crash when guardrails.json is added in the genesis commit (no HEAD yet)', (t) => {
+  const dir = makeRepo('guardrails-self-weaken-genesis');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: ['infrastructure/**'],
+    requireApprovalFor: [],
+    scopeGuidance: {},
+    forbiddenActions: []
+  });
+  stageAll(dir);
+
+  const result = runHook(dir);
+
+  // No HEAD exists yet, so there is nothing to compare against - the
+  // self-weakening check should be a no-op rather than crashing the hook.
+  assert.strictEqual(result.code, 0, 'the self-weakening check must not crash on a genesis commit with no HEAD');
+});
+
+test('guardrails-check: still blocks editing guardrails.json while it remains self-protected', (t) => {
+  const dir = makeRepo('guardrails-still-protected');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json'],
+    requireApprovalFor: [],
+    scopeGuidance: {},
+    forbiddenActions: []
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial guardrails'], { cwd: dir, stdio: 'ignore' });
+
+  // Edit guardrails.json but leave its own path in protectedPaths.
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json'],
+    requireApprovalFor: ['something new'],
+    scopeGuidance: {},
+    forbiddenActions: []
+  });
+  stageAll(dir);
+
+  const result = runHook(dir);
+
+  assert.strictEqual(result.code, 1, 'editing guardrails.json while it remains self-protected must still be blocked');
+  assert.match(result.stderr, /Protected path violation: \.agent-room\/guardrails\.json/);
+});

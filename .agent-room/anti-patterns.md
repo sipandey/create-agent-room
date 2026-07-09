@@ -21,6 +21,28 @@ Append a new entry every time:
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-07-09 — guardrails-check.js could self-weaken via a single commit
+
+**What happened:** `guardrails-check.js` reads `guardrails.json` live at
+hook-run time and evaluates `protectedPaths` against the version of the
+file *being committed*, not the version at HEAD. A single commit that both
+edited `guardrails.json` and removed its own path from `protectedPaths` in
+that same edit passed the check — the hook checked the newly-weakened
+rules against themselves and found nothing wrong, since by the time it ran
+the self-protecting entry was already gone from the file it read. This
+closes the "unimplemented" gap flagged in the entry directly below.
+**Root cause:** the check trusted the staged content of the very file that
+defines what's protected, with no comparison against the prior, presumably
+still-trusted state (HEAD) of that same file.
+**Avoid:** when a config file's own rules govern whether edits to that
+config file are allowed, don't evaluate a staged edit purely against
+itself — diff it against the last-committed version and flag edits that
+remove protection the previous version had, regardless of what the new
+version now claims. `guardrails-check.js` does this for `guardrails.json`
+via `git show HEAD:.agent-room/guardrails.json`, falling back to "no prior
+protection" (not a crash) when there's no HEAD yet or HEAD's copy doesn't
+parse.
+
 ### 2026-07-09 — guardrails.json wasn't in its own protectedPaths; even fixed, the check trusts the file being edited
 
 **What happened:** `.agent-room/guardrails.json`, `.agent-room/guardrails.md`,
@@ -41,12 +63,9 @@ to detect "this edit removed my own protection."
 **Avoid:** don't assume adding a path to a self-referential protectedPaths
 list makes the mechanism airtight — it closes the "edit without
 protection" gap but not the "remove your own protection, then edit" gap.
-That would need the hook to diff against `HEAD`'s version of
-`guardrails.json` specifically when deciding whether *that file itself*
-is being weakened, which is unimplemented; treat any commit touching
-`.agent-room/guardrails.json` as needing manual review regardless of the
-hook's exit code. Documented as a known limitation in `CAPABILITIES.md`
-and `CHANGELOG.md` rather than silently left as a gap.
+That needs the hook to diff against `HEAD`'s version of `guardrails.json`
+specifically when deciding whether *that file itself* is being weakened
+(now implemented — see the entry above this one).
 
 ### 2026-07-09 — default forbiddenActions list looked enforced but matched nothing
 

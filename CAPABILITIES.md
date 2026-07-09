@@ -35,11 +35,17 @@ These features **actively block, fail, or prevent** operations if violated:
   creates `guardrails.json` and the paths it protects in that same commit
   — there's nothing yet to protect a change *against*. Every commit after
   that is fully enforced, including edits to the protected-path list itself.
-- **Known limitation:** the hook evaluates `protectedPaths` against the
-  version of `guardrails.json` being committed, not the previous
-  (`HEAD`) version — so a single commit that both edits `guardrails.json`
-  *and* removes its own path from `protectedPaths` in that same edit is
-  not caught by this mechanism. Not yet fixed; treat any commit touching
+- **Self-weakening protection:** a commit that both edits `guardrails.json`
+  and removes its own path from `protectedPaths` in that same edit is
+  compared against HEAD's prior `protectedPaths` (via
+  `git show HEAD:.agent-room/guardrails.json`) specifically to catch this
+  case, falling back to "no prior protection" on a genesis commit or an
+  unparseable HEAD copy rather than crashing.
+- **Known limitation:** the HEAD comparison above only covers
+  `guardrails.json` itself being weakened — a commit that narrows a glob,
+  drops an unrelated `protectedPaths` entry, or removes a `forbiddenActions`
+  rule while leaving `guardrails.json`'s own protected-path entry intact
+  still succeeds silently. Treat any commit touching
   `.agent-room/guardrails.json` as requiring manual review regardless of
   what the hook reports.
 

@@ -94,10 +94,22 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
   merely defining one. The existing genesis-commit exemption (also from
   this cycle) covers these new paths automatically, since `init --git`
   creates them in the same first commit as everything else. **Known
-  limitation, documented but not fixed here:** the hook evaluates
-  `protectedPaths` against the version of `guardrails.json` being
-  committed, so a single commit that edits `guardrails.json` *and* strips
-  its own path out of `protectedPaths` in that same edit isn't caught.
+  limitation at the time this was written, since fixed by the entry
+  below:** the hook evaluated `protectedPaths` against the version of
+  `guardrails.json` being committed, so a single commit that edited
+  `guardrails.json` *and* stripped its own path out of `protectedPaths`
+  in that same edit wasn't caught.
+- `guardrails-check.js` evaluated `protectedPaths` against the version of
+  `guardrails.json` being committed, not the previous (HEAD) version, so a
+  commit that both edited `guardrails.json` and removed its own path from
+  `protectedPaths` in the same edit was not caught — the newly-weakened
+  rules approved themselves. When `guardrails.json` is staged, the hook now
+  also compares against `git show HEAD:.agent-room/guardrails.json`: if
+  HEAD's `protectedPaths` protected the file but the staged version no
+  longer does, the commit is still blocked. Handles the genesis commit (no
+  HEAD) and an unparseable HEAD copy without crashing. This still only
+  covers `guardrails.json`'s own protected-path entry being removed — see
+  the "Known limitation" note in `CAPABILITIES.md`.
 
 ### Docs
 
