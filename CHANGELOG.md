@@ -10,6 +10,8 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-07-09
+
 ### Fixed
 
 - Shell injection in `guardrails-check.js` and `sync.js`: both built shell
@@ -105,6 +107,7 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 - `package.json` now includes `repository`, `homepage`, `bugs`,
   `keywords`, and `author` metadata for npm.
 
-[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/sipandey/create-agent-room/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/sipandey/create-agent-room/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/sipandey/create-agent-room/releases/tag/v1.2.1
