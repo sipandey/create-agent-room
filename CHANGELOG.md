@@ -10,6 +10,21 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-07-09
+
+### Fixed
+
+- `action.yml`'s `description` field (~340 characters, explaining what
+  the Action checks and when to prefer the `init --tools git`-scaffolded
+  workflow instead) exceeded the GitHub Marketplace listing form's
+  125-character limit — only surfaced when actually clicking through
+  "Publish this Action to the GitHub Marketplace" on the `v2.0.0` draft
+  release, since nothing validates this locally. Shortened to a
+  114-character summary; the fuller explanation moved to a code comment
+  plus the existing `docs/github-action.md`/`README.md` coverage, which
+  were never length-constrained. Logged in
+  `.agent-room/anti-patterns.md`.
+
 ## [2.0.0] - 2026-07-09
 
 **Why a major bump:** `init` now defaults to `--profile minimal` instead
@@ -331,7 +346,8 @@ default (e.g. a script asserting `principles.md` exists after a bare
 - `package.json` now includes `repository`, `homepage`, `bugs`,
   `keywords`, and `author` metadata for npm.
 
-[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v2.0.0...HEAD
+[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/sipandey/create-agent-room/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/sipandey/create-agent-room/compare/v1.3.1...v2.0.0
 [1.3.1]: https://github.com/sipandey/create-agent-room/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/sipandey/create-agent-room/compare/v1.2.1...v1.3.0

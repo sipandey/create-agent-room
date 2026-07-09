@@ -55,7 +55,7 @@ calling workflow's job).
 | --------------- | ------- | ---------------------------------------------------------------------- |
 | `target-dir`    | `.`     | Directory containing the `.agent-room/` scaffold to check              |
 | `checks`        | `both`  | `both`, `validate`, or `lint-sessions`                                 |
-| `version`       | pinned to the version this Action ships with | `create-agent-room` version to run via `npx`, e.g. `2.0.0` or `latest` |
+| `version`       | pinned to the version this Action ships with | `create-agent-room` version to run via `npx`, e.g. `2.0.1` or `latest` |
 | `node-version`  | `20`    | Node.js version set up before running `npx`                            |
 
 None of these are required — omit anything you don't need to override.

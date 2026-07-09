@@ -16,6 +16,34 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-07-09 — fixed the Marketplace description-length rejection with a v2.0.1 patch, not by rewriting the pushed v2.0.0 tag
+
+**Decision:** after `v2.0.0`'s `action.yml` `description` was rejected
+by GitHub's Marketplace publish form for exceeding 125 characters, the
+fix shipped as a new `v2.0.1` patch release. `v2.0.0`'s tag stays
+exactly as originally pushed. Only the rolling `v2` major tag (the one
+Marketplace consumers pin to via `@v2`) was force-moved to point at
+`v2.0.1`.
+**Why:** an exact-version tag (`v2.0.0`) is a promise that a given tag
+name always resolves to the same commit — once pushed, moving it is a
+silent, retroactive rewrite of what anyone who already has that tag
+would get, which is exactly the class of operation this project's own
+git-safety norms (and the permission system enforcing them) exist to
+prevent. A first attempt at force-moving `v2.0.0` was correctly blocked
+by the harness before it happened. The rolling `v2` tag is different in
+kind: moving it on every release is its documented, expected purpose
+(that's what "rolling" means), not a rewrite of a promise anyone relied
+on. The `description` field itself is Marketplace-listing metadata only
+— it doesn't affect the Action's runtime behavior, so leaving `v2.0.0`
+tagged with the long description causes no functional harm to anyone
+already using `@v2.0.0` directly.
+**Rejected:** force-moving `v2.0.0` to the fixed commit — simpler
+(one release instead of two, no `2.0.1` for a metadata-only change) but
+wrong: it would have made `v2.0.0` mean two different things depending
+on when you fetched it, undermining the entire point of an immutable
+version tag for a one-line, publish-blocking fix that didn't need that
+tradeoff.
+
 ### 2026-07-09 — v2.0.0: major bump for the --profile minimal default, not minor
 
 **Decision:** the release accumulated in `CHANGELOG.md`'s `[Unreleased]`

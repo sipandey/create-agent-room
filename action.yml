@@ -27,7 +27,7 @@ inputs:
     default: 'both'
   version:
     description: >-
-      create-agent-room version to run via npx, e.g. "2.0.0" or "latest".
+      create-agent-room version to run via npx, e.g. "2.0.1" or "latest".
       Pinned by default so CI results stay reproducible across runs
       instead of silently changing behavior when a new version ships —
       see the version-pinning rationale in
@@ -35,7 +35,7 @@ inputs:
       lockstep with package.json's version at release time (see
       "Release process" in AGENTS.md/CLAUDE.md).
     required: false
-    default: '2.0.0'
+    default: '2.0.1'
   node-version:
     description: 'Node.js version to set up before running npx.'
     required: false
