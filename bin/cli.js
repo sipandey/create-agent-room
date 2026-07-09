@@ -8,6 +8,7 @@ const { runMetrics } = require('../lib/metrics');
 const { runValidate } = require('../lib/validate');
 const { runPrDesc } = require('../lib/pr');
 const { runLintSessions } = require('../lib/lint-sessions');
+const { runDoctor } = require('../lib/doctor');
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -123,6 +124,7 @@ Usage:
   create-agent-room validate [target-dir]
   create-agent-room lint-sessions [target-dir]
   create-agent-room pr-desc [target-dir] [options]
+  create-agent-room doctor [target-dir]
 
 Options:
   --name <name>             Project name used in templates (default: target dir name)
@@ -158,6 +160,7 @@ Examples:
   create-agent-room validate .
   create-agent-room lint-sessions .
   create-agent-room pr-desc . --write
+  create-agent-room doctor .
   create-agent-room --version
 `);
 }
@@ -191,6 +194,8 @@ async function main() {
     runLintSessions(target);
   } else if (command === 'pr-desc') {
     runPrDesc(target, args);
+  } else if (command === 'doctor') {
+    runDoctor(target);
   } else {
     console.error(`Unknown command: ${command}`);
     printHelp();

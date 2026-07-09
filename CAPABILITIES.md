@@ -138,6 +138,13 @@ These features provide templates and protocols that agents must choose to follow
 - **Enforcement:** Tool-dependent. Claude Code and Cursor read rule files; others may not.
 - **Reality:** Rules are available but tools decide whether/how to apply them
 
+### `doctor` Command
+
+- **What it is:** A read-only health check (`create-agent-room doctor [target-dir]`) that reuses `validate`'s structural/schema checks and adds advisory-only ones `validate` doesn't do: hook files drifted from the CLI's current templates, a CI workflow pinned to a stale or `@latest` `create-agent-room` version, and `.agent-room.json` claiming a tool that isn't actually wired up on disk. Works on projects that never ran `init` too — in that case it just prints the `init` command to run.
+- **Location:** `lib/doctor.js`, sharing `lib/checks.js` with `lib/validate.js`
+- **Enforcement:** None. Unlike `validate`, `doctor` never sets a non-zero exit code and is not wired into the scaffolded CI workflow — it's meant to be run by a human (or agent) deciding what to fix, not to gate a build.
+- **Reality:** Never writes to disk under any circumstance; the only side effect is a suggested `init . --force` command it prints but does not run.
+
 ---
 
 ## 🔵 Aspirational/Framework Features

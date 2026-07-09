@@ -16,6 +16,44 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-07-10 — added `doctor`, extracting `lib/checks.js` out of `lib/validate.js` first
+
+**Decision:** added `create-agent-room doctor [target-dir]`, a strictly
+read-only advisory command. To share logic with `validate` instead of
+duplicating it, pulled `validate`'s structural/schema checks out into a
+new pure function, `collectFindings()` in `lib/checks.js`, which both
+`lib/validate.js` (thin print/exit-code wrapper now) and `lib/doctor.js`
+call. `doctor` adds three checks `validate` intentionally doesn't do,
+because they're advisory rather than pass/fail: hook-file drift against
+the currently installed CLI's templates (`pre-commit`,
+`guardrails-check.js`, `close-the-loop-check.js` — verified these three
+have no per-project `{{VAR}}` interpolation, so direct content comparison
+is valid), a CI workflow pinned to a stale or `@latest`
+`create-agent-room` version, and `.agent-room.json` claiming a tool
+(`claude`/`git`) that isn't actually wired up on disk. On an
+unscaffolded directory it calls `detectWorkspace()` (already used by
+`init`) and prints the `init` command to run instead of failing.
+**Why:** `validate` is a CI gate — it has to stay exit-code-driven and
+narrowly scoped to "is this room structurally valid," or CI becomes noisy
+and gets ignored. `doctor` is for a human (or agent) who wants a "what's
+wrong and what would I run to fix it" answer, including for projects that
+never ran `init` at all, which `validate` can't do since it assumes
+`.agent-room/` exists. Refactoring `collectFindings()` out first, rather
+than writing `doctor`'s own copy of the structural checks, means the two
+commands can't silently drift on what counts as an error.
+**Rejected:** letting `doctor` surface `collectFindings()`'s
+principles.md/workflow-classifier.md/coordination/ warnings as actionable
+"Recommended" items — caught in manual testing that these three warnings
+can *only* ever fire for a deliberately `--profile minimal` room (by
+construction of `collectFindings`'s own logic), so flagging them read as
+noise on the single most common case (a fresh default room), and the
+suggested `init --force` fix wouldn't even resolve them (`--profile full`
+would). Filtered those three exact messages out of `doctor`'s advisory
+list and replaced them with an accurate note instead.
+**Rejected:** giving `doctor` a non-zero exit code or wiring it into the
+scaffolded CI workflow — it's meant to be run by a human deciding what to
+fix, not to gate a build; that's what `validate` is for.
+
 ### 2026-07-09 — fixed the Marketplace description-length rejection with a v2.0.1 patch, not by rewriting the pushed v2.0.0 tag
 
 **Decision:** after `v2.0.0`'s `action.yml` `description` was rejected

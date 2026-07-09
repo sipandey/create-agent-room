@@ -107,6 +107,9 @@ npx create-agent-room metrics .
 
 # Generate a Pull Request description from the latest session log and save it:
 npx create-agent-room pr-desc . --write
+
+# Read-only health check — works whether or not init has been run yet, writes nothing:
+npx create-agent-room doctor .
 ```
 
 **Example: Init Command**
@@ -122,6 +125,7 @@ node bin/cli.js init my-new-project
 node bin/cli.js validate .
 node bin/cli.js metrics .
 node bin/cli.js pr-desc . --write
+node bin/cli.js doctor .
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, tests/lint, and
@@ -227,6 +231,26 @@ Validates all session logs in `.agent-room/sessions/` against the required schem
 Already ran `init --tools git`? Use the workflow file it scaffolded
 instead of writing this by hand — see [GitHub Action](#github-action)
 below for when to use which.
+
+### 7. `doctor [target-dir]`
+
+Read-only health check for a project — works whether or not `init` has
+ever been run. Writes nothing to disk, regardless of what it finds.
+
+- **No `.agent-room/` found**: detects the workspace's language/tools and
+  prints the `init` (and `init --dry-run`) command to run.
+- **Already scaffolded**: reuses `validate`'s structural/schema checks,
+  plus advisory-only checks `validate` doesn't do — hook files that have
+  drifted from the CLI's current templates, a CI workflow pinned to a
+  stale or `@latest` `create-agent-room` version, and `.agent-room.json`
+  claiming a tool (`claude`, `git`) that isn't actually wired up on disk.
+- Prints `🔴 Needs attention` / `🟡 Recommended` / `🟢 Looks good`, and
+  suggests `init . --force` to refresh drifted files when relevant (this
+  overwrites manual edits to those files — review with `git diff`
+  afterward).
+
+Unlike `init --force`, `doctor` never writes — it's the tool to reach for
+when you just want to know what's wrong before deciding whether to fix it.
 
 ---
 

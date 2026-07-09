@@ -10,6 +10,30 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+### Added
+
+- `create-agent-room doctor [target-dir]` — a read-only health check that
+  works whether or not `init` has ever been run. On an unscaffolded
+  directory, it detects the workspace and prints the `init` command to
+  run. On an existing room, it reuses `validate`'s structural/schema
+  checks and adds advisory-only ones: hook files (`pre-commit`,
+  `guardrails-check.js`, `close-the-loop-check.js`) that have drifted
+  from the currently installed CLI's templates, a scaffolded CI workflow
+  pinned to a stale or `@latest` `create-agent-room` version, and
+  `.agent-room.json` claiming a tool (`claude`, `git`) that isn't
+  actually wired up on disk (e.g. the Stop hook or pre-commit hook is
+  missing). Never writes to disk — the difference from `init --force` is
+  that `doctor` only ever prints a suggested remediation command, it
+  doesn't run one.
+
+### Changed
+
+- Extracted `collectFindings()` into a new `lib/checks.js`, pulled out of
+  `lib/validate.js`'s `runValidate()`. `validate` is now a thin
+  print/exit-code wrapper around it; `doctor` calls the same function so
+  the two never drift out of sync on what counts as a structural error
+  vs. a warning. No behavior change to `validate` itself.
+
 ## [2.0.1] - 2026-07-09
 
 ### Fixed

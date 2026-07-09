@@ -41,11 +41,6 @@ Worth doing, more effort, still in keeping with the project's scope:
 - **DRY up the per-adapter blocks in `lib/init.js`** — cursor/windsurf/
   cline/codex each repeat a near-identical `copyFileInherited` call; a
   small table-driven loop would cut ~40 lines with no behavior change.
-- **`create-agent-room doctor`** — audit an *existing* (non-scaffolded or
-  partially-scaffolded) project and suggest what's missing, reusing
-  `validate`'s checks rather than duplicating them. `action.yml` (the
-  composite GitHub Action) already covers the narrower "check a repo that
-  never ran `init`" case this would generalize.
 - **Publish `action.yml` to the GitHub Marketplace** — the Action itself
   is written, tested, and documented (`docs/github-action.md`); the
   `v2.0.0` release created a rolling `v2` major tag (per Marketplace
