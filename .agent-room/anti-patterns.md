@@ -95,3 +95,21 @@ the lockfile is just wrong until someone happens to diff it.
 in the documented release process (see "Release process" in
 `AGENTS.md`/`CLAUDE.md`). Consider also adding a CI check that fails if
 `package-lock.json`'s version doesn't match `package.json`'s.
+
+### 2026-07-09 — removed committed test-pollution fixtures from .agent-room/sessions/
+
+**What happened:** four files (`2026-07-08-17-20-test-json.json`,
+`2026-07-08-17-20-test-save.md`, `2026-07-08-17-36-test-json.json`,
+`2026-07-08-17-36-test-save.md`) were sitting tracked in
+`.agent-room/sessions/` — leftover artifacts from the `session-utils.js`
+stale-cwd bug (see the earlier entry in this file), written straight into
+this repo's real session log directory by `npm test` and accidentally
+committed in `6e946f6`/`ce4ebc3` before anyone noticed. Removed now that
+the root cause is fixed and they're confirmed to be test fixtures, not
+real session logs.
+**Root cause:** same as the stale-cwd entry above — these are its
+downstream evidence, not a separate bug.
+**Avoid:** nothing new here; covered by the fix already made. Noting it
+so a future `git log` reader isn't confused about why sessions/ briefly
+had content dated before this repo had ever been scaffolded with
+`create-agent-room` on itself.
