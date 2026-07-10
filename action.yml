@@ -35,7 +35,7 @@ inputs:
       lockstep with package.json's version at release time (see
       "Release process" in AGENTS.md/CLAUDE.md).
     required: false
-    default: '2.0.1'
+    default: '2.1.0'
   node-version:
     description: 'Node.js version to set up before running npx.'
     required: false

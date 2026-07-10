@@ -10,23 +10,9 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
-### Fixed
-
-- `.agent-room/hooks/guardrails-check.js` and
-  `templates/adapters/git-hooks/guardrails-check.js` used a numeric
-  separator (`1_000_000`) that throws a `SyntaxError` under Node <12.5 —
-  git hooks run under whatever `node` is first on `PATH`, not necessarily
-  the version a contributor's shell has active. Replaced with a plain
-  literal.
+## [2.1.0] - 2026-07-10
 
 ### Added
-
-- CI check (`npm run check:lockfile`, wired into `.github/workflows/ci.yml`)
-  that fails the build if `package-lock.json`'s recorded version doesn't
-  match `package.json`'s — `package-lock.json` has gone stale across
-  version bumps twice before (see `.agent-room/anti-patterns.md`); this
-  closes it for good instead of relying on someone noticing during an
-  audit.
 
 - `create-agent-room doctor [target-dir]` — a read-only health check that
   works whether or not `init` has ever been run. On an unscaffolded
@@ -41,6 +27,12 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
   missing). Never writes to disk — the difference from `init --force` is
   that `doctor` only ever prints a suggested remediation command, it
   doesn't run one.
+- CI check (`npm run check:lockfile`, wired into `.github/workflows/ci.yml`)
+  that fails the build if `package-lock.json`'s recorded version doesn't
+  match `package.json`'s — `package-lock.json` has gone stale across
+  version bumps twice before (see `.agent-room/anti-patterns.md`); this
+  closes it for good instead of relying on someone noticing during an
+  audit.
 
 ### Changed
 
@@ -49,6 +41,20 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
   print/exit-code wrapper around it; `doctor` calls the same function so
   the two never drift out of sync on what counts as a structural error
   vs. a warning. No behavior change to `validate` itself.
+- Collapsed the four near-identical `cursor`/`windsurf`/`cline`/`codex`
+  tool-adapter blocks in `lib/init.js` into a single table-driven loop
+  (`SIMPLE_TOOL_ADAPTERS`). Internal refactor, no behavior change;
+  `claude` and `git` stay as explicit blocks since they do more than a
+  single-file copy.
+
+### Fixed
+
+- `.agent-room/hooks/guardrails-check.js` and
+  `templates/adapters/git-hooks/guardrails-check.js` used a numeric
+  separator (`1_000_000`) that throws a `SyntaxError` under Node <12.5 —
+  git hooks run under whatever `node` is first on `PATH`, not necessarily
+  the version a contributor's shell has active. Replaced with a plain
+  literal.
 
 ## [2.0.1] - 2026-07-09
 

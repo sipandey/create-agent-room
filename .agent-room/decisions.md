@@ -16,6 +16,8 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+<!-- no-log: 2026-07-10 v2.1.0 release commit — routine release mechanics (version bump, lockfile re-sync, action.yml lockstep bump, CHANGELOG [Unreleased]→[2.1.0]). The CHANGELOG and the per-feature decisions.md entries below are the record; nothing new to add here. -->
+
 ### 2026-07-10 — DRY'd the tool adapters into a table, but kept `claude`/`git` as explicit blocks
 
 **Decision:** replaced the four near-identical `cursor`/`windsurf`/`cline`/
