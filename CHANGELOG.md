@@ -10,6 +10,26 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+### Added
+
+- `guardrails.json`'s `scopeGuidance` (`maxFilesPerChange`,
+  `maxLinesPerChange`) is now mechanically enforced by the pre-commit hook
+  — previously declared in the shipped schema but never read anywhere.
+  File count comes from staged files, line count from `git diff --cached
+  --numstat`. Optional field: existing `guardrails.json` files without it
+  get no new enforcement. The repository's genesis commit is exempt, same
+  as `protectedPaths` — a normal `init --tools git --git` scaffold is
+  ~25 files / ~1,600 lines, already over the shipped defaults (20 files /
+  500 lines).
+- A durable bypass audit log: every `GUARDRAILS_BYPASS`/
+  `SKIP_GUARDRAILS_CHECK` override (protected path, forbidden pattern,
+  scope guidance, or corrupted config) now appends an entry — ISO
+  timestamp, `git config user.name`/`user.email`, and the reason(s) — to
+  `.agent-room/guardrails-bypass-log.md`, auto-staged into the same
+  commit it's recording. Previously a bypass only printed a
+  `console.warn` that vanished the moment the terminal scrolled, leaving
+  no record of who overrode a guardrail or why.
+
 ## [2.1.0] - 2026-07-10
 
 ### Added

@@ -21,6 +21,25 @@ Append a new entry every time:
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-07-13 — this repo's own installed hook had silently drifted from its template, undetected
+
+**What happened:** while touching `templates/adapters/git-hooks/guardrails-check.js`
+to add `scopeGuidance` enforcement, found that this repo's own dogfooded
+copy at `.agent-room/hooks/guardrails-check.js` was already substantially
+out of date — missing the genesis-commit exemption and the
+`forbiddenActions` object-schema support, both added earlier in this same
+session. `doctor` (`create-agent-room doctor .`) had been correctly
+flagging this as drifted the whole time; nobody had run it since those
+earlier fixes landed.
+**Root cause:** `init --force` (or an equivalent manual re-sync) is not
+run automatically after every template edit to this project's own
+dogfooded `.agent-room/`/`.git/hooks/` copies — `doctor` is advisory and
+has to be run deliberately, so drift is silent between audits.
+**Avoid:** after editing any file under `templates/adapters/git-hooks/`
+or `templates/.agent-room/hooks/`, run `create-agent-room doctor .` on
+this repo itself before considering the change done, not just on new
+test fixtures. Re-synced the copy as part of this change.
+
 ### 2026-07-10 — the pre-commit hook itself crashes under a non-nvm system Node
 
 **What happened:** committing the `doctor` command feature failed with

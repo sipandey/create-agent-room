@@ -16,6 +16,50 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-07-13 — enforced `scopeGuidance` and added a durable bypass log, both in the pre-commit hook
+
+**Decision:** found two real gaps by auditing this project's own guardrails
+machinery: (1) `guardrails.json`'s `scopeGuidance` (`maxFilesPerChange`,
+`maxLinesPerChange`) was declared in the shipped schema but never read
+anywhere — a 60-file, 3,000-line commit shipped with zero friction despite
+the schema explicitly modeling "this is too big to have been meaningfully
+reviewed." (2) `GUARDRAILS_BYPASS` correctly warns on override but only to
+the terminal — no durable record of who bypassed a guardrail, when, or
+what was being overridden. Fixed both in
+`templates/adapters/git-hooks/guardrails-check.js`: `scopeGuidance` is now
+enforced as a third check alongside `protectedPaths`/`forbiddenActions`
+(same `violations` array, same `GUARDRAILS_BYPASS` escape hatch, no new
+severity tier), and a new `logBypass()` helper appends an entry (ISO
+timestamp, `git config user.name`/`user.email`, reason) to
+`.agent-room/guardrails-bypass-log.md` on every bypass, auto-staging it
+into the same commit it records.
+**Why:** both gaps map onto a real risk pattern in AI-assisted development —
+small, individually-reasonable decisions compound invisibly (an
+agent-generated commit that "just works" but was never reviewed at that
+scale), and bypassing a control that isn't tracked diffuses accountability
+(nobody can answer "who decided to override this and why" after the fact).
+`scopeGuidance` enforcement had to exempt the genesis commit — verified
+necessary, not theoretical: a normal `init --tools git --git` scaffold is
+25 files / 1,569 insertions, already over the shipped defaults (20 files /
+500 lines), so without the exemption the tool would have immediately
+blocked its own onboarding flow, the same class of bug already fixed once
+for `protectedPaths`. The bypass log is deliberately **not** added to
+`protectedPaths` — the hook's own auto-stage of the log would otherwise
+trip a protected-path violation on the same commit it's trying to record
+(a bypass-loop).
+**Rejected:** tamper-detection for the bypass log itself (e.g. diffing
+against HEAD to catch someone shrinking it, the same technique already
+used for `guardrails.json`'s self-weakening protection) — out of scope
+for v1; git history is the tamper-evidence for now, same posture as
+`decisions.md`/`anti-patterns.md`, neither of which have special
+anti-tampering either. Also found and fixed in passing: this repo's own
+`.agent-room/hooks/guardrails-check.js` had drifted from
+`templates/adapters/git-hooks/guardrails-check.js` since before this
+session (predating even the genesis-commit and forbiddenActions-schema
+fixes) — `doctor` had been correctly flagging it as drifted the whole
+time; re-synced it as part of this change since it's the exact file being
+touched here.
+
 <!-- no-log: 2026-07-10 v2.1.0 release commit — routine release mechanics (version bump, lockfile re-sync, action.yml lockstep bump, CHANGELOG [Unreleased]→[2.1.0]). The CHANGELOG and the per-feature decisions.md entries below are the record; nothing new to add here. -->
 
 ### 2026-07-10 — DRY'd the tool adapters into a table, but kept `claude`/`git` as explicit blocks

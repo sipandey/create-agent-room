@@ -328,3 +328,183 @@ test('guardrails-check: still blocks editing guardrails.json while it remains se
   assert.strictEqual(result.code, 1, 'editing guardrails.json while it remains self-protected must still be blocked');
   assert.match(result.stderr, /Protected path violation: \.agent-room\/guardrails\.json/);
 });
+
+// --- scopeGuidance enforcement ---
+
+function writeNFiles(dir, n, subdir) {
+  const target = subdir ? path.join(dir, subdir) : dir;
+  fs.mkdirSync(target, { recursive: true });
+  for (let i = 0; i < n; i++) {
+    fs.writeFileSync(path.join(target, `file-${i}.txt`), `content ${i}\n`);
+  }
+}
+
+test('guardrails-check: scopeGuidance absent from guardrails.json means no scope enforcement (backward compat)', (t) => {
+  const dir = makeRepo('scope-absent');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, { protectedPaths: [], forbiddenActions: [] });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  writeNFiles(dir, 50, 'many-files');
+  stageAll(dir);
+  const result = runHook(dir);
+
+  assert.strictEqual(result.code, 0, 'no scopeGuidance declared should mean no scope enforcement at all');
+});
+
+test('guardrails-check: blocks a non-initial commit that exceeds maxFilesPerChange', (t) => {
+  const dir = makeRepo('scope-too-many-files');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: [],
+    forbiddenActions: [],
+    scopeGuidance: { maxFilesPerChange: 3, maxLinesPerChange: 10000 }
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  writeNFiles(dir, 5, 'too-many');
+  stageAll(dir);
+  const result = runHook(dir);
+
+  assert.strictEqual(result.code, 1, 'exceeding maxFilesPerChange on a non-initial commit should block');
+  assert.match(result.stderr, /Change scope exceeds guidance.*files/i);
+});
+
+test('guardrails-check: blocks a non-initial commit that exceeds maxLinesPerChange', (t) => {
+  const dir = makeRepo('scope-too-many-lines');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: [],
+    forbiddenActions: [],
+    scopeGuidance: { maxFilesPerChange: 100, maxLinesPerChange: 20 }
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.writeFileSync(path.join(dir, 'big.txt'), Array.from({ length: 50 }, (_, i) => `line ${i}`).join('\n') + '\n');
+  stageAll(dir);
+  const result = runHook(dir);
+
+  assert.strictEqual(result.code, 1, 'exceeding maxLinesPerChange on a non-initial commit should block');
+  assert.match(result.stderr, /Change scope exceeds guidance.*lines/i);
+});
+
+test('guardrails-check: passes when a non-initial commit stays within scopeGuidance limits', (t) => {
+  const dir = makeRepo('scope-within-limits');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: [],
+    forbiddenActions: [],
+    scopeGuidance: { maxFilesPerChange: 20, maxLinesPerChange: 500 }
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.writeFileSync(path.join(dir, 'small.txt'), 'a small change\n');
+  stageAll(dir);
+  const result = runHook(dir);
+
+  assert.strictEqual(result.code, 0, 'a small, well-scoped change should not be blocked');
+});
+
+// Regression: a normal `init --tools git --git` genesis commit is 25 files /
+// 1569 insertions (measured directly against this repo's own default
+// scopeGuidance of 20 files / 500 lines) - without this exemption the tool
+// would block its own onboarding flow, the same class of self-inflicted bug
+// already fixed once for protectedPaths.
+test('guardrails-check: does not block the genesis commit even when it exceeds scopeGuidance limits', (t) => {
+  const dir = makeRepo('scope-genesis-exempt');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: [],
+    forbiddenActions: [],
+    scopeGuidance: { maxFilesPerChange: 2, maxLinesPerChange: 5 }
+  });
+  writeNFiles(dir, 10, 'lots-of-files');
+  stageAll(dir);
+  const result = runHook(dir);
+
+  assert.strictEqual(result.code, 0, 'the genesis commit must be exempt from scopeGuidance, same as protectedPaths');
+});
+
+// --- durable bypass log ---
+
+const BYPASS_LOG_REL = path.join('.agent-room', 'guardrails-bypass-log.md');
+
+function stagedPaths(dir) {
+  const out = execFileSync('git', ['diff', '--cached', '--name-only'], { cwd: dir, encoding: 'utf8' });
+  return out.trim().split('\n').filter(Boolean);
+}
+
+test('guardrails-check: a bypassed protected-path violation writes a durable, staged bypass-log entry', (t) => {
+  const dir = makeRepo('bypass-log-protected-path');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, { protectedPaths: ['secrets/**'], forbiddenActions: [] });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.mkdirSync(path.join(dir, 'secrets'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'secrets', 'x.txt'), 'x\n');
+  stageAll(dir);
+
+  const result = runHook(dir, { GUARDRAILS_BYPASS: '1' });
+  assert.strictEqual(result.code, 0, 'bypass should still allow the commit through');
+
+  const logPath = path.join(dir, BYPASS_LOG_REL);
+  assert.ok(fs.existsSync(logPath), 'bypass log file should have been created');
+  const logContent = fs.readFileSync(logPath, 'utf8');
+  assert.match(logContent, /Protected path violation: secrets\/x\.txt/);
+  assert.match(logContent, /author:/i);
+  assert.match(logContent, /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/, 'entry should include an ISO timestamp');
+
+  assert.ok(
+    stagedPaths(dir).includes(BYPASS_LOG_REL.replace(/\\/g, '/')),
+    'the bypass log entry must be staged so it becomes part of the commit it records, not left as an unstaged working-tree change'
+  );
+});
+
+test('guardrails-check: a bypassed scopeGuidance violation is also written to the bypass log', (t) => {
+  const dir = makeRepo('bypass-log-scope');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: [],
+    forbiddenActions: [],
+    scopeGuidance: { maxFilesPerChange: 1, maxLinesPerChange: 10000 }
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  writeNFiles(dir, 3, 'oversized');
+  stageAll(dir);
+
+  const result = runHook(dir, { GUARDRAILS_BYPASS: '1' });
+  assert.strictEqual(result.code, 0);
+
+  const logContent = fs.readFileSync(path.join(dir, BYPASS_LOG_REL), 'utf8');
+  assert.match(logContent, /Change scope exceeds guidance/);
+});
+
+test('guardrails-check: a clean commit with no violations never touches the bypass log', (t) => {
+  const dir = makeRepo('bypass-log-clean');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, { protectedPaths: [], forbiddenActions: [] });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.writeFileSync(path.join(dir, 'ordinary.txt'), 'nothing wrong here\n');
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 0);
+  assert.ok(!fs.existsSync(path.join(dir, BYPASS_LOG_REL)), 'a clean commit must not create a bypass log entry');
+});

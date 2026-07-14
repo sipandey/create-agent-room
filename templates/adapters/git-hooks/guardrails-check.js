@@ -21,6 +21,55 @@ const guardrailsPath = path.join(projectRoot, '.agent-room', 'guardrails.json');
 // Allow override via env variable
 const ALLOW_GUARDRAILS_BYPASS = process.env.GUARDRAILS_BYPASS || process.env.SKIP_GUARDRAILS_CHECK;
 
+// A GUARDRAILS_BYPASS commit correctly prints a warning, but a terminal
+// scrollback is not a durable record - the moment it scrolls, there's no
+// trace of who overrode a guardrail, when, or what was being overridden.
+// This log closes that gap. Not added to protectedPaths deliberately: the
+// hook auto-stages its own edit to this file below, and protecting it would
+// create a bypass-loop (staging the log entry would itself trip a
+// protected-path violation on the same commit).
+const BYPASS_LOG_REL = path.join('.agent-room', 'guardrails-bypass-log.md');
+const BYPASS_LOG_HEADER = `# Guardrails Bypass Log — create-agent-room
+
+Append-only, machine-written record of every commit that used
+\`GUARDRAILS_BYPASS=1\` (or \`SKIP_GUARDRAILS_CHECK=1\`) to override a blocked
+commit. Written automatically by \`.agent-room/hooks/guardrails-check.js\` -
+do not edit by hand; edits here don't reflect what actually happened.
+
+Review this periodically (or in code review) so bypasses stay visible
+instead of scrolling off a terminal and being forgotten.
+
+<!-- Entries below this line, newest first, appended automatically. -->
+`;
+
+function getGitIdentity() {
+  try {
+    const name = execFileSync('git', ['config', 'user.name'], { encoding: 'utf8' }).trim() || 'unknown';
+    const email = execFileSync('git', ['config', 'user.email'], { encoding: 'utf8' }).trim() || 'unknown';
+    return `${name} <${email}>`;
+  } catch (err) {
+    return 'unknown';
+  }
+}
+
+// Appends one entry and stages the log file itself, so the record becomes
+// part of the very commit it's documenting rather than an orphaned
+// working-tree change. Never lets a logging failure block the commit it's
+// trying to record.
+function logBypass(reasons) {
+  try {
+    const logPath = path.join(projectRoot, BYPASS_LOG_REL);
+    if (!fs.existsSync(logPath)) {
+      fs.writeFileSync(logPath, BYPASS_LOG_HEADER);
+    }
+    const entry = `- ${new Date().toISOString()} | author: ${getGitIdentity()} | bypassed: ${reasons.join('; ')}\n`;
+    fs.appendFileSync(logPath, entry);
+    execFileSync('git', ['add', BYPASS_LOG_REL], { cwd: projectRoot });
+  } catch (err) {
+    // Logging the bypass must never be the reason a commit fails.
+  }
+}
+
 if (!fs.existsSync(guardrailsPath)) {
   // No guardrails file, allow commit
   process.exit(0);
@@ -42,6 +91,7 @@ try {
     process.exit(1);
   }
   console.warn('⚠️  Guardrails bypass enabled - proceeding with commit despite broken config');
+  logBypass([`.agent-room/guardrails.json is broken and could not be parsed: ${err.message}`]);
   process.exit(0);
 }
 
@@ -145,6 +195,42 @@ for (const file of stagedFiles) {
   }
 }
 
+// scopeGuidance: a large, unreviewed change is itself a risk regardless of
+// what it contains - it doesn't replace protectedPaths/forbiddenActions,
+// it catches everything else: an agent-generated commit that "just works"
+// but touched far more than anyone actually reviewed. Optional field -
+// existing guardrails.json files without it get no new enforcement.
+// Exempt on the genesis commit for the same reason protectedPaths is: a
+// normal `init --tools git --git` commit is 25 files / 1569 lines,
+// already over the shipped defaults (20 files / 500 lines) - without this
+// exemption the tool would block its own onboarding flow.
+const scopeGuidance = guardrails.scopeGuidance;
+if (scopeGuidance && !isInitialCommit()) {
+  const maxFiles = scopeGuidance.maxFilesPerChange;
+  const maxLines = scopeGuidance.maxLinesPerChange;
+
+  if (typeof maxFiles === 'number' && stagedFiles.length > maxFiles) {
+    violations.push(`Change scope exceeds guidance: ${stagedFiles.length} files changed (limit ${maxFiles})`);
+  }
+
+  if (typeof maxLines === 'number') {
+    let totalLines = 0;
+    try {
+      const numstat = execSync('git diff --cached --numstat', { encoding: 'utf8' });
+      for (const line of numstat.trim().split('\n')) {
+        if (!line) continue;
+        const [added, deleted] = line.split('\t');
+        totalLines += (parseInt(added, 10) || 0) + (parseInt(deleted, 10) || 0);
+      }
+    } catch (err) {
+      totalLines = 0;
+    }
+    if (totalLines > maxLines) {
+      violations.push(`Change scope exceeds guidance: ${totalLines} lines changed (limit ${maxLines})`);
+    }
+  }
+}
+
 if (violations.length > 0) {
   console.error('');
   console.error('❌ Guardrails Check Failed: Commit violates project guardrails');
@@ -162,6 +248,7 @@ if (violations.length > 0) {
   }
 
   console.warn('⚠️  Guardrails bypass enabled - proceeding with commit');
+  logBypass(violations);
 }
 
 process.exit(0);

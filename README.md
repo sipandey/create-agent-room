@@ -22,7 +22,7 @@ Not every feature here is enforced this way — see [Feature Categories](#featur
 ## Features
 
 - **Agent Runtime Enforcement (Stop Hook)**: A Claude Code `Stop` hook (`.agent-room/hooks/close-the-loop-check.js`) inspects `git status` at the end of every turn and blocks the agent from finishing if it changed files outside the scaffold without touching `.agent-room/anti-patterns.md` or `decisions.md`. *[Actively enforced inside the agent's own loop when Claude adapter selected — distinct from, and earlier than, the commit-time guardrails below; scoped to Claude Code sessions only]*
-- **Agent Guardrails**: Defines protected paths, require-approval rules, and forbidden actions via `guardrails.json`. Forbidden actions are explicit `{ "pattern", "type": "regex" | "literal", "description" }` rules (AWS keys, private key headers, API tokens, etc. by default) — not free-text prose. The default `protectedPaths` list also covers the guardrails machinery itself (`guardrails.json`, `guardrails.md`, `.agent-room/hooks/**`, `.claude/settings.json`), so a later commit can't quietly edit or delete the rules governing it. *[Actively enforced via a git pre-commit hook when Git adapter selected]*
+- **Agent Guardrails**: Defines protected paths, require-approval rules, forbidden actions, and change-scope limits via `guardrails.json`. Forbidden actions are explicit `{ "pattern", "type": "regex" | "literal", "description" }` rules (AWS keys, private key headers, API tokens, etc. by default) — not free-text prose. The default `protectedPaths` list also covers the guardrails machinery itself (`guardrails.json`, `guardrails.md`, `.agent-room/hooks/**`, `.claude/settings.json`), so a later commit can't quietly edit or delete the rules governing it. `scopeGuidance`'s `maxFilesPerChange`/`maxLinesPerChange` are enforced too (genesis commit exempt) — a large, unreviewed change is a risk on its own, regardless of what it contains. Every `GUARDRAILS_BYPASS` override is durably recorded in `.agent-room/guardrails-bypass-log.md`, not just printed to a terminal that scrolls away. *[Actively enforced via a git pre-commit hook when Git adapter selected]*
 - **Session Log & Schema Validation**: `validate` lints skill frontmatter and the guardrails schema; `lint-sessions` validates session logs against required structure. Both run as a scaffolded CI workflow on every push/PR when the Git adapter is selected. *[Actively enforced; fails the build if malformed]*
 - **Multi-Agent Coordination**: Scaffolds templates for handoffs, scope boundaries, and structured session logs. *[Guidance only; requires human discipline to follow protocols]*
 - **Inheritance & Composition**: Composes templates sequentially from base structures, stack-specific files (e.g. Python, React), org-specific conventions (`--org <name>`), and project overrides. *[Framework provided; stack templates must be created or inherited]*
@@ -38,7 +38,7 @@ Not every feature here is enforced this way — see [Feature Categories](#featur
 These features actively constrain behavior and will fail/block operations if violated:
 
 - **Agent Runtime Enforcement (Stop Hook)** — Claude Code's `Stop` hook blocks an agent from ending its turn if it changed files without updating `anti-patterns.md`/`decisions.md`; runs inside the agent's own loop, before there's necessarily even a commit (Claude Code sessions only; requires `--tools claude`)
-- **Agent Guardrails** — Pre-commit hook blocks commits to protected paths or with forbidden patterns (optional; requires `--tools git`)
+- **Agent Guardrails** — Pre-commit hook blocks commits to protected paths, with forbidden patterns, or exceeding declared change-scope limits; every bypass is durably logged (optional; requires `--tools git`)
 - **Session Log Validation** — `lint-sessions` command validates all session logs against schema; fails CI with exit code 1 if malformed. With the `git` adapter, a `.github/workflows/agent-room-validate.yml` workflow is scaffolded automatically to run `validate` and `lint-sessions` on every push/PR.
 - **Skill Frontmatter Validation** — `validate` command lints skill YAML headers
 
@@ -142,6 +142,7 @@ AGENTS.md                          Generic entry point read by any agent
   workflow-classifier.md           Bug / Enhancement / Feature / Product routing  [--profile full only]
   guardrails.md                    Prose boundaries and constraints (what not to do)
   guardrails.json                  Machine-readable guardrail rule schema
+  guardrails-bypass-log.md         Append-only, auto-written record of every GUARDRAILS_BYPASS use
   anti-patterns.md                 Append-only negative-knowledge log (starts empty)
   decisions.md                     Append-only decisions log (starts empty)
   skills/

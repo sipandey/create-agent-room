@@ -34,9 +34,24 @@ These features **actively block, fail, or prevent** operations if violated:
     placeholders — a staged secret matching one of these is blocked, not
     silently allowed through
   - Violate environment-variable guardrails
+  - Exceed `scopeGuidance`'s `maxFilesPerChange`/`maxLinesPerChange` (optional;
+    only enforced if declared in `guardrails.json`) — file count comes from
+    staged files, line count from `git diff --cached --numstat`. Exempt on
+    the genesis commit for the same reason `protectedPaths` is: a normal
+    `init --tools git --git` scaffold is ~25 files / ~1,600 lines, already
+    over the shipped defaults (20 files / 500 lines)
 - **How it fails:** Exit code 1; blocks the commit
 - **User action:** Requires `--tools git` during `init`
 - **Bypass:** Set `GUARDRAILS_BYPASS=1` environment variable for emergency commits (requires human decision)
+- **Bypass audit trail:** every bypass — protected path, forbidden pattern,
+  scope guidance, or corrupted config — appends a durable entry (ISO
+  timestamp, `git config user.name`/`user.email`, and the reason) to
+  `.agent-room/guardrails-bypass-log.md`, auto-staged into the same commit
+  it's recording. A `console.warn` alone disappears the moment the
+  terminal scrolls; this makes "we chose to override a guardrail" a
+  reviewable fact in git history instead. Not itself in `protectedPaths`
+  — the hook's own auto-stage of the log would otherwise trip a
+  protected-path violation on the same commit it's trying to record.
 - **Bootstrapping:** protected-path enforcement is skipped only on a
   repository's very first commit (no prior `HEAD`), since `init --git`
   creates `guardrails.json` and the paths it protects in that same commit

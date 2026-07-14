@@ -30,8 +30,19 @@ Keep individual changes focused and reviewable:
 - **Aim for:** single-purpose PRs, one concern per change
 - **Watch for:** PRs touching more than 15-20 files, changes exceeding
   ~500 lines of new code, or changes that mix refactoring with new features
-- These are guidelines, not hard limits — a migration touching 30 files
-  may be appropriate, but it deserves extra scrutiny
+- A migration touching 30 files may be genuinely appropriate — that's what
+  the bypass below is for — but it deserves extra scrutiny, not a silent pass
+
+The `maxFilesPerChange`/`maxLinesPerChange` numbers in
+`.agent-room/guardrails.json`'s `scopeGuidance` are mechanically enforced
+by the pre-commit hook (a repository's genesis commit is exempt — the
+initial scaffold itself is typically dozens of files). A change that
+genuinely needs to exceed them uses the same `GUARDRAILS_BYPASS=1 git
+commit` escape hatch as any other guardrail violation — every bypass,
+including this one, is appended to
+`.agent-room/guardrails-bypass-log.md` automatically, so "this was too
+big, but we chose to proceed" stays a visible, reviewable decision
+instead of a terminal warning that scrolled away and was forgotten.
 
 ## Forbidden actions
 
