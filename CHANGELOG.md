@@ -172,8 +172,9 @@ default (e.g. a script asserting `principles.md` exists after a bare
   "compile" time and this is a second place the version now lives.
 - `scripts/demo.sh` and `docs/demo.gif`: a ~17-second terminal recording
   embedded at the top of README.md showing the guardrails pre-commit hook
-  actually blocking a staged fake AWS key (`AKIAIOSFODNN7EXAMPLE`, AWS's
-  own documentation example key — never real), then the Claude Code Stop
+  actually blocking a staged fake AWS access key (AWS's own published
+  example key from their IAM documentation — never a real credential),
+  then the Claude Code Stop
   hook blocking an agent turn that changed files without logging a
   decision. `scripts/demo.sh` is real, unmocked output: it runs `init`
   and `git commit` for real inside a throwaway temp directory it creates
