@@ -16,6 +16,29 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-07-29 — Cursor Stop parity via followup_message; shared hook + multi-tool sync (rules first)
+
+**Decision:** Next product slice is hybrid mini (design:
+`docs/plans/2026-07-29-cursor-stop-and-multi-tool-sync-design.md`): (1) wire
+Cursor `stop` through the same close-the-loop checker Claude uses, adapting
+via `--adapter=cursor` to emit `{ followup_message }` rather than exit 2;
+(2) extend `sync` so Cursor regenerates `.cursor/rules/agent-room.md` from
+canonical `.agent-room/skills/` (Claude skills mirror unchanged); (3) defer
+evidence-lite content checks and Cursor `SKILL.md` trees to later work.
+**Why:** OSS adopters' quality bar is agents staying inside boundaries;
+Cursor today gets rules but no runtime gate. Cursor's documented `stop`
+API continues the loop with `followup_message` — it does not block like
+Claude's exit-2 Stop — so one shared check with thin adapters is honest
+and avoids duplicating logic. Rules sync closes the "skills changed,
+Cursor still points at stale guidance" gap without inventing an unstable
+Cursor skills path.
+**Rejected:** (a) Enforcement-only or guidance-only first — misses either
+multi-tool feel or the ignore-guidance pain; (b) inventing a Cursor
+skills directory now — convention not stable enough; (c) full
+evidence-lite / preToolUse denies in the same slice — too much surface
+before Stop parity ships; (d) separate duplicated hook scripts per tool —
+drift risk.
+
 ### 2026-07-14 — replaced `npx --yes pkg@version cmd` with explicit install + invoke, everywhere it appeared
 
 **Decision:** in three places — this repo's own

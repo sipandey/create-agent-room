@@ -21,6 +21,19 @@ Append a new entry every time:
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-07-29 — treat only tracked modifications as "dirty" in sync skip logic
+
+**What happened:** Cursor rules sync skipped overwriting an existing
+`.cursor/rules/agent-room.md` in tests (and would in any nested worktree
+path under a parent git repo) because `git status --porcelain` reported
+the file as `??` untracked.
+**Root cause:** `isGitDirty` treated any non-empty porcelain output as
+dirty, including untracked files. The skip was meant to protect
+*committed, then locally edited* mirrors — not block first-time or
+untracked destinations.
+**Avoid:** when using porcelain to detect "user edited a synced file,"
+ignore `??` lines; only treat modified/staged tracked paths as dirty.
+
 ### 2026-07-14 — `npx --yes pkg@version cmd` failed reproducibly on GitHub-hosted runners
 
 **What happened:** after re-pinning this repo's own CI workflow from

@@ -116,6 +116,19 @@ test('runDoctor: flags a tools/reality mismatch (claude listed but Stop hook not
   assert.match(output, /lists "claude" as a tool, but the Stop hook is not wired/);
 });
 
+test('runDoctor: flags cursor listed but .cursor/hooks.json not wired', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-doctor-cursor-mismatch-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'cursor', name: 'DoctorCursorMismatch', force: true });
+  fs.rmSync(path.join(tmpDir, '.cursor', 'hooks.json'), { force: true });
+
+  const output = await captureConsoleLog(() => runDoctor(tmpDir));
+
+  assert.match(output, /lists "cursor" as a tool, but the stop hook is not wired in \.cursor\/hooks\.json/);
+});
+
 test('runDoctor: flags a git tool/reality mismatch (git listed but pre-commit hook missing)', async (t) => {
   const tmpDir = path.join(__dirname, 'tmp-doctor-gitmismatch-' + Date.now());
   fs.mkdirSync(tmpDir, { recursive: true });

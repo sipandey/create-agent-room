@@ -386,14 +386,37 @@ test('computeEnforcedFeatures: reports nothing when no matching results entries 
   assert.deepStrictEqual(enforced, []);
 });
 
-test('computeEnforcedFeatures: reports the Stop hook when its results entry is present', () => {
+test('computeEnforcedFeatures: reports Claude Stop when hook + settings results are present', () => {
   const enforced = computeEnforcedFeatures([
     { path: 'AGENTS.md', written: true },
-    { path: '.agent-room/hooks/close-the-loop-check.js', written: true }
+    { path: '.agent-room/hooks/close-the-loop-check.js', written: true },
+    { path: '.claude/settings.json', written: true }
   ]);
   assert.strictEqual(enforced.length, 1);
-  assert.match(enforced[0].label, /Stop hook/);
+  assert.match(enforced[0].label, /Claude Code Stop hook/);
   assert.strictEqual(enforced[0].file, '.agent-room/hooks/close-the-loop-check.js');
+});
+
+test('computeEnforcedFeatures: reports Cursor stop when hook + hooks.json results are present', () => {
+  const enforced = computeEnforcedFeatures([
+    { path: '.agent-room/hooks/close-the-loop-check.js', written: true },
+    { path: '.cursor/hooks.json', written: true }
+  ]);
+  assert.strictEqual(enforced.length, 1);
+  assert.match(enforced[0].label, /Cursor stop hook/);
+  assert.match(enforced[0].detail, /followup_message/);
+});
+
+test('computeEnforcedFeatures: reports both Claude and Cursor stop when both are wired', () => {
+  const enforced = computeEnforcedFeatures([
+    { path: '.agent-room/hooks/close-the-loop-check.js', written: true },
+    { path: '.claude/settings.json', written: true },
+    { path: '.cursor/hooks.json', written: true }
+  ]);
+  assert.deepStrictEqual(
+    enforced.map((e) => e.label),
+    ['Claude Code Stop hook', 'Cursor stop hook']
+  );
 });
 
 test('computeEnforcedFeatures: reports guardrails hook and CI workflow when both results entries are present', () => {
@@ -410,9 +433,96 @@ test('computeEnforcedFeatures: also counts a "skipped, already exists" results e
   // A file skipped because it already existed on a re-run is still an
   // active mechanism - `written` must not gate this.
   const enforced = computeEnforcedFeatures([
-    { path: '.agent-room/hooks/close-the-loop-check.js', written: false, reason: 'exists' }
+    { path: '.agent-room/hooks/close-the-loop-check.js', written: false, reason: 'exists' },
+    { path: '.claude/settings.json', written: false, reason: 'already wired' }
   ]);
   assert.strictEqual(enforced.length, 1);
+});
+
+test('runInit: --tools cursor installs shared hook and wires .cursor/hooks.json', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-cursor-hooks-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'cursor', name: 'CursorHooksTest', force: true });
+
+  assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'hooks', 'close-the-loop-check.js')));
+  assert.ok(fs.existsSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.md')));
+  const hooks = JSON.parse(fs.readFileSync(path.join(tmpDir, '.cursor', 'hooks.json'), 'utf8'));
+  assert.strictEqual(hooks.version, 1);
+  const stop = hooks.hooks.stop;
+  assert.ok(Array.isArray(stop));
+  assert.ok(
+    stop.some(
+      (e) =>
+        e.command ===
+          'node .agent-room/hooks/close-the-loop-check.js --adapter=cursor' &&
+        e.loop_limit === 5
+    )
+  );
+  assert.ok(!fs.existsSync(path.join(tmpDir, '.claude', 'settings.json')));
+});
+
+test('runInit: --tools claude,cursor wires both adapters without duplicating the hook script', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-both-hooks-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, {
+    yes: true,
+    tools: 'claude,cursor',
+    name: 'BothHooksTest',
+    force: true
+  });
+
+  assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'hooks', 'close-the-loop-check.js')));
+  const settings = JSON.parse(fs.readFileSync(path.join(tmpDir, '.claude', 'settings.json'), 'utf8'));
+  assert.ok(
+    settings.hooks.Stop.some(
+      (entry) =>
+        Array.isArray(entry.hooks) &&
+        entry.hooks.some((h) => h.command === 'node .agent-room/hooks/close-the-loop-check.js')
+    )
+  );
+  const cursorHooks = JSON.parse(fs.readFileSync(path.join(tmpDir, '.cursor', 'hooks.json'), 'utf8'));
+  assert.ok(
+    cursorHooks.hooks.stop.some((e) =>
+      e.command.includes('close-the-loop-check.js --adapter=cursor')
+    )
+  );
+});
+
+test('runInit: merges Cursor stop hook into existing .cursor/hooks.json without wiping foreign hooks', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-cursor-merge-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.join(tmpDir, '.cursor'), { recursive: true });
+  fs.writeFileSync(
+    path.join(tmpDir, '.cursor', 'hooks.json'),
+    JSON.stringify(
+      {
+        version: 1,
+        hooks: {
+          beforeShellExecution: [{ command: 'echo keep-me' }],
+          stop: [{ command: 'echo foreign-stop' }]
+        }
+      },
+      null,
+      2
+    )
+  );
+
+  await runInit(tmpDir, { yes: true, tools: 'cursor', name: 'CursorMergeTest', force: true });
+
+  const hooks = JSON.parse(fs.readFileSync(path.join(tmpDir, '.cursor', 'hooks.json'), 'utf8'));
+  assert.ok(hooks.hooks.beforeShellExecution.some((e) => e.command === 'echo keep-me'));
+  assert.ok(hooks.hooks.stop.some((e) => e.command === 'echo foreign-stop'));
+  assert.ok(
+    hooks.hooks.stop.some((e) =>
+      e.command.includes('close-the-loop-check.js --adapter=cursor')
+    )
+  );
 });
 
 test('computeGuidanceSummary: lists guidance docs present in results, with skill/coordination counts', () => {

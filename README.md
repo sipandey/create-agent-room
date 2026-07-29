@@ -21,7 +21,7 @@ Not every feature here is enforced this way — see [Feature Categories](#featur
 
 ## Features
 
-- **Agent Runtime Enforcement (Stop Hook)**: A Claude Code `Stop` hook (`.agent-room/hooks/close-the-loop-check.js`) inspects `git status` at the end of every turn and blocks the agent from finishing if it changed files outside the scaffold without touching `.agent-room/anti-patterns.md` or `decisions.md`. *[Actively enforced inside the agent's own loop when Claude adapter selected — distinct from, and earlier than, the commit-time guardrails below; scoped to Claude Code sessions only]*
+- **Agent Runtime Enforcement (Stop Hook)**: A Claude Code `Stop` hook and a Cursor `stop` hook (same checker: `.agent-room/hooks/close-the-loop-check.js`) inspect `git status` at the end of every turn. If the agent changed files outside the scaffold without touching `.agent-room/anti-patterns.md` or `decisions.md`, Claude blocks the turn (`exit 2`); Cursor forces another turn via `followup_message`. *[Actively enforced inside the agent loop when Claude and/or Cursor adapters selected — distinct from, and earlier than, the commit-time guardrails below]*
 - **Agent Guardrails**: Defines protected paths, require-approval rules, forbidden actions, and change-scope limits via `guardrails.json`. Forbidden actions are explicit `{ "pattern", "type": "regex" | "literal", "description" }` rules (AWS keys, private key headers, API tokens, etc. by default) — not free-text prose. The default `protectedPaths` list also covers the guardrails machinery itself (`guardrails.json`, `guardrails.md`, `.agent-room/hooks/**`, `.claude/settings.json`), so a later commit can't quietly edit or delete the rules governing it. `scopeGuidance`'s `maxFilesPerChange`/`maxLinesPerChange` are enforced too (genesis commit exempt) — a large, unreviewed change is a risk on its own, regardless of what it contains. Every `GUARDRAILS_BYPASS` override is durably recorded in `.agent-room/guardrails-bypass-log.md`, not just printed to a terminal that scrolls away. *[Actively enforced via a git pre-commit hook when Git adapter selected]*
 - **Session Log & Schema Validation**: `validate` lints skill frontmatter and the guardrails schema; `lint-sessions` validates session logs against required structure. Both run as a scaffolded CI workflow on every push/PR when the Git adapter is selected. *[Actively enforced; fails the build if malformed]*
 - **Multi-Agent Coordination**: Scaffolds templates for handoffs, scope boundaries, and structured session logs. *[Guidance only; requires human discipline to follow protocols]*
@@ -37,7 +37,7 @@ Not every feature here is enforced this way — see [Feature Categories](#featur
 ### 🟢 Actively Enforced Features
 These features actively constrain behavior and will fail/block operations if violated:
 
-- **Agent Runtime Enforcement (Stop Hook)** — Claude Code's `Stop` hook blocks an agent from ending its turn if it changed files without updating `anti-patterns.md`/`decisions.md`; runs inside the agent's own loop, before there's necessarily even a commit (Claude Code sessions only; requires `--tools claude`)
+- **Agent Runtime Enforcement (Stop Hook)** — Claude Code's `Stop` hook blocks an agent from ending its turn if it changed files without updating `anti-patterns.md`/`decisions.md`; Cursor's `stop` hook runs the same check and continues the loop with `followup_message` instead of a hard block (requires `--tools claude` and/or `--tools cursor`)
 - **Agent Guardrails** — Pre-commit hook blocks commits to protected paths, with forbidden patterns, or exceeding declared change-scope limits; every bypass is durably logged (optional; requires `--tools git`)
 - **Session Log Validation** — `lint-sessions` command validates all session logs against schema; fails CI with exit code 1 if malformed. With the `git` adapter, a `.github/workflows/agent-room-validate.yml` workflow is scaffolded automatically to run `validate` and `lint-sessions` on every push/PR.
 - **Skill Frontmatter Validation** — `validate` command lints skill YAML headers
@@ -54,7 +54,7 @@ These provide a framework that requires external setup:
 
 - **Stack-Specific Templates** — Inheritance system supports Python, TypeScript, React stacks, but these must be created or provided via `--org` or `--template-source`
 - **Observability Metrics** — Post-hoc aggregation of completed sessions; not real-time monitoring or alerting
-- **Tool Adapters** — Currently supports Claude, Cursor, Windsurf, Cline, Codex, and Git; sync is Claude-only (other tools manually update)
+- **Tool Adapters** — Currently supports Claude, Cursor, Windsurf, Cline, Codex, and Git; `sync` mirrors skills to Claude and regenerates Cursor rules (Windsurf/Cline/Codex remain init-time copy only)
 
 ---
 
@@ -64,7 +64,7 @@ Some features depend on agents choosing to follow documented guidance. **There i
 
 - **Workflow Classification** — Agents must tag work as Bug / Enhancement / Feature / Product when creating session logs
 - **Following Coordination Protocols** — Agents must read and follow handoff, scope, and session log format guidelines
-- **Writing good Decisions & Anti-patterns entries** — Claude Code's Stop hook forces the *act* of logging (or an explicit waiver) before an agent can end its turn, but it can't judge whether an entry is any good, and the tool never auto-populates content; other tools get no equivalent runtime check at all
+- **Writing good Decisions & Anti-patterns entries** — Claude Code's Stop hook and Cursor's stop hook force the *act* of logging (or an explicit waiver) before an agent can finish cleanly, but they can't judge whether an entry is any good, and the tool never auto-populates content; Windsurf/Cline/Codex still get no equivalent runtime check
 - **Applying Principles** — Agents must read the principles playbook and apply them; the tool provides no real-time guidance
 - **Respecting Tool Rules** — Tool adapters (Claude, Cursor, etc.) provide guidance files, but tools decide whether/how to apply them
 
@@ -175,10 +175,13 @@ Scaffold the agent workspace. If files already exist in the target, they are ski
 
 ### 2. `sync [target-dir]`
 
-Synchronize custom rules from `.agent-room/skills/` directly to `.claude/skills/` mirrors.
+Synchronize custom skills from `.agent-room/skills/` into tool-specific mirrors:
 
-- Run with `--check` to verify if mirrored rule files are out of date without rewriting them.
-- Sync will automatically skip overwriting files if they have uncommitted manual edits, unless `--force` is used.
+- **Claude** (when listed in `.agent-room.json`): `.claude/skills/<name>/SKILL.md`
+- **Cursor** (when listed): regenerate `.cursor/rules/agent-room.md` from the packaged template + current skill list
+
+- Run with `--check` to verify mirrors are out of date without rewriting them.
+- Sync will automatically skip overwriting files if they have uncommitted tracked edits, unless `--force` is used.
 
 ### 3. `validate [target-dir]`
 

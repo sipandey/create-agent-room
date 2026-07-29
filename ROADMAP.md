@@ -42,14 +42,17 @@ Worth doing, more effort, still in keeping with the project's scope:
   clicking through GitHub's "Publish this Action to the GitHub
   Marketplace" flow on that release — a human/CD step, not something a
   session should do unasked — see "Release process" in `AGENTS.md`.
+- **Evidence-lite close-the-loop** — require decisions/anti-patterns/
+  session-log *structure or content*, not mere file touch (Phase B after
+  Cursor Stop + multi-tool sync).
 
 ## Later / needs a real signal first
 
 Plausible, but shouldn't be built speculatively — wait for an actual user
 need before spending the complexity budget:
 
-- Multi-tool `sync` (currently Claude-only; Cursor/Windsurf/Cline sync is
-  documented as aspirational in `CAPABILITIES.md`).
+- Multi-tool `sync` for Windsurf/Cline/Codex (Claude skills + Cursor rules
+  sync shipped; see CAPABILITIES.md).
 - A metrics export format (JSON/CSV) for teams who want to pipe session
   data into their own dashboards, instead of the tool building a dashboard
   itself.

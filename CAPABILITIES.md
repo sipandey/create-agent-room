@@ -71,25 +71,32 @@ These features **actively block, fail, or prevent** operations if violated:
   `.agent-room/guardrails.json` as requiring manual review regardless of
   what the hook reports.
 
-### Anti-patterns & Decisions Logs (Claude Code Stop Hook)
+### Anti-patterns & Decisions Logs (Stop Hooks — Claude Code + Cursor)
 
-- **What it does:** When using Claude Code, a `Stop` hook
+- **What it does:** When using Claude Code and/or Cursor, the shared checker
   (`.agent-room/hooks/close-the-loop-check.js`) inspects `git status
   --porcelain` at the end of every agent turn. If the turn changed
   tracked files outside the `.agent-room` scaffold but touched neither
   `.agent-room/anti-patterns.md` nor `.agent-room/decisions.md`, it
-  blocks the turn from ending.
+  prevents the turn from finishing cleanly:
+  - **Claude Code** (`--tools claude`): `Stop` hook in `.claude/settings.json`
+    — exit code 2, stderr fed back to the model (blocks ending the turn).
+  - **Cursor** (`--tools cursor`): `stop` hook in `.cursor/hooks.json` —
+    stdout `{ "followup_message": "..." }` forces another agent turn
+    (same check; Cursor's API continues the loop rather than hard-blocking).
+  Pass `--adapter=claude` (default) or `--adapter=cursor` to the shared script.
 - **Why this is a stronger enforcement point than the pre-commit hook
   above:** it runs *inside the agent's own loop*, before there's
   necessarily even a commit to gate. A pre-commit or CI check only sees
   work once it's staged or pushed; this one can stop an agent
-  mid-session. There's no `--no-verify` equivalent for a Stop hook.
-- **How it fails:** Exit code 2 to Claude Code, which feeds the
-  explanation back to the model as the reason it can't stop yet.
-- **Scope:** Claude Code agent sessions only — not a git-level gate, so
-  it doesn't fire for manual/human commits or other tool adapters
-  (Cursor, Windsurf, etc. get the rule files but no equivalent runtime
-  hook). It also deliberately doesn't share a hook with the
+  mid-session. There's no `--no-verify` equivalent for a Stop/`stop` hook.
+- **How it fails:** Claude: exit code 2. Cursor: non-empty `followup_message`
+  (with `loop_limit: 5` to cap auto-follow-ups). Aborted/error Cursor stops
+  skip the check so cancel/hard-fail does not loop.
+- **Scope:** Claude Code and Cursor agent sessions only — not a git-level
+  gate, so it doesn't fire for manual/human commits or other tool adapters
+  (Windsurf, Cline, Codex get rule files but no equivalent runtime hook).
+  It also deliberately doesn't share a hook with the
   security-relevant guardrails check above, so a heavy shared gate can't
   teach anyone to reach for `--no-verify` and bypass guardrails along
   with it.
@@ -97,7 +104,7 @@ These features **actively block, fail, or prevent** operations if violated:
   (`<!-- no-log: ... -->`), not an environment variable — intentionally
   lower-friction than `GUARDRAILS_BYPASS`, since this check is about
   logging discipline, not blocking a security-relevant action.
-- **User action:** Requires `--tools claude` during `init`.
+- **User action:** Requires `--tools claude` and/or `--tools cursor` during `init`.
 
 ### Session Log Format Validation
 
@@ -205,12 +212,13 @@ These provide a framework that requires external setup or effort:
 
 ### Multi-Tool Sync
 
-- **What it is:** Synchronizing custom rules across Claude, Cursor, Windsurf, Cline
+- **What it is:** Synchronizing custom skills/rules from `.agent-room/skills/` into tool-specific locations
 - **Current state:**
   - ✅ Sync works for Claude (`.claude/skills/` ↔ `.agent-room/skills/`)
-  - ❌ Sync not implemented for Cursor, Windsurf, Cline
+  - ✅ Sync regenerates Cursor `.cursor/rules/agent-room.md` from the packaged template + current skill list (not a Cursor `SKILL.md` tree — convention not assumed)
+  - ❌ Sync not implemented for Windsurf, Cline, Codex
   - ❌ Sync is one-way (only agent-room → tool, not tool → agent-room)
-- **Reality:** Only Claude has working sync; others require manual file copying
+- **Reality:** Claude skills mirror + Cursor rules refresh; other adapters still need manual updates after skill edits
 
 ---
 
@@ -226,7 +234,7 @@ These provide a framework that requires external setup or effort:
 ### For Agents
 
 1. **Read and follow guidance files:** The tool won't enforce them, but they exist for good reason.
-2. **If you're Claude Code, expect the Stop hook to block you first:** it fires before there's anything to commit — log a decision/anti-pattern or add a waiver before ending the turn.
+2. **If you're Claude Code or Cursor, expect the stop hook first:** it fires before there's anything to commit — log a decision/anti-pattern or add a waiver before finishing (Claude blocks; Cursor follow-up-loops).
 3. **Expect guardrails to block some commits:** the pre-commit hook will catch protected-path edits and staged secrets; respect the `GUARDRAILS_BYPASS` protocol for emergencies.
 4. **Write well-formed session logs:** Validation will fail malformed logs; aim for the schema.
 5. **Refer to your org's stack guidance:** If provided via layers 3-6 of the template system, they'll override defaults.
@@ -245,7 +253,7 @@ These provide a framework that requires external setup or effort:
 ### Standard (Prescriptive + Guidance)
 
 1. `init . --tools git,claude --language python --org my-org` (or appropriate language/org)
-2. Git pre-commit hook enforces guardrails at commit time; Claude Code's Stop hook enforces decisions/anti-patterns logging at agent-runtime (requires the `claude` adapter — `--tools git` alone only gets you the pre-commit hook)
+2. Git pre-commit hook enforces guardrails at commit time; Claude Code / Cursor stop hooks enforce decisions/anti-patterns logging at agent-runtime (requires the `claude` and/or `cursor` adapter — `--tools git` alone only gets you the pre-commit hook)
 3. CI includes `create-agent-room validate .` and `create-agent-room lint-sessions .`
 4. Agents manually follow coordination and workflow guidance
 
@@ -264,8 +272,8 @@ Features planned for future releases:
 
 - **Real-time observability:** Dashboards, trending, alerting
 - **Session orchestration:** Query handoff state during execution, queue work
-- **Multi-tool sync:** Extend to Cursor, Windsurf, Cline
+- **Multi-tool sync:** Extend to Windsurf, Cline, Codex (Cursor rules sync shipped)
 - **Metrics export:** JSON/CSV for external dashboarding
-- **Hook standardization:** Extend close-the-loop to all tool adapters
+- **Hook standardization:** Evidence-lite close-the-loop; optional preToolUse denies
 - **Approval workflows:** Simple gates for guardrails violations
 - **Performance tracking:** Cost, tokens, latency per session

@@ -70,6 +70,85 @@ test('runSync --check mode exit codes', (t) => {
   process.exitCode = undefined;
 });
 
+test('runSync: refreshes Cursor rules when tools include cursor', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-sync-cursor-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  const agentRoomDir = path.join(tmpDir, '.agent-room', 'skills');
+  fs.mkdirSync(agentRoomDir, { recursive: true });
+  fs.writeFileSync(path.join(agentRoomDir, 'brainstorming.md'), '# Brainstorming');
+  fs.writeFileSync(path.join(agentRoomDir, 'closing-the-loop.md'), '# Closing');
+  fs.writeFileSync(
+    path.join(tmpDir, '.agent-room.json'),
+    JSON.stringify({ name: 'SyncCursorProj', tools: ['cursor'] })
+  );
+  fs.mkdirSync(path.join(tmpDir, '.cursor', 'rules'), { recursive: true });
+  fs.writeFileSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.md'), '# stale\n');
+
+  runSync(tmpDir);
+
+  const rules = fs.readFileSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.md'), 'utf8');
+  assert.match(rules, /SyncCursorProj/);
+  assert.match(rules, /brainstorming/);
+  assert.match(rules, /closing-the-loop/);
+  assert.ok(!fs.existsSync(path.join(tmpDir, '.claude', 'skills')));
+});
+
+test('runSync: claude+cursor syncs both destinations', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-sync-both-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  const agentRoomDir = path.join(tmpDir, '.agent-room', 'skills');
+  fs.mkdirSync(agentRoomDir, { recursive: true });
+  fs.writeFileSync(path.join(agentRoomDir, 'my-skill.md'), '# My Skill');
+  fs.writeFileSync(
+    path.join(tmpDir, '.agent-room.json'),
+    JSON.stringify({ name: 'BothSync', tools: ['claude', 'cursor'] })
+  );
+
+  runSync(tmpDir);
+
+  assert.strictEqual(
+    fs.readFileSync(path.join(tmpDir, '.claude', 'skills', 'my-skill', 'SKILL.md'), 'utf8'),
+    '# My Skill'
+  );
+  assert.match(
+    fs.readFileSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.md'), 'utf8'),
+    /my-skill/
+  );
+});
+
+test('runSync --check: reports Cursor rules drift', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-sync-cursor-check-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  const agentRoomDir = path.join(tmpDir, '.agent-room', 'skills');
+  fs.mkdirSync(agentRoomDir, { recursive: true });
+  fs.writeFileSync(path.join(agentRoomDir, 'my-skill.md'), '# My Skill');
+  fs.writeFileSync(
+    path.join(tmpDir, '.agent-room.json'),
+    JSON.stringify({ name: 'CheckCursor', tools: ['cursor'] })
+  );
+
+  process.exitCode = undefined;
+  runSync(tmpDir, { check: true });
+  assert.strictEqual(process.exitCode, 1, 'missing Cursor rules should fail --check');
+
+  runSync(tmpDir);
+  process.exitCode = undefined;
+  runSync(tmpDir, { check: true });
+  assert.strictEqual(process.exitCode, undefined, 'in-sync Cursor rules should pass --check');
+
+  fs.writeFileSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.md'), '# drifted\n');
+  process.exitCode = undefined;
+  runSync(tmpDir, { check: true });
+  assert.strictEqual(process.exitCode, 1, 'drifted Cursor rules should fail --check');
+  process.exitCode = undefined;
+});
+
 test('runSync: skips dirty files and overwrites with --force', (t) => {
   const tmpDir = path.join(__dirname, 'tmp-dirty-project-' + Date.now());
   fs.mkdirSync(tmpDir, { recursive: true });

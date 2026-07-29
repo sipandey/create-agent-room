@@ -10,20 +10,17 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
-### Fixed
-
-- The scaffolded CI workflow (`templates/adapters/ci/github-actions.yml.tmpl`)
-  and the published composite Action (`action.yml`) both ran
-  `create-agent-room` via `npx --yes pkg@version cmd`, which failed
-  reproducibly on GitHub-hosted runners (`sh: 1: create-agent-room: not
-  found`, exit 127, even though the package installed correctly) — not a
-  registry propagation blip, confirmed by it recurring on a later run.
-  Replaced with an explicit `npm install -g create-agent-room@<version>`
-  step followed by direct invocation, in both places plus this repo's
-  own workflow and a README CI example that had the same pattern.
-
 ### Added
 
+- Cursor runtime close-the-loop: `init --tools cursor` installs the shared
+  `.agent-room/hooks/close-the-loop-check.js` and merges a `stop` entry into
+  `.cursor/hooks.json` (`--adapter=cursor`, `loop_limit: 5`). On failure the
+  Cursor adapter emits `{ followup_message }` (Claude still uses exit 2 +
+  stderr via the default adapter). `doctor` flags when `cursor` is listed in
+  `.agent-room.json` but the stop hook is not wired.
+- `sync` multi-tool for Cursor: regenerates `.cursor/rules/agent-room.md`
+  from the packaged template + current `.agent-room/skills/` list (Claude
+  skills mirror unchanged). `--check` covers both destinations.
 - `npm run check:doctor` (`scripts/check-doctor-clean.js`), wired into
   this project's own `.github/workflows/ci.yml`: fails the build if
   `create-agent-room doctor .` reports any finding for this repo
@@ -34,23 +31,6 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
   drift on what counts as a finding. `doctor`'s own CLI behavior and
   (always-zero) exit code for end users are unchanged; this is a
   project-specific self-check, not a new product feature.
-
-### Fixed
-
-- Three findings `doctor` had been correctly flagging on this repo
-  itself, unaddressed until this CI gate existed to catch them: the
-  installed `.git/hooks/pre-commit` had drifted from the current
-  (narrower) template; `.agent-room/guardrails.json` had only the 4
-  legacy flat-string `forbiddenActions` entries and none of the 5 real
-  regex-based rules the shipped template already has — meaning this
-  repo's own commits had zero functional secret-scanning — and was also
-  missing the guardrails-self-protection `protectedPaths` entries; and
-  `.github/workflows/agent-room-validate.yml` still pinned
-  `create-agent-room@latest` instead of a specific version. All three
-  are now re-synced to match the current templates/version.
-
-### Added
-
 - `guardrails.json`'s `scopeGuidance` (`maxFilesPerChange`,
   `maxLinesPerChange`) is now mechanically enforced by the pre-commit hook
   — previously declared in the shipped schema but never read anywhere.
@@ -68,6 +48,36 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
   commit it's recording. Previously a bypass only printed a
   `console.warn` that vanished the moment the terminal scrolled, leaving
   no record of who overrode a guardrail or why.
+
+### Changed
+
+- Close-the-loop hook is shared across Claude and Cursor (scaffold path
+  prefixes now include `.cursor/hooks.json` / `.cursor/hooks/`). Cursor
+  rules template documents the stop-hook expectation and interpolates
+  `{{SKILL_LIST}}`.
+
+### Fixed
+
+- The scaffolded CI workflow (`templates/adapters/ci/github-actions.yml.tmpl`)
+  and the published composite Action (`action.yml`) both ran
+  `create-agent-room` via `npx --yes pkg@version cmd`, which failed
+  reproducibly on GitHub-hosted runners (`sh: 1: create-agent-room: not
+  found`, exit 127, even though the package installed correctly) — not a
+  registry propagation blip, confirmed by it recurring on a later run.
+  Replaced with an explicit `npm install -g create-agent-room@<version>`
+  step followed by direct invocation, in both places plus this repo's
+  own workflow and a README CI example that had the same pattern.
+- Three findings `doctor` had been correctly flagging on this repo
+  itself, unaddressed until this CI gate existed to catch them: the
+  installed `.git/hooks/pre-commit` had drifted from the current
+  (narrower) template; `.agent-room/guardrails.json` had only the 4
+  legacy flat-string `forbiddenActions` entries and none of the 5 real
+  regex-based rules the shipped template already has — meaning this
+  repo's own commits had zero functional secret-scanning — and was also
+  missing the guardrails-self-protection `protectedPaths` entries; and
+  `.github/workflows/agent-room-validate.yml` still pinned
+  `create-agent-room@latest` instead of a specific version. All three
+  are now re-synced to match the current templates/version.
 
 ## [2.1.0] - 2026-07-10
 

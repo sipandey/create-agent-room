@@ -162,6 +162,10 @@ Examples:
   create-agent-room pr-desc . --write
   create-agent-room doctor .
   create-agent-room --version
+
+Sync mirrors .agent-room/skills/ into .claude/skills/ (claude) and
+regenerates .cursor/rules/agent-room.md (cursor) when those tools are
+listed in .agent-room.json.
 `);
 }
 
