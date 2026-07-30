@@ -12,6 +12,15 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ### Added
 
+- Evidence-lite close-the-loop (B.1): stop hooks now validate `git diff HEAD`
+  on `.agent-room/decisions.md` / `anti-patterns.md` — a file touch alone is
+  not enough; the diff must contain a valid `<!-- no-log: ... -->` waiver
+  (≥8 chars after `no-log:`) or a structured `### YYYY-MM-DD` entry with the
+  expected fields. Ships as `.agent-room/hooks/closing-the-loop-evidence.js`
+  alongside the existing hook script.
+- Evidence-lite session lint (B.2): `lint-sessions` errors when
+  `**Status:** Completed` but `## Decisions made` is empty or placeholder
+  text (`None`, `n/a`, `-`, etc.).
 - Cursor runtime close-the-loop: `init --tools cursor` installs the shared
   `.agent-room/hooks/close-the-loop-check.js` and merges a `stop` entry into
   `.cursor/hooks.json` (`--adapter=cursor`, `loop_limit: 5`). On failure the

@@ -16,6 +16,19 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-07-30 — evidence-lite close-the-loop (diff validation + lint-sessions)
+
+**Decision:** Phase B ships in two slices: B.1 validates `git diff HEAD` on
+log files in the stop hook (valid waiver or structured entry required, not
+mere file touch); B.2 rejects placeholder `## Decisions made` content when
+session `**Status:** Completed`. Shared pure logic lives in
+`lib/closing-the-loop-evidence.js`, copied to `.agent-room/hooks/` at init.
+**Why:** presence-only checks were gamed in dogfood (whitespace / empty
+waiver). Mechanical structure validation closes the gap without agentic-os
+classification machinery or LLM quality judgment.
+**Rejected:** requiring session logs at stop-hook time; classification-based
+phase evidence; a single monolithic PR without dogfood on this repo first.
+
 ### 2026-07-29 — Cursor Stop parity via followup_message; shared hook + multi-tool sync (rules first)
 
 **Decision:** Next product slice is hybrid mini (design:

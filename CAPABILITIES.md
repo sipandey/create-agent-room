@@ -87,7 +87,8 @@ These features **actively block, fail, or prevent** operations if violated:
   Pass `--adapter=claude` (default) or `--adapter=cursor` to the shared script.
 - **Why this is a stronger enforcement point than the pre-commit hook
   above:** it runs *inside the agent's own loop*, before there's
-  necessarily even a commit to gate. A pre-commit or CI check only sees
+  necessarily even a commit to gate. Evidence-lite (B.1) also inspects the
+  *content* of log-file diffs, not just whether the file was touched. A pre-commit or CI check only sees
   work once it's staged or pushed; this one can stop an agent
   mid-session. There's no `--no-verify` equivalent for a Stop/`stop` hook.
 - **How it fails:** Claude: exit code 2. Cursor: non-empty `followup_message`

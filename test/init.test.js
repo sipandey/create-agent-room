@@ -447,6 +447,7 @@ test('runInit: --tools cursor installs shared hook and wires .cursor/hooks.json'
   await runInit(tmpDir, { yes: true, tools: 'cursor', name: 'CursorHooksTest', force: true });
 
   assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'hooks', 'close-the-loop-check.js')));
+  assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'hooks', 'closing-the-loop-evidence.js')));
   assert.ok(fs.existsSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.mdc')));
   const cursorRules = fs.readFileSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.mdc'), 'utf8');
   assert.match(cursorRules, /alwaysApply:\s*true/);
@@ -479,6 +480,7 @@ test('runInit: --tools claude,cursor wires both adapters without duplicating the
   });
 
   assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'hooks', 'close-the-loop-check.js')));
+  assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'hooks', 'closing-the-loop-evidence.js')));
   const settings = JSON.parse(fs.readFileSync(path.join(tmpDir, '.claude', 'settings.json'), 'utf8'));
   assert.ok(
     settings.hooks.Stop.some(

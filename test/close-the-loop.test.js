@@ -55,15 +55,34 @@ test('checkClosingTheLoop: fails when source files are dirty and logs untouched'
   assert.match(result.message, /decisions\.md/);
 });
 
-test('checkClosingTheLoop: passes when a log file is also touched', () => {
+test('checkClosingTheLoop: passes when a log file is also touched with valid evidence', () => {
+  const { checkClosingTheLoop } = loadHook();
+  const logDiff = [
+    '--- a/.agent-room/decisions.md',
+    '+++ b/.agent-room/decisions.md',
+    '@@ -1,1 +1,2 @@',
+    '+<!-- no-log: routine validation run -->',
+  ].join('\n');
+  const result = checkClosingTheLoop('/tmp/unused', {
+    hasAgentRoom: true,
+    isGitRepo: true,
+    statusPorcelain: ' M src/index.js\n M .agent-room/decisions.md\n',
+    logDiff,
+  });
+  assert.strictEqual(result.ok, true);
+});
+
+test('checkClosingTheLoop: fails when log touched but diff has no valid evidence', () => {
   const { checkClosingTheLoop } = loadHook();
   const result = checkClosingTheLoop('/tmp/unused', {
     hasAgentRoom: true,
     isGitRepo: true,
-    statusPorcelain: ' M src/index.js\n M .agent-room/decisions.md\n'
+    statusPorcelain: ' M src/index.js\n M .agent-room/decisions.md\n',
+    logDiff: '--- a/x\n+++ b/x\n@@\n+\n',
   });
-  assert.strictEqual(result.ok, true);
-  assert.deepStrictEqual(result.sourceChanges, []);
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.reason, 'insufficient-evidence');
+  assert.match(result.message, /does not contain valid evidence/);
 });
 
 test('checkClosingTheLoop: passes when only scaffold paths changed', () => {

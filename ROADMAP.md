@@ -42,9 +42,6 @@ Worth doing, more effort, still in keeping with the project's scope:
   clicking through GitHub's "Publish this Action to the GitHub
   Marketplace" flow on that release — a human/CD step, not something a
   session should do unasked — see "Release process" in `AGENTS.md`.
-- **Evidence-lite close-the-loop** — require decisions/anti-patterns/
-  session-log *structure or content*, not mere file touch (Phase B after
-  Cursor Stop + multi-tool sync).
 
 ## Later / needs a real signal first
 

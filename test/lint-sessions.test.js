@@ -52,6 +52,47 @@ Ready to merge after code review.
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
+test('validateMarkdownSession: fails when Completed but Decisions made is only a placeholder', () => {
+  const tmpDir = path.join(__dirname, 'tmp-lint-placeholder-decisions-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  const sessionContent = `# Session Log: Test
+
+**Date:** 2025-03-15 10:30
+**Agent:** Claude
+**Classification:** Bug
+
+## Goal
+Fix login bug
+
+## Files touched
+- Modified: auth.js
+
+## Actions taken
+1. Fixed timeout
+
+## Tests run
+npm test - passed
+
+## Decisions made
+None
+
+## Outcome
+**Status:** Completed
+`;
+
+  const sessionPath = path.join(tmpDir, 'test-session.md');
+  fs.writeFileSync(sessionPath, sessionContent);
+
+  const result = validateMarkdownSession(sessionPath, 'test-session.md');
+  assert(
+    result.errors.some((e) => e.includes('Decisions made cannot be a placeholder')),
+    `expected placeholder error, got: ${result.errors.join(', ')}`
+  );
+
+  fs.rmSync(tmpDir, { recursive: true, force: true });
+});
+
 test('validateMarkdownSession: fails when required section is missing', () => {
   const tmpDir = path.join(__dirname, 'tmp-lint-missing-' + Date.now());
   fs.mkdirSync(tmpDir, { recursive: true });
@@ -241,7 +282,7 @@ Test goal
 Passed
 
 ## Decisions made
-None
+- Used bcrypt for password hashing (also logged in decisions.md)
 
 ## Outcome
 **Status:** Completed`;

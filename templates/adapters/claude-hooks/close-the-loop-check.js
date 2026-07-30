@@ -10,25 +10,21 @@
  *   --adapter=claude (default): exit 2 + stderr (Claude Code Stop)
  *   --adapter=cursor: stdout JSON { followup_message } (Cursor stop hook)
  *
- * Runs at the end of every turn. If tracked, uncommitted changes touch files
- * outside the agent-room scaffold but neither .agent-room/anti-patterns.md
- * nor .agent-room/decisions.md was also touched, it prevents the turn from
- * finishing cleanly (Claude blocks; Cursor forces a follow-up turn).
- *
- * Exit hatch: touch either log file - a real entry, or a one-line waiver
- * comment - and the check passes. See closing-the-loop.md for the format.
+ * Evidence-lite (Phase B.1): when log files are touched, git diff must
+ * contain a valid waiver or structured entry — not whitespace alone.
  *
  * Limitations (by design, to stay simple):
- * - Only looks at `git status --porcelain` since the last commit, not since
- *   the start of this turn. Pre-existing unrelated dirty changes in the work
- *   tree will also trigger this - commit or stash them first if that's noisy.
- * - Treats any file rename touching scaffold paths as a non-scaffold change
- *   (rare, harmless false positive).
+ * - Only looks at `git status --porcelain` and `git diff HEAD` on log files
+ *   since the last commit, not since the start of this turn.
  */
 
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const {
+  validateLogEvidenceFromDiff,
+  buildEvidenceFailureMessage,
+} = require('./closing-the-loop-evidence');
 
 const SCAFFOLD_PREFIXES = [
   '.agent-room/',
@@ -40,6 +36,7 @@ const SCAFFOLD_PREFIXES = [
   '.cursor/hooks/',
 ];
 const SCAFFOLD_FILES = ['AGENTS.md', 'CLAUDE.md'];
+const LOG_PATHS = ['.agent-room/anti-patterns.md', '.agent-room/decisions.md'];
 
 function sh(cmd, cwd) {
   try {
@@ -51,15 +48,18 @@ function sh(cmd, cwd) {
 
 function isScaffoldPath(p) {
   if (SCAFFOLD_FILES.includes(p)) return true;
-  // Bidirectional: p itself under a scaffold prefix (normal case), OR p is an
-  // ancestor directory of a scaffold prefix (git collapses an untracked dir
-  // with no other tracked siblings into a single porcelain line, e.g. a
-  // brand-new ".claude/" with nothing else in it yet shows as "?? .claude/").
   return SCAFFOLD_PREFIXES.some((prefix) => p.startsWith(prefix) || prefix.startsWith(p));
 }
 
 function isLogPath(p) {
-  return p === '.agent-room/anti-patterns.md' || p === '.agent-room/decisions.md';
+  return LOG_PATHS.includes(p);
+}
+
+function getLogDiff(cwd) {
+  return sh(
+    'git diff HEAD -- .agent-room/anti-patterns.md .agent-room/decisions.md',
+    cwd
+  );
 }
 
 function buildFailureMessage(sourceChanges) {
@@ -81,8 +81,8 @@ function buildFailureMessage(sourceChanges) {
 
 /**
  * @param {string} cwd
- * @param {{ hasAgentRoom?: boolean, isGitRepo?: boolean, statusPorcelain?: string }} [opts]
- * @returns {{ ok: boolean, sourceChanges: string[], message: string }}
+ * @param {{ hasAgentRoom?: boolean, isGitRepo?: boolean, statusPorcelain?: string, logDiff?: string }} [opts]
+ * @returns {{ ok: boolean, sourceChanges: string[], message: string, reason?: string }}
  */
 function checkClosingTheLoop(cwd, opts) {
   opts = opts || {};
@@ -109,16 +109,32 @@ function checkClosingTheLoop(cwd, opts) {
   const changedPaths = lines.map((line) => line.slice(3).trim());
 
   const nonScaffold = changedPaths.filter((p) => !isScaffoldPath(p));
-  const logTouched = changedPaths.some(isLogPath);
-
-  if (nonScaffold.length === 0 || logTouched) {
+  if (nonScaffold.length === 0) {
     return { ok: true, sourceChanges: [], message: '' };
+  }
+
+  const logTouched = changedPaths.some(isLogPath);
+  const logDiff = typeof opts.logDiff === 'string' ? opts.logDiff : getLogDiff(cwd);
+  const hasEvidence = validateLogEvidenceFromDiff(logDiff);
+
+  if (hasEvidence) {
+    return { ok: true, sourceChanges: [], message: '' };
+  }
+
+  if (!logTouched) {
+    return {
+      ok: false,
+      sourceChanges: nonScaffold,
+      message: buildFailureMessage(nonScaffold),
+      reason: 'no-log-touch',
+    };
   }
 
   return {
     ok: false,
     sourceChanges: nonScaffold,
-    message: buildFailureMessage(nonScaffold),
+    message: buildEvidenceFailureMessage(),
+    reason: 'insufficient-evidence',
   };
 }
 
@@ -207,4 +223,5 @@ module.exports = {
   isScaffoldPath,
   parseAdapter,
   SCAFFOLD_PREFIXES,
+  getLogDiff,
 };
