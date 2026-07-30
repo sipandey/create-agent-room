@@ -10,12 +10,7 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
-### Changed
-
-- Stricter close-the-loop waiver validation: `<!-- no-log: ... -->` reasons
-  now require ≥20 characters after `no-log:` and a deliberate keyword
-  (e.g. `routine`, `fix`, `test`) — reduces gaming with padding or empty
-  comments.
+## [2.2.0] - 2026-07-30
 
 ### Added
 
@@ -72,6 +67,10 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ### Changed
 
+- Stricter close-the-loop waiver validation: `<!-- no-log: ... -->` reasons
+  now require ≥20 characters after `no-log:` and a deliberate keyword
+  (e.g. `routine`, `fix`, `test`) — reduces gaming with padding or empty
+  comments.
 - Close-the-loop hook is shared across Claude and Cursor (scaffold path
   prefixes now include `.cursor/hooks.json` / `.cursor/hooks/`). Cursor
   rules scaffold as `.cursor/rules/agent-room.mdc` with `alwaysApply: true`
@@ -483,7 +482,9 @@ default (e.g. a script asserting `principles.md` exists after a bare
 - `package.json` now includes `repository`, `homepage`, `bugs`,
   `keywords`, and `author` metadata for npm.
 
-[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v2.2.0...HEAD
+[2.2.0]: https://github.com/sipandey/create-agent-room/compare/v2.1.0...v2.2.0
+[2.1.0]: https://github.com/sipandey/create-agent-room/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/sipandey/create-agent-room/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/sipandey/create-agent-room/compare/v1.3.1...v2.0.0
 [1.3.1]: https://github.com/sipandey/create-agent-room/compare/v1.3.0...v1.3.1
