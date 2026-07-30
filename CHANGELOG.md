@@ -22,6 +22,8 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 - README and init post-scaffold messaging now recommend `npm install -g
   create-agent-room` followed by direct `create-agent-room` invocation
   instead of `npx` (same pattern as CI and the scaffolded git workflow).
+- `docs/enforcement-model.md` — one-page enforcement timeline for adopters;
+  README adds mermaid diagram and link. ROADMAP rejects golden-task evals.
 
 ## [2.2.0] - 2026-07-30
 

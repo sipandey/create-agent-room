@@ -16,6 +16,31 @@ Most "AI agent guidelines" are a Markdown file an agent may or may not read. `cr
 3. **In CI** — `validate` and `lint-sessions` fail the build if the guardrails schema, skill frontmatter, or session logs are malformed (`lint-sessions` also rejects placeholder `Decisions made` when status is Completed).
 4. **After upgrades (optional CI)** — `eval` runs packaged compliance regression scenarios (close-the-loop, lint-sessions, validate fixtures) with JSON/CSV export — no LLM, no API keys.
 
+```mermaid
+flowchart LR
+  subgraph L1["① During agent turn"]
+    A[Agent edits files] --> B{Stop hook}
+    B -->|Decision logged or valid waiver| C[Turn ends]
+    B -->|No evidence| D[Blocked / looped]
+  end
+  subgraph L2["② On commit"]
+    E[git commit] --> F{Pre-commit guardrails}
+    F -->|Pass| G[Commit]
+    F -->|Protected path / secret / scope| H[Blocked]
+  end
+  subgraph L3["③ In CI"]
+    I[validate + lint-sessions]
+  end
+  subgraph L4["④ After upgrade optional"]
+    J[create-agent-room eval]
+  end
+  C --> E
+  G --> I
+```
+
+Full detail — code paths, adapters, what `eval` does *not* cover:
+[docs/enforcement-model.md](docs/enforcement-model.md).
+
 Not every feature here is enforced this way — see [Feature Categories](#feature-categories) below and [CAPABILITIES.md](CAPABILITIES.md) for the honest breakdown of what's mechanical versus what still depends on an agent choosing to follow a doc.
 
 ---
@@ -76,7 +101,7 @@ Some features depend on agents choosing to follow documented guidance. **There i
 
 These features work **only if your team commits to following them**. The tool creates the structure and validation hooks; discipline is external.
 
-For comprehensive details on what's enforced, guidance, and aspirational, see [CAPABILITIES.md](CAPABILITIES.md).
+For comprehensive details on what's enforced, guidance, and aspirational, see [CAPABILITIES.md](CAPABILITIES.md). For the four enforcement layers, adapters, and what `eval` does not cover, see [docs/enforcement-model.md](docs/enforcement-model.md).
 
 Considering an alternative — hand-rolled hooks, a direct competitor, or
 just a plain `AGENTS.md`? See [docs/comparisons.md](docs/comparisons.md)

@@ -82,6 +82,23 @@ trust:
   `CAPABILITIES.md`. Real-time monitoring is a different product.
 - **SSO, audit logs, paid/enterprise tier.** Out of scope for a project
   scaffolder; would change what this project fundamentally is.
+- **Golden-task / behavioral agent evals** ("given this repo state, the
+  agent should…"). `create-agent-room eval` answers whether **governance
+  machinery** still works (hooks, schema, lint) — deterministic fixtures,
+  no LLM. Golden tasks need a live agent runner, model pinning, a grader
+  (LLM-as-judge or rubric), and flake-tolerant CI. That contradicts the
+  eval design (`docs/plans/2026-07-30-compliance-evals-design.md`), blurs
+  the line between "hooks work" and "the model behaved," and turns a ~70KB
+  scaffolder into a quality-benchmark platform. Teams that want behavioral
+  evals should use external harnesses (LangSmith, Braintrust, custom SDK
+  runners) — not this CLI. Consumer `.agent-room/evals/` packs may arrive
+  later only for **mechanical** cases (same family as close-the-loop /
+  validate fixtures).
+- **Broad "agent loop architecture" docs** as a parallel spec layer. Adopters
+  need the enforcement timeline, not a framework manifesto — see
+  `docs/enforcement-model.md` (one page, four layers, links to code).
+  Duplicating `principles.md`, `CAPABILITIES.md`, and per-tool adapters in a
+  second architecture bible adds drift without adding enforcement.
 - **Self-improving meta-agent, "propose an open Agent Room spec."**
   Speculative, not actionable, no current demand.
 

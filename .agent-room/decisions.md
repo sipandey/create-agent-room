@@ -18,6 +18,19 @@ have to re-derive it from scratch by reading git history.
 
 <!-- no-log: v2.2.0 release commit — routine release mechanics (version bump, lockfile re-sync, action.yml and CI pin bump, CHANGELOG [Unreleased]→[2.2.0]). The CHANGELOG is the record; nothing new to add here. -->
 
+### 2026-07-30 — reject golden-task evals; add enforcement-model doc instead
+
+**Decision:** Golden-task / behavioral evals ("given repo state, agent should…")
+stay out of scope for this CLI. Adopter-facing system explanation lives in
+`docs/enforcement-model.md` (four layers, code paths) plus a mermaid diagram
+in README — not a separate "agent loop architecture" spec.
+**Why:** Compliance `eval` is mechanical regression on governance machinery;
+golden tasks need live agents, model pinning, graders, and flaky CI. Mixing
+the two misleads adopters and bloats a small scaffolder.
+**Rejected:** Golden-task eval file in core CLI; parallel architecture bible.
+
+<!-- no-log: routine doc and roadmap scope logging for enforcement-model.md and ROADMAP rejection entries — no new product behavior. -->
+
 ### 2026-07-30 — compliance `eval` command (builtin pack + JSON/CSV export)
 
 **Decision:** Add `create-agent-room eval` running packaged fixtures under
