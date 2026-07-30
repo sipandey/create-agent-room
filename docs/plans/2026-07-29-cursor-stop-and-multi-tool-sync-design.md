@@ -2,7 +2,8 @@
 
 **Date:** 2026-07-29  
 **Status:** Approved (architecture, components, testing)  
-**Scope slice:** Phase A+C now; Phase B (evidence-lite) deferred to a follow-up design
+**Scope slice:** Phase A+C now; Phase B (evidence-lite) deferred to a follow-up design  
+**Status:** Shipped (A+C in v2.2.0 prep; C extended to Windsurf/Cline/Codex sync 2026-07-30)
 
 ## Goal
 
@@ -96,11 +97,14 @@ Read `tools` from `.agent-room.json`.
 | Tool in config | Sync behavior |
 |---|---|
 | `claude` | Existing: `.agent-room/skills/*.md` → `.claude/skills/<name>/SKILL.md` |
-| `cursor` | Regenerate `.cursor/rules/agent-room.md` from template + current skill list so rules stay accurate after skill edits |
+| `cursor` | Regenerate `.cursor/rules/agent-room.mdc` from template + current skill list so rules stay accurate after skill edits |
+| `windsurf` | Regenerate `.windsurfrules` from template + current skill list |
+| `cline` | Regenerate `.clinerules` from template + current skill list |
+| `codex` | Regenerate `.codexrules` from template + current skill list |
 
 `--check`, dirty-file skip, and `--force` behave as today, per destination.
 
-Codex / Windsurf / Cline: out of this slice (init-time rule copy only; no sync).
+Gemini / other tools: out of scope until a stable convention exists.
 
 ### Docs
 

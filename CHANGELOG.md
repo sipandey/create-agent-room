@@ -10,12 +10,20 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+### Changed
+
+- Stricter close-the-loop waiver validation: `<!-- no-log: ... -->` reasons
+  now require ≥20 characters after `no-log:` and a deliberate keyword
+  (e.g. `routine`, `fix`, `test`) — reduces gaming with padding or empty
+  comments.
+
 ### Added
 
 - Evidence-lite close-the-loop (B.1): stop hooks now validate `git diff HEAD`
   on `.agent-room/decisions.md` / `anti-patterns.md` — a file touch alone is
   not enough; the diff must contain a valid `<!-- no-log: ... -->` waiver
-  (≥8 chars after `no-log:`) or a structured `### YYYY-MM-DD` entry with the
+  (≥20 chars after `no-log:` plus a deliberate keyword such as `routine`,
+  `fix`, or `test`) or a structured `### YYYY-MM-DD` entry with the
   expected fields. Ships as `.agent-room/hooks/closing-the-loop-evidence.js`
   alongside the existing hook script.
 - Evidence-lite session lint (B.2): `lint-sessions` errors when
@@ -30,6 +38,10 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 - `sync` multi-tool for Cursor: regenerates `.cursor/rules/agent-room.md`
   from the packaged template + current `.agent-room/skills/` list (Claude
   skills mirror unchanged). `--check` covers both destinations.
+- `sync` multi-tool for Windsurf, Cline, Codex: regenerates
+  `.windsurfrules`, `.clinerules`, and `.codexrules` from the same skill
+  list when those tools are listed in `.agent-room.json`. Adapter templates
+  now use `{{SKILL_LIST}}` instead of a hardcoded skill roster.
 - `npm run check:doctor` (`scripts/check-doctor-clean.js`), wired into
   this project's own `.github/workflows/ci.yml`: fails the build if
   `create-agent-room doctor .` reports any finding for this repo

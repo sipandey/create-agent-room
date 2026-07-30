@@ -61,7 +61,7 @@ test('checkClosingTheLoop: passes when a log file is also touched with valid evi
     '--- a/.agent-room/decisions.md',
     '+++ b/.agent-room/decisions.md',
     '@@ -1,1 +1,2 @@',
-    '+<!-- no-log: routine validation run -->',
+    '+<!-- no-log: routine validation run for hook -->',
   ].join('\n');
   const result = checkClosingTheLoop('/tmp/unused', {
     hasAgentRoom: true,

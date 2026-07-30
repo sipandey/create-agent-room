@@ -54,7 +54,7 @@ These provide a framework that requires external setup:
 
 - **Stack-Specific Templates** — Inheritance system supports Python, TypeScript, React stacks, but these must be created or provided via `--org` or `--template-source`
 - **Observability Metrics** — Post-hoc aggregation of completed sessions; not real-time monitoring or alerting
-- **Tool Adapters** — Currently supports Claude, Cursor, Windsurf, Cline, Codex, and Git; `sync` mirrors skills to Claude and regenerates Cursor rules (Windsurf/Cline/Codex remain init-time copy only)
+- **Tool Adapters** — Currently supports Claude, Cursor, Windsurf, Cline, Codex, and Git; `sync` mirrors skills to Claude and regenerates rules files for Cursor, Windsurf, Cline, and Codex from `.agent-room/skills/`
 
 ---
 
@@ -179,6 +179,7 @@ Synchronize custom skills from `.agent-room/skills/` into tool-specific mirrors:
 
 - **Claude** (when listed in `.agent-room.json`): `.claude/skills/<name>/SKILL.md`
 - **Cursor** (when listed): regenerate `.cursor/rules/agent-room.mdc` from the packaged template + current skill list
+- **Windsurf / Cline / Codex** (when listed): regenerate `.windsurfrules`, `.clinerules`, or `.codexrules` from the same skill list
 
 - Run with `--check` to verify mirrors are out of date without rewriting them.
 - Sync will automatically skip overwriting files if they have uncommitted tracked edits, unless `--force` is used.

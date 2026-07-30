@@ -43,7 +43,10 @@ installed (see `CLAUDE.md`), state it as a one-line waiver in
 ```
 
 This keeps the check enforceable: "I thought about it and there was nothing
-to log" is a valid outcome, but it has to be visible, not assumed.
+to log" is a valid outcome, but it has to be visible, not assumed. The stop
+hook also checks the waiver mechanically: at least 20 characters after
+`no-log:` and a deliberate keyword (e.g. `routine`, `fix`, `test`) — not
+padding or empty comments.
 
 ## What belongs in each log
 

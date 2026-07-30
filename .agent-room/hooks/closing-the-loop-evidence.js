@@ -1,8 +1,45 @@
 'use strict';
 
-const NO_LOG_MIN_REASON_LENGTH = 8;
+const NO_LOG_MIN_REASON_LENGTH = 20;
 
-const WAIVER_RE = /<!--\s*no-log:\s*(.{8,}?)\s*-->/s;
+// Substrings that signal a deliberate waiver reason (not random padding).
+// Kept small and mechanical — catches "xxxxxxxx..." gaming without LLM judgment.
+const WAIVER_VERB_TOKENS = [
+  'routine',
+  'fix',
+  'fixed',
+  'fixing',
+  'test',
+  'testing',
+  'tested',
+  'refactor',
+  'typo',
+  'doc',
+  'docs',
+  'document',
+  'chore',
+  'release',
+  'bump',
+  'sync',
+  'lint',
+  'format',
+  'readme',
+  'validate',
+  'validation',
+  'dogfood',
+  'cleanup',
+  'merge',
+  'revert',
+  'patch',
+  'update',
+  'review',
+  'trivial',
+  'minor',
+  'cosmetic',
+  'demo',
+];
+
+const WAIVER_RE = /<!--\s*no-log:\s*(.*?)\s*-->/s;
 
 const ENTRY_HEADER_RE = /^###\s+\d{4}-\d{2}-\d{2}\s+—\s+.+/m;
 
@@ -13,6 +50,15 @@ const ANTI_PATTERN_FIELD_RES = [
 ];
 
 const DECISION_FIELD_RES = [/\*\*Decision:\*\*/i, /\*\*Why:\*\*/i];
+
+/**
+ * @param {string} reason
+ * @returns {boolean}
+ */
+function reasonHasWaiverVerb(reason) {
+  const lower = reason.toLowerCase();
+  return WAIVER_VERB_TOKENS.some((token) => lower.includes(token));
+}
 
 /**
  * @param {string} diffText unified diff or empty
@@ -35,7 +81,9 @@ function matchesWaiver(addedContent) {
   if (!addedContent || !addedContent.trim()) return false;
   const match = addedContent.match(WAIVER_RE);
   if (!match) return false;
-  return match[1].trim().length >= NO_LOG_MIN_REASON_LENGTH;
+  const reason = match[1].trim();
+  if (reason.length < NO_LOG_MIN_REASON_LENGTH) return false;
+  return reasonHasWaiverVerb(reason);
 }
 
 /**
@@ -83,7 +131,8 @@ function buildEvidenceFailureMessage() {
     'Closing-the-loop check failed: decisions.md or anti-patterns.md was touched, ' +
     'but the change does not contain valid evidence.\n\n' +
     'Add one of the following in this turn (see .agent-room/skills/closing-the-loop.md):\n' +
-    '- A waiver with a real reason (at least 8 characters after no-log:):\n' +
+    `- A waiver with a real reason (at least ${NO_LOG_MIN_REASON_LENGTH} characters after no-log:, ` +
+    'including a deliberate keyword such as routine, fix, or test):\n' +
     '  <!-- no-log: routine change, no decision or anti-pattern worth recording -->\n' +
     '- An anti-pattern entry: ### YYYY-MM-DD — title plus **What happened:** / **Root cause:** / **Avoid:**\n' +
     '- A decision entry: ### YYYY-MM-DD — title plus **Decision:** and **Why:**\n'
@@ -92,6 +141,8 @@ function buildEvidenceFailureMessage() {
 
 module.exports = {
   NO_LOG_MIN_REASON_LENGTH,
+  WAIVER_VERB_TOKENS,
+  reasonHasWaiverVerb,
   extractAddedContent,
   matchesWaiver,
   matchesAntiPatternEntry,

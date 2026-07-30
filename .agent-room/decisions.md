@@ -16,6 +16,30 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-07-30 — stricter no-log waiver validation (20 chars + keyword)
+
+**Decision:** Tighten evidence-lite waivers from ≥8 chars to ≥20 chars after
+`no-log:`, plus a mechanical keyword check (`routine`, `fix`, `test`, and a
+small allowlist of similar tokens). Structured decision/anti-pattern entries
+unchanged.
+**Why:** User chose option C after dogfood — short or padding-only waivers
+still passed the hook too easily.
+**Rejected:** LLM quality judgment on waiver prose; requiring session logs at
+stop time.
+
+### 2026-07-30 — extend `sync` to Windsurf, Cline, and Codex rules files
+
+**Decision:** Complete point C of the hybrid-mini slice: `sync` now
+regenerates `.windsurfrules`, `.clinerules`, and `.codexrules` from the
+same packaged templates + `{{SKILL_LIST}}` as Cursor rules (Claude skills
+mirror unchanged). Refactored `lib/sync.js` around a shared
+`RULES_SYNC_ADAPTERS` table rather than Cursor-only helpers.
+**Why:** OSS adopters editing `.agent-room/skills/` shouldn't manually
+refresh four separate rule files; init-time copy alone went stale after the
+first skill-pack change.
+**Rejected:** runtime hooks for Windsurf/Cline/Codex (no stable API);
+inventing Codex/Gemini skill trees; bidirectional sync in this slice.
+
 ### 2026-07-30 — evidence-lite close-the-loop (diff validation + lint-sessions)
 
 **Decision:** Phase B ships in two slices: B.1 validates `git diff HEAD` on

@@ -48,8 +48,6 @@ Worth doing, more effort, still in keeping with the project's scope:
 Plausible, but shouldn't be built speculatively — wait for an actual user
 need before spending the complexity budget:
 
-- Multi-tool `sync` for Windsurf/Cline/Codex (Claude skills + Cursor rules
-  sync shipped; see CAPABILITIES.md).
 - A metrics export format (JSON/CSV) for teams who want to pipe session
   data into their own dashboards, instead of the tool building a dashboard
   itself.

@@ -120,6 +120,36 @@ test('runSync: claude+cursor syncs both destinations', (t) => {
   );
 });
 
+test('runSync: refreshes windsurf, cline, and codex rules when listed in config', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-sync-other-rules-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  const agentRoomDir = path.join(tmpDir, '.agent-room', 'skills');
+  fs.mkdirSync(agentRoomDir, { recursive: true });
+  fs.writeFileSync(path.join(agentRoomDir, 'brainstorming.md'), '# Brainstorming');
+  fs.writeFileSync(path.join(agentRoomDir, 'my-skill.md'), '# My Skill');
+  fs.writeFileSync(
+    path.join(tmpDir, '.agent-room.json'),
+    JSON.stringify({ name: 'OtherRulesSync', tools: ['windsurf', 'cline', 'codex'] })
+  );
+  fs.writeFileSync(path.join(tmpDir, '.windsurfrules'), '# stale windsurf\n');
+  fs.writeFileSync(path.join(tmpDir, '.clinerules'), '# stale cline\n');
+  fs.writeFileSync(path.join(tmpDir, '.codexrules'), '# stale codex\n');
+
+  runSync(tmpDir);
+
+  const windsurf = fs.readFileSync(path.join(tmpDir, '.windsurfrules'), 'utf8');
+  const cline = fs.readFileSync(path.join(tmpDir, '.clinerules'), 'utf8');
+  const codex = fs.readFileSync(path.join(tmpDir, '.codexrules'), 'utf8');
+
+  for (const content of [windsurf, cline, codex]) {
+    assert.match(content, /OtherRulesSync/);
+    assert.match(content, /brainstorming/);
+    assert.match(content, /my-skill/);
+  }
+});
+
 test('runSync --check: reports Cursor rules drift', (t) => {
   const tmpDir = path.join(__dirname, 'tmp-sync-cursor-check-' + Date.now());
   fs.mkdirSync(tmpDir, { recursive: true });

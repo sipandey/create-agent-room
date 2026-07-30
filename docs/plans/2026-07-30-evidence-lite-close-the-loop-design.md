@@ -30,7 +30,8 @@ Mechanical only — regex/structure, no LLM quality judgment.
 1. No non-scaffold source changes → pass (unchanged).
 2. Cursor `aborted`/`error` stop → pass (unchanged).
 3. `git diff HEAD` on log files contains **one of**:
-   - Waiver: `<!-- no-log: <reason> -->` with ≥8 chars after `no-log:`
+   - Waiver: `<!-- no-log: <reason> -->` with ≥20 chars after `no-log:` and
+     a deliberate keyword (e.g. `routine`, `fix`, `test`)
    - Anti-pattern entry: `### YYYY-MM-DD — title` plus one of
      `**What happened:**`, `**Root cause:**`, `**Avoid:**`
    - Decision entry: `### YYYY-MM-DD — title` plus `**Decision:**` and

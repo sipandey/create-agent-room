@@ -217,9 +217,9 @@ These provide a framework that requires external setup or effort:
 - **Current state:**
   - ✅ Sync works for Claude (`.claude/skills/` ↔ `.agent-room/skills/`)
   - ✅ Sync regenerates Cursor `.cursor/rules/agent-room.mdc` from the packaged template + current skill list (`alwaysApply: true` frontmatter; not a Cursor `SKILL.md` tree — convention not assumed)
-  - ❌ Sync not implemented for Windsurf, Cline, Codex
+  - ✅ Sync regenerates Windsurf `.windsurfrules`, Cline `.clinerules`, and Codex `.codexrules` from the same skill list
   - ❌ Sync is one-way (only agent-room → tool, not tool → agent-room)
-- **Reality:** Claude skills mirror + Cursor rules refresh; other adapters still need manual updates after skill edits
+- **Reality:** Claude skills mirror + rules refresh for Cursor/Windsurf/Cline/Codex when listed in `.agent-room.json`
 
 ---
 
@@ -229,7 +229,7 @@ These provide a framework that requires external setup or effort:
 
 1. **Use enforced features for hard constraints:** Guardrails, session validation, skill validation are mechanical and reliable.
 2. **Use guidance features for best practices:** Workflow classifier, principles, coordination protocols provide structure but require discipline.
-3. **Treat aspirational features as frameworks:** Stack templates and multi-tool sync can be built out over time.
+3. **Treat aspirational features as frameworks:** Stack templates and bidirectional sync can be built out over time.
 4. **Expect to customize:** The tool provides a foundation; your org must layer on stack-specific guidance and tool-specific rules.
 
 ### For Agents
@@ -273,8 +273,6 @@ Features planned for future releases:
 
 - **Real-time observability:** Dashboards, trending, alerting
 - **Session orchestration:** Query handoff state during execution, queue work
-- **Multi-tool sync:** Extend to Windsurf, Cline, Codex (Cursor rules sync shipped)
 - **Metrics export:** JSON/CSV for external dashboarding
-- **Hook standardization:** Evidence-lite close-the-loop; optional preToolUse denies
 - **Approval workflows:** Simple gates for guardrails violations
 - **Performance tracking:** Cost, tokens, latency per session

@@ -22,17 +22,31 @@ test('extractAddedContent: pulls only + lines from a unified diff', () => {
   assert.match(extractAddedContent(diff), /no-log: routine test run/);
 });
 
-test('matchesWaiver: accepts a no-log comment with sufficient reason text', () => {
+test('matchesWaiver: rejects empty, too-short, or verb-free waiver reasons', () => {
+  assert.strictEqual(matchesWaiver('<!-- no-log: short -->'), false);
+  assert.strictEqual(matchesWaiver('<!-- no-log: -->'), false);
+  assert.strictEqual(matchesWaiver(''), false);
+  assert.strictEqual(
+    matchesWaiver('<!-- no-log: abcdefghijklmnopqrst -->'),
+    false,
+    '20+ chars without a waiver keyword should fail'
+  );
+  assert.strictEqual(
+    matchesWaiver('<!-- no-log: routine fix test -->'),
+    false,
+    'under 20 chars should fail even with keywords'
+  );
+});
+
+test('matchesWaiver: accepts a no-log comment with sufficient reason and keyword', () => {
   assert.strictEqual(
     matchesWaiver('<!-- no-log: routine change, nothing worth recording -->'),
     true
   );
-});
-
-test('matchesWaiver: rejects empty or too-short waiver reasons', () => {
-  assert.strictEqual(matchesWaiver('<!-- no-log: short -->'), false);
-  assert.strictEqual(matchesWaiver('<!-- no-log: -->'), false);
-  assert.strictEqual(matchesWaiver(''), false);
+  assert.strictEqual(
+    matchesWaiver('<!-- no-log: dogfood validation pass on this repo -->'),
+    true
+  );
 });
 
 test('matchesAntiPatternEntry: requires dated header and a known field', () => {
@@ -68,7 +82,7 @@ test('validateLogEvidenceFromDiff: passes on any valid added evidence in diff', 
     '+++ b/.agent-room/decisions.md',
     '@@ -17,3 +17,4 @@',
     ' <!-- Entries go below this line, newest first. -->',
-    '+<!-- no-log: dogfood validation pass -->',
+    '+<!-- no-log: dogfood validation pass on repo -->',
   ].join('\n');
   assert.strictEqual(validateLogEvidenceFromDiff(diff), true);
 });
