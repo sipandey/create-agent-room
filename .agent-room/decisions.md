@@ -16,6 +16,8 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+<!-- no-log: v2.3.0 release commit — routine release mechanics (version bump, lockfile re-sync, action.yml and CI pin bump, CHANGELOG [Unreleased]→[2.3.0]). The CHANGELOG is the record; nothing new to add here. -->
+
 <!-- no-log: v2.2.0 release commit — routine release mechanics (version bump, lockfile re-sync, action.yml and CI pin bump, CHANGELOG [Unreleased]→[2.2.0]). The CHANGELOG is the record; nothing new to add here. -->
 
 ### 2026-07-30 — reject golden-task evals; add enforcement-model doc instead

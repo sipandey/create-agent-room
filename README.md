@@ -173,7 +173,7 @@ create-agent-room pr-desc . --write
 create-agent-room doctor .
 ```
 
-Pin a version when reproducibility matters: `npm install -g create-agent-room@2.2.0`.
+Pin a version when reproducibility matters: `npm install -g create-agent-room@2.3.0`.
 For a project-local install, use `npm install create-agent-room` and
 `./node_modules/.bin/create-agent-room` (or add an npm script).
 

@@ -10,6 +10,8 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+## [2.3.0] - 2026-07-30
+
 ### Added
 
 - `eval` command: runs packaged compliance regression scenarios (close-the-loop,
@@ -497,7 +499,8 @@ default (e.g. a script asserting `principles.md` exists after a bare
 - `package.json` now includes `repository`, `homepage`, `bugs`,
   `keywords`, and `author` metadata for npm.
 
-[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v2.2.0...HEAD
+[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v2.3.0...HEAD
+[2.3.0]: https://github.com/sipandey/create-agent-room/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/sipandey/create-agent-room/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/sipandey/create-agent-room/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/sipandey/create-agent-room/compare/v2.0.0...v2.0.1
