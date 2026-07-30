@@ -18,6 +18,18 @@ have to re-derive it from scratch by reading git history.
 
 <!-- no-log: v2.2.0 release commit — routine release mechanics (version bump, lockfile re-sync, action.yml and CI pin bump, CHANGELOG [Unreleased]→[2.2.0]). The CHANGELOG is the record; nothing new to add here. -->
 
+### 2026-07-30 — compliance `eval` command (builtin pack + JSON/CSV export)
+
+**Decision:** Add `create-agent-room eval` running packaged fixtures under
+`evals/builtin/` for close-the-loop, lint-sessions, and validate — no LLM,
+no consumer-repo eval packs in v1. Reports support `--format json|csv` for
+CI/dashboards; exit 1 on failure.
+**Why:** OSS adopters need regression proof that governance enforcement still
+works after upgrades; this stays mechanical and zero-dep, unlike agent
+quality benchmarks.
+**Rejected:** LLM-as-judge evals; live agent runners; custom
+`.agent-room/evals/` in v1.
+
 ### 2026-07-30 — stricter no-log waiver validation (20 chars + keyword)
 
 **Decision:** Tighten evidence-lite waivers from ≥8 chars to ≥20 chars after

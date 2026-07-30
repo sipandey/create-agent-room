@@ -50,7 +50,8 @@ need before spending the complexity budget:
 
 - A metrics export format (JSON/CSV) for teams who want to pipe session
   data into their own dashboards, instead of the tool building a dashboard
-  itself.
+  itself. (Compliance `eval` report export addresses governance regression
+  only, not session metrics.)
 
 ## Explicitly out of scope
 
@@ -72,7 +73,7 @@ trust:
 - **Full TypeScript conversion, ESM/CJS dual publishing.** No correctness
   or DX problem this solves today.
 - **VS Code extension, prebuilt binaries, Docker image, Homebrew/Scoop
-  formulas.** `npx create-agent-room` already works everywhere Node does;
+  formulas.** `npm install -g create-agent-room` already works everywhere Node does;
   each of these is a new release artifact to maintain for a package this
   size.
 - **Real-time observability integrations (Prometheus, LangSmith,

@@ -221,6 +221,17 @@ These provide a framework that requires external setup or effort:
   - ❌ Sync is one-way (only agent-room → tool, not tool → agent-room)
 - **Reality:** Claude skills mirror + rules refresh for Cursor/Windsurf/Cline/Codex when listed in `.agent-room.json`
 
+### Compliance evals (`eval` command)
+
+- **What it is:** Packaged regression scenarios that verify close-the-loop,
+  `lint-sessions`, and `validate` behavior without running a live agent
+- **Current state:**
+  - ✅ `create-agent-room eval` runs builtin fixtures; `--format json|csv`
+    for CI/dashboard export; exit 1 on failure
+  - ❌ Custom `.agent-room/evals/` packs in consumer repos (Phase 2)
+  - ❌ LLM-as-judge or codegen-quality scoring
+- **Reality:** Mechanical governance regression tests, not agent task benchmarks
+
 ---
 
 ## What This Means
@@ -273,6 +284,8 @@ Features planned for future releases:
 
 - **Real-time observability:** Dashboards, trending, alerting
 - **Session orchestration:** Query handoff state during execution, queue work
-- **Metrics export:** JSON/CSV for external dashboarding
+- **Session metrics export:** JSON/CSV export of `.agent-room/sessions/` stats
+  (compliance `eval` JSON/CSV export shipped in unreleased; session metrics
+  aggregation export still deferred)
 - **Approval workflows:** Simple gates for guardrails violations
 - **Performance tracking:** Cost, tokens, latency per session

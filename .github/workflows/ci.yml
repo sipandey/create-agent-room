@@ -26,3 +26,4 @@ jobs:
       - run: npm run check:doctor
       - run: npm run lint
       - run: npm run test
+      - run: node bin/cli.js eval

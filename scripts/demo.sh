@@ -42,9 +42,8 @@ trap cleanup EXIT
 
 cd "$DEMO_DIR"
 
-# create-agent-room is normally run via `npx create-agent-room`; this demo
-# points that same command at the CLI in this checkout so the recording
-# reflects the current code, offline and reproducibly.
+# create-agent-room is normally run via `npm install -g create-agent-room`;
+# this demo uses the local checkout instead (offline and reproducible).
 create-agent-room() { node "$CLI" "$@"; }
 
 # A fresh temp dir has no git identity of its own. Pre-create the repo so

@@ -3,17 +3,18 @@
 [![npm version](https://img.shields.io/npm/v/create-agent-room.svg)](https://www.npmjs.com/package/create-agent-room)
 [![CI](https://github.com/sipandey/create-agent-room/actions/workflows/ci.yml/badge.svg)](https://github.com/sipandey/create-agent-room/actions/workflows/ci.yml)
 
-**Define your agent governance rules once. `create-agent-room` enforces them at every layer an agent passes through — while it's working, when it commits, and in CI — instead of just documenting them and hoping.**
+**Define your agent governance rules once. `create-agent-room` enforces them at every layer an agent passes through — while it's working (Claude + Cursor stop hooks), when it commits, in CI, and optionally via compliance evals — instead of just documenting them and hoping.**
 
 ![Demo: a scaffolded pre-commit hook blocking a staged AWS key, then the Claude Code Stop hook blocking an agent turn without a logged decision](docs/demo.gif)
 
 *A staged AWS key blocked at commit time, then the same for an agent turn ending without a logged decision — both real, unmocked output. Reproduce it yourself with `bash scripts/demo.sh`.*
 
-Most "AI agent guidelines" are a Markdown file an agent may or may not read. `create-agent-room` scaffolds that documentation (`AGENTS.md`, a principles playbook, a workflow classifier, multi-agent coordination protocols) but backs the parts that matter with three concrete enforcement points, each catching a different failure mode:
+Most "AI agent guidelines" are a Markdown file an agent may or may not read. `create-agent-room` scaffolds that documentation (`AGENTS.md`, a principles playbook, a workflow classifier, multi-agent coordination protocols) but backs the parts that matter with **four concrete enforcement points**, each catching a different failure mode:
 
-1. **While the agent is working** — a Claude Code `Stop` hook blocks the agent from ending its turn if it changed files without logging a decision or anti-pattern. This is the most differentiated piece of the tool: it runs *inside the agent's own loop*, before there's even anything to commit, so there's no `--no-verify` equivalent for it — a genuinely stronger enforcement category than a commit-time or CI-time check.
-2. **When it commits** — a git pre-commit hook (`guardrails-check.js`) blocks commits that touch protected paths or contain forbidden patterns (hardcoded credentials, private keys, etc.).
-3. **In CI** — `validate` and `lint-sessions` fail the build if the guardrails schema, skill frontmatter, or session logs are malformed.
+1. **While the agent is working** — shared **Claude Code `Stop`** and **Cursor `stop`** hooks (`.agent-room/hooks/close-the-loop-check.js`) block or loop the turn when source files changed without logging to `.agent-room/decisions.md` or `anti-patterns.md`. **Evidence-lite** checks go further: the log-file *diff* must contain a valid waiver (`<!-- no-log: ... -->` with ≥20 chars and a deliberate keyword) or a structured entry — not just a file touch. Cursor uses `followup_message`; Claude uses `exit 2`. No `--no-verify` equivalent.
+2. **When it commits** — a git pre-commit hook (`guardrails-check.js`) blocks commits that touch protected paths, match forbidden patterns (AWS keys, private keys, tokens), or exceed `scopeGuidance` limits. Every `GUARDRAILS_BYPASS` is recorded in `.agent-room/guardrails-bypass-log.md`.
+3. **In CI** — `validate` and `lint-sessions` fail the build if the guardrails schema, skill frontmatter, or session logs are malformed (`lint-sessions` also rejects placeholder `Decisions made` when status is Completed).
+4. **After upgrades (optional CI)** — `eval` runs packaged compliance regression scenarios (close-the-loop, lint-sessions, validate fixtures) with JSON/CSV export — no LLM, no API keys.
 
 Not every feature here is enforced this way — see [Feature Categories](#feature-categories) below and [CAPABILITIES.md](CAPABILITIES.md) for the honest breakdown of what's mechanical versus what still depends on an agent choosing to follow a doc.
 
@@ -21,14 +22,17 @@ Not every feature here is enforced this way — see [Feature Categories](#featur
 
 ## Features
 
-- **Agent Runtime Enforcement (Stop Hook)**: A Claude Code `Stop` hook and a Cursor `stop` hook (same checker: `.agent-room/hooks/close-the-loop-check.js`) inspect `git status` at the end of every turn. If the agent changed files outside the scaffold without touching `.agent-room/anti-patterns.md` or `decisions.md`, Claude blocks the turn (`exit 2`); Cursor forces another turn via `followup_message`. *[Actively enforced inside the agent loop when Claude and/or Cursor adapters selected — distinct from, and earlier than, the commit-time guardrails below]*
-- **Agent Guardrails**: Defines protected paths, require-approval rules, forbidden actions, and change-scope limits via `guardrails.json`. Forbidden actions are explicit `{ "pattern", "type": "regex" | "literal", "description" }` rules (AWS keys, private key headers, API tokens, etc. by default) — not free-text prose. The default `protectedPaths` list also covers the guardrails machinery itself (`guardrails.json`, `guardrails.md`, `.agent-room/hooks/**`, `.claude/settings.json`), so a later commit can't quietly edit or delete the rules governing it. `scopeGuidance`'s `maxFilesPerChange`/`maxLinesPerChange` are enforced too (genesis commit exempt) — a large, unreviewed change is a risk on its own, regardless of what it contains. Every `GUARDRAILS_BYPASS` override is durably recorded in `.agent-room/guardrails-bypass-log.md`, not just printed to a terminal that scrolls away. *[Actively enforced via a git pre-commit hook when Git adapter selected]*
-- **Session Log & Schema Validation**: `validate` lints skill frontmatter and the guardrails schema; `lint-sessions` validates session logs against required structure. Both run as a scaffolded CI workflow on every push/PR when the Git adapter is selected. *[Actively enforced; fails the build if malformed]*
-- **Multi-Agent Coordination**: Scaffolds templates for handoffs, scope boundaries, and structured session logs. *[Guidance only; requires human discipline to follow protocols]*
-- **Inheritance & Composition**: Composes templates sequentially from base structures, stack-specific files (e.g. Python, React), org-specific conventions (`--org <name>`), and project overrides. *[Framework provided; stack templates must be created or inherited]*
-- **Built-in & External Skill Packs**: Standard templates (testing, security, database-migrations, api-design, code-review, performance, observability, docs) or remote skill packs directly from Git repositories and local paths. *[Documentation and guidance; not executable rules]*
-- **Observability Metrics Dashboard**: Parse and compile analytics (success rates, classifications, file modifications volumes) from agent session logs. *[Post-hoc aggregation; not real-time monitoring]*
-- **PR Description Generator**: Automatically extract Goal, Touched Files, Actions, and Handoff notes from the latest session log to generate standard Pull Request descriptions.
+- **Agent Runtime Enforcement (Stop Hooks)**: Shared checker for **Claude Code** (`Stop` → `exit 2`) and **Cursor** (`stop` → `followup_message`). **Evidence-lite** validates log-file diffs, not just porcelain touches. Requires `--tools claude` and/or `--tools cursor`.
+- **Compliance Evals (`eval`)**: Packaged regression pack for close-the-loop, `lint-sessions`, and `validate` — `--format json|csv` for CI dashboards. Exit `1` on failure. No LLM.
+- **Agent Guardrails**: `guardrails.json` — protected paths, forbidden regex/literal patterns, `scopeGuidance` limits, durable bypass audit log. *[Pre-commit hook when `--tools git`]*
+- **Multi-Tool Sync (`sync`)**: Mirrors `.agent-room/skills/` → `.claude/skills/`; regenerates Cursor `.cursor/rules/agent-room.mdc` and Windsurf/Cline/Codex rule files from the current skill list.
+- **Session Log & Schema Validation**: `validate` + `lint-sessions` in scaffolded CI when `--tools git`. *[Fails build if malformed]*
+- **Health Check (`doctor`)**: Read-only drift/advisory report — hook template drift, stale CI pins, unwired tools. Never writes to disk.
+- **Multi-Agent Coordination**: Handoff, scope, session log templates. *[Guidance only — `--profile full`]*
+- **Inheritance & Composition**: Base → stack → org → project template layers.
+- **Built-in & External Skill Packs**: testing, security, release, code-review, etc., or remote Git/local paths via `--skill-packs`.
+- **Observability Metrics**: Post-hoc session dashboard from `.agent-room/sessions/`.
+- **PR Description Generator**: Latest session log → PR template (`pr-desc --write`).
 
 ---
 
@@ -37,10 +41,12 @@ Not every feature here is enforced this way — see [Feature Categories](#featur
 ### 🟢 Actively Enforced Features
 These features actively constrain behavior and will fail/block operations if violated:
 
-- **Agent Runtime Enforcement (Stop Hook)** — Claude Code's `Stop` hook blocks an agent from ending its turn if it changed files without updating `anti-patterns.md`/`decisions.md`; Cursor's `stop` hook runs the same check and continues the loop with `followup_message` instead of a hard block (requires `--tools claude` and/or `--tools cursor`)
-- **Agent Guardrails** — Pre-commit hook blocks commits to protected paths, with forbidden patterns, or exceeding declared change-scope limits; every bypass is durably logged (optional; requires `--tools git`)
-- **Session Log Validation** — `lint-sessions` command validates all session logs against schema; fails CI with exit code 1 if malformed. With the `git` adapter, a `.github/workflows/agent-room-validate.yml` workflow is scaffolded automatically to run `validate` and `lint-sessions` on every push/PR.
-- **Skill Frontmatter Validation** — `validate` command lints skill YAML headers
+- **Agent Runtime Enforcement** — Claude `Stop` + Cursor `stop` hooks; evidence-lite diff validation on log files
+- **Compliance Evals** — `eval` runs builtin regression scenarios; `--format json|csv`; exit `1` on failure
+- **Agent Guardrails** — Pre-commit hook (optional; `--tools git`); bypass audit log
+- **Session Log Validation** — `lint-sessions` + scaffolded CI workflow (`--tools git`)
+- **Skill Frontmatter Validation** — `validate` command
+- **Multi-Tool Sync** — `sync` keeps Claude skills and Cursor/Windsurf/Cline/Codex rules aligned with `.agent-room/skills/`
 
 ### 🟡 Prescriptive Guidance (Requires Human Discipline)
 These features provide templates and protocols that agents must choose to follow:
@@ -64,7 +70,7 @@ Some features depend on agents choosing to follow documented guidance. **There i
 
 - **Workflow Classification** — Agents must tag work as Bug / Enhancement / Feature / Product when creating session logs
 - **Following Coordination Protocols** — Agents must read and follow handoff, scope, and session log format guidelines
-- **Writing good Decisions & Anti-patterns entries** — Claude Code's Stop hook and Cursor's stop hook force the *act* of logging (or an explicit waiver) before an agent can finish cleanly, but they can't judge whether an entry is any good, and the tool never auto-populates content; Windsurf/Cline/Codex still get no equivalent runtime check
+- **Writing good Decisions & Anti-patterns entries** — Stop hooks force logging or a valid waiver; evidence-lite checks *structure* in the diff, not prose quality. Windsurf/Cline/Codex have rule files but no runtime stop hook.
 - **Applying Principles** — Agents must read the principles playbook and apply them; the tool provides no real-time guidance
 - **Respecting Tool Rules** — Tool adapters (Claude, Cursor, etc.) provide guidance files, but tools decide whether/how to apply them
 
@@ -80,49 +86,86 @@ for an honest comparison, including where this tool currently loses.
 
 ## Usage
 
-`create-agent-room` is published on npm, so the usual entry point is `npx`
-— no install step needed:
+`create-agent-room` is published on npm. **Install once, then invoke directly**
+— don't use `npx` for automation or repeat runs; its temporary install/exec
+path has failed intermittently (including on GitHub-hosted runners — see
+`.agent-room/anti-patterns.md`). An explicit global install is reliable:
+
+```bash
+npm install -g create-agent-room
+```
+
+| Command | Purpose |
+| ------- | ------- |
+| `init` | Scaffold agent-room structure, hooks, and tool adapters |
+| `sync` | Mirror `.agent-room/skills/` → Claude/Cursor/Windsurf/Cline/Codex |
+| `validate` | Structural + schema checks (exit `1` on failure) |
+| `lint-sessions` | Session log schema validation (exit `1` on failure) |
+| `eval` | Packaged compliance regression scenarios (exit `1` on failure) |
+| `metrics` | Session log observability dashboard |
+| `pr-desc` | Generate PR description from latest session log |
+| `doctor` | Read-only health check (never writes) |
 
 ```bash
 # Initialize a new project with all tool adapters, git initialization, and specific skill packs:
-npx create-agent-room init ../my-project --tools claude,cursor,git --git --skill-packs testing,security,observability
+create-agent-room init ../my-project --tools claude,cursor,git --git --skill-packs testing,security,observability
 
 # Scaffolding using template inheritance (Base -> Python stack -> Acme Org rules):
-npx create-agent-room init . --yes --language python --org acme
+create-agent-room init . --yes --language python --org acme
 
 # Fetching skill packs dynamically from a remote git repository:
-npx create-agent-room init . --yes --skill-packs https://github.com/my-org/custom-skills.git
+create-agent-room init . --yes --skill-packs https://github.com/my-org/custom-skills.git
 
 # Preview exactly what init would create/skip, writing nothing to disk:
-npx create-agent-room init . --tools claude,git --git --dry-run
+create-agent-room init . --tools claude,git --git --dry-run
 
 # Opt into the full guidance corpus (principles, workflow classifier, coordination protocols):
-npx create-agent-room init . --yes --profile full --tools claude,git --git
+create-agent-room init . --yes --profile full --tools claude,git --git
+
+# Mirror skills and regenerate tool rule files after editing .agent-room/skills/:
+create-agent-room sync .
+
+# Verify mirrors are up to date without rewriting (CI-friendly):
+create-agent-room sync . --check
 
 # Run integrity validation on the room (exits with code 1 if files are missing or skill frontmatter is malformed):
-npx create-agent-room validate .
+create-agent-room validate .
+
+# Validate session logs against required structure (exits 1 on error):
+create-agent-room lint-sessions .
+
+# Run packaged compliance regression scenarios (no LLM):
+create-agent-room eval
+create-agent-room eval --format json --output compliance-report.json
 
 # Generate an observability report dashboard based on session logs:
-npx create-agent-room metrics .
+create-agent-room metrics .
 
 # Generate a Pull Request description from the latest session log and save it:
-npx create-agent-room pr-desc . --write
+create-agent-room pr-desc . --write
 
 # Read-only health check — works whether or not init has been run yet, writes nothing:
-npx create-agent-room doctor .
+create-agent-room doctor .
 ```
+
+Pin a version when reproducibility matters: `npm install -g create-agent-room@2.2.0`.
+For a project-local install, use `npm install create-agent-room` and
+`./node_modules/.bin/create-agent-room` (or add an npm script).
 
 **Example: Init Command**
 
 ![Create Agent Room Init Output](docs/images/media__1783509718671.png)
 
 If you're working from a clone of this repo instead (contributing, or
-testing an unreleased change), swap `npx create-agent-room` for
-`node bin/cli.js`:
+testing an unreleased change), use `node bin/cli.js` in place of
+`create-agent-room`:
 
 ```bash
 node bin/cli.js init my-new-project
+node bin/cli.js sync .
 node bin/cli.js validate .
+node bin/cli.js lint-sessions .
+node bin/cli.js eval
 node bin/cli.js metrics .
 node bin/cli.js pr-desc . --write
 node bin/cli.js doctor .
@@ -145,6 +188,9 @@ AGENTS.md                          Generic entry point read by any agent
   guardrails-bypass-log.md         Append-only, auto-written record of every GUARDRAILS_BYPASS use
   anti-patterns.md                 Append-only negative-knowledge log (starts empty)
   decisions.md                     Append-only decisions log (starts empty)
+  hooks/                           [--tools claude and/or cursor]
+    close-the-loop-check.js        Shared Stop/stop hook (Claude exit 2, Cursor followup_message)
+    closing-the-loop-evidence.js   Evidence-lite diff validation for log files
   skills/
     brainstorming.md               Brainstorming rules, hard-gated
     writing-plans.md               Design-to-task plan blueprints
@@ -160,6 +206,8 @@ AGENTS.md                          Generic entry point read by any agent
   sessions/                        Directory where session logs get saved
 docs/plans/                        Where design docs and task plans get saved
 .agent-room.json                   Project config tracking language, tools, branch, skill packs, and profile
+.claude/                           [--tools claude] skills mirror + settings.json Stop hook
+.cursor/rules/                     [--tools cursor] agent-room.mdc rule (regenerated by sync)
 ```
 
 `--profile minimal` (the default) skips the two rows and the whole
@@ -201,29 +249,12 @@ Performs structural validation and linting on the room. Returns exit code `1` on
 
 ![Validation Failed Output](docs/images/media__1783509718346.png)
 
-### 4. `metrics [target-dir]`
-
-Aggregates all JSON and Markdown session logs inside `.agent-room/sessions/` and renders a clean CLI dashboard detailing outcome success rates, task type distributions, and overall file edit volumes.
-
-**Example: Metrics Dashboard**
-
-![Agent Session Dashboard](docs/images/media__1783509718617.png)
-
-### 5. `pr-desc [target-dir]`
-
-Parses the latest session log inside `.agent-room/sessions/` (based on timestamp filename order) and formats it into a Pull Request description template.
-
-- Use `--write` (or `-w`) to output and save it directly to `.agent-room/pr-description.md`.
-
-**Example: PR Description Output**
-
-![Pull Request Description](docs/images/media__1783509718632.png)
-
-### 6. `lint-sessions [target-dir]`
+### 4. `lint-sessions [target-dir]`
 
 Validates all session logs in `.agent-room/sessions/` against the required schema (Date, Agent, Classification, Goal, Files touched, Actions taken, Tests run, Decisions, Outcome).
 
 - Returns exit code `1` if validation fails (suitable for CI gating)
+- Rejects placeholder `Decisions made` when status is `Completed`
 - Reports errors (missing required sections) and warnings (invalid classifications, missing files)
 
 **Usage in CI:**
@@ -235,13 +266,31 @@ Validates all session logs in `.agent-room/sessions/` against the required schem
   run: create-agent-room lint-sessions .
 ```
 
-(Prefer an explicit install over `npx create-agent-room ...` in CI — npx's
-temporary-install/exec-resolution path has been observed to fail
-intermittently on GitHub-hosted runners.)
+(Use `npm install -g create-agent-room` — not `npx` — so install and exec
+are separate, diagnosable steps. The scaffolded `init --tools git` workflow
+does this automatically.)
 
 Already ran `init --tools git`? Use the workflow file it scaffolded
 instead of writing this by hand — see [GitHub Action](#github-action)
 below for when to use which.
+
+### 5. `metrics [target-dir]`
+
+Aggregates all JSON and Markdown session logs inside `.agent-room/sessions/` and renders a clean CLI dashboard detailing outcome success rates, task type distributions, and overall file edit volumes.
+
+**Example: Metrics Dashboard**
+
+![Agent Session Dashboard](docs/images/media__1783509718617.png)
+
+### 6. `pr-desc [target-dir]`
+
+Parses the latest session log inside `.agent-room/sessions/` (based on timestamp filename order) and formats it into a Pull Request description template.
+
+- Use `--write` (or `-w`) to output and save it directly to `.agent-room/pr-description.md`.
+
+**Example: PR Description Output**
+
+![Pull Request Description](docs/images/media__1783509718632.png)
 
 ### 7. `doctor [target-dir]`
 
@@ -263,17 +312,42 @@ ever been run. Writes nothing to disk, regardless of what it finds.
 Unlike `init --force`, `doctor` never writes — it's the tool to reach for
 when you just want to know what's wrong before deciding whether to fix it.
 
+### 8. `eval`
+
+Runs the **packaged compliance regression pack** shipped with the CLI —
+deterministic scenarios for close-the-loop, `lint-sessions`, and `validate`
+(no LLM, no API keys). Useful in CI to confirm governance checks still
+behave as intended after upgrades.
+
+```bash
+create-agent-room eval
+create-agent-room eval --format json --output compliance-report.json
+create-agent-room eval --suite close-the-loop
+```
+
+- Exit code `1` if any case fails
+- `--format text|json|csv` (default: `text`)
+- `--suite close-the-loop|lint-sessions|validate|all` (default: `all`)
+
 ---
 
 ## GitHub Action
 
 For repos that want CI validation without running `create-agent-room init`
-at all, `validate` and `lint-sessions` are also published as a composite
-[GitHub Action](action.yml):
+at all, `validate`, `lint-sessions`, and `eval` are also available — either
+via the composite [GitHub Action](action.yml) or by installing the CLI:
 
 ```yaml
 - uses: actions/checkout@v4
 - uses: sipandey/create-agent-room@v2
+```
+
+The Action runs `validate` and `lint-sessions`. To also run compliance
+regressions after upgrades, add a step:
+
+```yaml
+- run: npm install -g create-agent-room
+- run: create-agent-room eval --format json --output compliance-report.json
 ```
 
 This does the same thing as the `init --tools git`-scaffolded workflow
@@ -299,6 +373,10 @@ reference and examples: [docs/github-action.md](docs/github-action.md).
 | `--force`                  | Overwrite existing files instead of skipping them                                                                                                                                                                 |
 | `--dry-run`                | Print exactly what `init` would create/skip; write nothing to disk                                                                                                                                                |
 | `--write, -w`              | Save generated PR description output to `.agent-room/pr-description.md`                                                                                                                                           |
+| `--check`                  | `sync` only — verify mirrors are up to date without rewriting; exit `1` if drift detected                                                                                                                       |
+| `--format <text\|json\|csv>` | `eval` only — output format (default: `text`)                                                                                                                                                                   |
+| `--output <file>`          | `eval` only — write report to file instead of stdout                                                                                                                                                              |
+| `--suite <name>`           | `eval` only — `close-the-loop`, `lint-sessions`, `validate`, or `all` (default: `all`)                                                                                                                            |
 | `--verbose`                | Print detailed stack traces on failure                                                                                                                                                                            |
 | `-y, --yes`                | Skip all prompts, use defaults                                                                                                                                                                                    |
 

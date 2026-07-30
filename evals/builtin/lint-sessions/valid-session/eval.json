@@ -1,0 +1,7 @@
+{
+  "id": "valid-session",
+  "suite": "lint-sessions",
+  "description": "Well-formed session with real decisions when Completed",
+  "type": "lint-sessions",
+  "expect": "pass"
+}

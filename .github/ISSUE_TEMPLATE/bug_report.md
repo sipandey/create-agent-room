@@ -5,7 +5,7 @@ title: "[Bug] "
 labels: bug
 ---
 
-**create-agent-room version:** (`npx create-agent-room --help` or check your `package.json`/lockfile)
+**create-agent-room version:** (`create-agent-room --version`, or check your `package.json`/lockfile)
 **Node version:** (`node --version`)
 **OS:**
 

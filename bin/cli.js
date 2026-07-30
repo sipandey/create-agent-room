@@ -9,6 +9,7 @@ const { runValidate } = require('../lib/validate');
 const { runPrDesc } = require('../lib/pr');
 const { runLintSessions } = require('../lib/lint-sessions');
 const { runDoctor } = require('../lib/doctor');
+const { runEvalCli } = require('../lib/eval');
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -98,6 +99,30 @@ function parseArgs(argv) {
       args['skill-packs'] = a.slice('--skill-packs='.length);
     } else if (a.startsWith('--org=')) {
       args.org = a.slice('--org='.length);
+    } else if (a === '--format') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.format = argv[++i];
+      } else {
+        throw new Error('Error: --format option requires text, json, or csv.');
+      }
+    } else if (a === '--output') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.output = argv[++i];
+      } else {
+        throw new Error('Error: --output option requires a file path.');
+      }
+    } else if (a === '--suite') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.suite = argv[++i];
+      } else {
+        throw new Error('Error: --suite option requires a suite name.');
+      }
+    } else if (a.startsWith('--format=')) {
+      args.format = a.slice('--format='.length);
+    } else if (a.startsWith('--output=')) {
+      args.output = a.slice('--output='.length);
+    } else if (a.startsWith('--suite=')) {
+      args.suite = a.slice('--suite='.length);
     } else if (a.startsWith('--profile=')) {
       args.profile = a.slice('--profile='.length);
     } else if (a === '--help' || a === '-h' || a === 'help') {
@@ -125,6 +150,7 @@ Usage:
   create-agent-room lint-sessions [target-dir]
   create-agent-room pr-desc [target-dir] [options]
   create-agent-room doctor [target-dir]
+  create-agent-room eval [options]
 
 Options:
   --name <name>             Project name used in templates (default: target dir name)
@@ -140,6 +166,9 @@ Options:
   --force                   Overwrite existing files instead of skipping them
   --dry-run                 Print what init would create/skip; write nothing to disk
   --check, -c               Check if mirrored files are out of sync without writing changes
+  --format <text|json|csv>  eval output format (default: text)
+  --output <file>           Write eval report to a file (eval command)
+  --suite <name>            eval suite filter: close-the-loop, lint-sessions, validate, all
   --verbose                 Print detailed stack traces on failure
   --write, -w               Save generated PR description to .agent-room/pr-description.md
   -y, --yes                 Don't prompt; use defaults for anything unspecified
@@ -161,6 +190,8 @@ Examples:
   create-agent-room lint-sessions .
   create-agent-room pr-desc . --write
   create-agent-room doctor .
+  create-agent-room eval
+  create-agent-room eval --format json --output compliance-report.json
   create-agent-room --version
 
 Sync mirrors .agent-room/skills/ into .claude/skills/ (claude) and
@@ -200,6 +231,8 @@ async function main() {
     runPrDesc(target, args);
   } else if (command === 'doctor') {
     runDoctor(target);
+  } else if (command === 'eval') {
+    runEvalCli(args);
   } else {
     console.error(`Unknown command: ${command}`);
     printHelp();

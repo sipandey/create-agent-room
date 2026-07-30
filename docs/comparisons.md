@@ -152,7 +152,7 @@ be aware of that maturity gap reading the rest of this section.
   docs are explicit about this — Python-dependent checks report `WARN`
   instead of `FAIL` in `--no-python` mode), but create-agent-room never
   has a "degraded mode" to think about — it's Node stdlib only, always.
-- **npm/npx distribution.** `npx create-agent-room@version` needs
+- **npm distribution.** `npm install -g create-agent-room@version` needs
   nothing pre-cloned. agentic-os's quick start is `git clone` + run a
   deploy script from inside the clone — one more step, and one you
   repeat (or script yourself) per target repo.

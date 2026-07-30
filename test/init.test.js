@@ -626,7 +626,7 @@ test('runInit: prints the validate-command next step when no git adapter is acti
   );
 
   assert.match(output, /Nothing is actively enforced yet/);
-  assert.match(output, /Next: run npx create-agent-room validate \. to check the room before you start working\./);
+  assert.match(output, /Next: run create-agent-room validate \. to check the room before you start working \(install with npm install -g create-agent-room if needed\)\./);
 });
 
 // --dry-run

@@ -50,4 +50,8 @@ test('npm package still includes the packaged templates and examples', () => {
     files.some((f) => f === 'examples/python-project/AGENTS.md'),
     'examples/*/AGENTS.md fixtures should still be packaged'
   );
+  assert(
+    files.some((f) => f.startsWith('evals/builtin/')),
+    'evals/builtin compliance fixtures should be packaged'
+  );
 });

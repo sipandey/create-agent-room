@@ -25,8 +25,8 @@ cd create-agent-room
 npm install
 ```
 
-Run the CLI from source with `node bin/cli.js` instead of `npx
-create-agent-room` (same convention the README uses):
+Run the CLI from source with `node bin/cli.js` instead of the globally
+installed `create-agent-room` command (same convention the README uses):
 
 ```bash
 node bin/cli.js init /tmp/test-project --yes --tools claude,git --git

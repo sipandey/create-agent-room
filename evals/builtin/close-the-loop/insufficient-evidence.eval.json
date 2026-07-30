@@ -1,0 +1,14 @@
+{
+  "id": "insufficient-evidence",
+  "suite": "close-the-loop",
+  "description": "Log touched with whitespace-only diff should fail",
+  "type": "close-the-loop",
+  "expect": "fail",
+  "input": {
+    "hasAgentRoom": true,
+    "isGitRepo": true,
+    "statusPorcelain": " M src/index.js\n M .agent-room/decisions.md\n",
+    "logDiff": "--- a/x\n+++ b/x\n@@\n+\n"
+  },
+  "assert": { "reason": "insufficient-evidence" }
+}

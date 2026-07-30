@@ -1,0 +1,13 @@
+{
+  "id": "valid-waiver",
+  "suite": "close-the-loop",
+  "description": "Valid no-log waiver in diff should pass",
+  "type": "close-the-loop",
+  "expect": "pass",
+  "input": {
+    "hasAgentRoom": true,
+    "isGitRepo": true,
+    "statusPorcelain": " M src/index.js\n M .agent-room/decisions.md\n",
+    "logDiff": "--- a/.agent-room/decisions.md\n+++ b/.agent-room/decisions.md\n@@\n+<!-- no-log: routine validation run for eval fixture -->\n"
+  }
+}

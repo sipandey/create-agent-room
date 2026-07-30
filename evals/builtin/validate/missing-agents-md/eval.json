@@ -1,0 +1,7 @@
+{
+  "id": "missing-agents-md",
+  "suite": "validate",
+  "description": "Room without AGENTS.md fails validate",
+  "type": "validate",
+  "expect": "fail"
+}

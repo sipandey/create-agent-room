@@ -1,0 +1,13 @@
+{
+  "id": "source-change-no-log",
+  "suite": "close-the-loop",
+  "description": "Source change without log touch should fail",
+  "type": "close-the-loop",
+  "expect": "fail",
+  "input": {
+    "hasAgentRoom": true,
+    "isGitRepo": true,
+    "statusPorcelain": " M src/index.js\n"
+  },
+  "assert": { "reason": "no-log-touch" }
+}

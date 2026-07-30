@@ -1,0 +1,7 @@
+{
+  "id": "placeholder-decisions",
+  "suite": "lint-sessions",
+  "description": "Completed session with placeholder Decisions made should fail",
+  "type": "lint-sessions",
+  "expect": "fail"
+}

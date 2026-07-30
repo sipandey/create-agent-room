@@ -1,0 +1,12 @@
+{
+  "id": "scaffold-only-changes",
+  "suite": "close-the-loop",
+  "description": "Only scaffold paths dirty should pass",
+  "type": "close-the-loop",
+  "expect": "pass",
+  "input": {
+    "hasAgentRoom": true,
+    "isGitRepo": true,
+    "statusPorcelain": " M .agent-room/decisions.md\n M .claude/skills/foo/SKILL.md\n"
+  }
+}

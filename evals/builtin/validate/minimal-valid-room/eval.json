@@ -1,0 +1,7 @@
+{
+  "id": "minimal-valid-room",
+  "suite": "validate",
+  "description": "Minimal profile room with required files passes validate",
+  "type": "validate",
+  "expect": "pass"
+}

@@ -10,6 +10,19 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+### Added
+
+- `eval` command: runs packaged compliance regression scenarios (close-the-loop,
+  lint-sessions, validate fixtures) with no LLM or API keys. Supports
+  `--format text|json|csv`, `--output <file>`, and `--suite` filter. Exit 1
+  when any case fails — suitable for CI gates and dashboard export.
+
+### Changed
+
+- README and init post-scaffold messaging now recommend `npm install -g
+  create-agent-room` followed by direct `create-agent-room` invocation
+  instead of `npx` (same pattern as CI and the scaffolded git workflow).
+
 ## [2.2.0] - 2026-07-30
 
 ### Added

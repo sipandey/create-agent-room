@@ -12,7 +12,7 @@ Claude Code can discover and invoke them (`/brainstorming`,
 `/verification-before-completion`, `/closing-the-loop`).
 
 `.agent-room/skills/` is the source of truth. If you edit a skill, re-run
-`npx create-agent-room sync` to refresh the `.claude/skills/` copies — don't
+`create-agent-room sync` to refresh the `.claude/skills/` copies — don't
 edit the `.claude/skills/` copies directly, they'll be overwritten.
 
 ## Closing-the-loop hook

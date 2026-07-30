@@ -11,7 +11,8 @@ that was scaffolded by hand.
 
 `create-agent-room init --tools git` scaffolds a workflow file
 (`.github/workflows/agent-room-validate.yml`) that calls the same two
-commands directly via `npx`. If you've already run `init --tools git`,
+commands via an explicit `npm install -g` followed by direct invocation.
+If you've already run `init --tools git`,
 **use that scaffolded workflow, not this Action** — they do the same
 thing, and running both is redundant, not additive.
 
@@ -21,7 +22,7 @@ Use this Action instead when:
   this repo, but want the CI check anyway.
 - You're checking a subdirectory or a repo someone else scaffolded.
 - You want Marketplace-style discoverability (`uses:
-  sipandey/create-agent-room@v2`) instead of a `run: npx ...` step.
+  sipandey/create-agent-room@v2`) instead of hand-writing install/run steps.
 
 Either path runs identical checks — pick one per repo, not both.
 
@@ -55,8 +56,8 @@ calling workflow's job).
 | --------------- | ------- | ---------------------------------------------------------------------- |
 | `target-dir`    | `.`     | Directory containing the `.agent-room/` scaffold to check              |
 | `checks`        | `both`  | `both`, `validate`, or `lint-sessions`                                 |
-| `version`       | pinned to the version this Action ships with | `create-agent-room` version to run via `npx`, e.g. `2.0.1` or `latest` |
-| `node-version`  | `20`    | Node.js version set up before running `npx`                            |
+| `version`       | pinned to the version this Action ships with | `create-agent-room` version to install globally, e.g. `2.0.1` or `latest` |
+| `node-version`  | `20`    | Node.js version set up before installing/running the CLI                 |
 
 None of these are required — omit anything you don't need to override.
 
@@ -88,7 +89,7 @@ unreleased fix):
 
 Same reasoning as the scaffolded workflow's `{{CAR_VERSION}}`
 interpolation (see `templates/adapters/ci/github-actions.yml.tmpl`): an
-unpinned `npx create-agent-room@latest` means the same commit can pass CI
+unpinned `create-agent-room@latest` means the same commit can pass CI
 one week and fail the next, purely from an upstream release, with no way
 to reproduce a past CI run. The Action's default `version` input is
 bumped in lockstep with `package.json`'s version at release time — see
