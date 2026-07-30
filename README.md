@@ -178,7 +178,7 @@ Scaffold the agent workspace. If files already exist in the target, they are ski
 Synchronize custom skills from `.agent-room/skills/` into tool-specific mirrors:
 
 - **Claude** (when listed in `.agent-room.json`): `.claude/skills/<name>/SKILL.md`
-- **Cursor** (when listed): regenerate `.cursor/rules/agent-room.md` from the packaged template + current skill list
+- **Cursor** (when listed): regenerate `.cursor/rules/agent-room.mdc` from the packaged template + current skill list
 
 - Run with `--check` to verify mirrors are out of date without rewriting them.
 - Sync will automatically skip overwriting files if they have uncommitted tracked edits, unless `--force` is used.

@@ -215,7 +215,7 @@ These provide a framework that requires external setup or effort:
 - **What it is:** Synchronizing custom skills/rules from `.agent-room/skills/` into tool-specific locations
 - **Current state:**
   - ✅ Sync works for Claude (`.claude/skills/` ↔ `.agent-room/skills/`)
-  - ✅ Sync regenerates Cursor `.cursor/rules/agent-room.md` from the packaged template + current skill list (not a Cursor `SKILL.md` tree — convention not assumed)
+  - ✅ Sync regenerates Cursor `.cursor/rules/agent-room.mdc` from the packaged template + current skill list (`alwaysApply: true` frontmatter; not a Cursor `SKILL.md` tree — convention not assumed)
   - ❌ Sync not implemented for Windsurf, Cline, Codex
   - ❌ Sync is one-way (only agent-room → tool, not tool → agent-room)
 - **Reality:** Claude skills mirror + Cursor rules refresh; other adapters still need manual updates after skill edits

@@ -84,11 +84,11 @@ test('runSync: refreshes Cursor rules when tools include cursor', (t) => {
     JSON.stringify({ name: 'SyncCursorProj', tools: ['cursor'] })
   );
   fs.mkdirSync(path.join(tmpDir, '.cursor', 'rules'), { recursive: true });
-  fs.writeFileSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.md'), '# stale\n');
+  fs.writeFileSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.mdc'), '# stale\n');
 
   runSync(tmpDir);
 
-  const rules = fs.readFileSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.md'), 'utf8');
+  const rules = fs.readFileSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.mdc'), 'utf8');
   assert.match(rules, /SyncCursorProj/);
   assert.match(rules, /brainstorming/);
   assert.match(rules, /closing-the-loop/);
@@ -115,7 +115,7 @@ test('runSync: claude+cursor syncs both destinations', (t) => {
     '# My Skill'
   );
   assert.match(
-    fs.readFileSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.md'), 'utf8'),
+    fs.readFileSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.mdc'), 'utf8'),
     /my-skill/
   );
 });
@@ -142,7 +142,7 @@ test('runSync --check: reports Cursor rules drift', (t) => {
   runSync(tmpDir, { check: true });
   assert.strictEqual(process.exitCode, undefined, 'in-sync Cursor rules should pass --check');
 
-  fs.writeFileSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.md'), '# drifted\n');
+  fs.writeFileSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.mdc'), '# drifted\n');
   process.exitCode = undefined;
   runSync(tmpDir, { check: true });
   assert.strictEqual(process.exitCode, 1, 'drifted Cursor rules should fail --check');

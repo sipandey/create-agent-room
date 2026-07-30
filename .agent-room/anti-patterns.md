@@ -21,6 +21,21 @@ Append a new entry every time:
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-07-30 — Cursor rules scaffolded as plain `.md` with broken relative links
+
+**What happened:** dogfood validation in Cursor showed the agent ignored
+governance entirely and (initially) no stop-hook follow-up. The hook script
+was fine; Cursor never loaded `.cursor/rules/agent-room.md` because Cursor
+expects `.mdc` files with YAML frontmatter (`alwaysApply: true` for
+always-on rules). Links used `../AGENTS.md` from `.cursor/rules/`, which
+resolves to `.cursor/AGENTS.md` (nonexistent), not the repo root.
+**Root cause:** scaffold copied a plain markdown file using an outdated
+`.cursorrules`-style layout instead of the current `.cursor/rules/*.mdc`
+convention.
+**Avoid:** scaffold Cursor adapter output as `.cursor/rules/agent-room.mdc`
+with `alwaysApply: true` and `../../`-relative links to repo-root files;
+verify in a real Cursor window, not just CLI hook simulation.
+
 ### 2026-07-29 — treat only tracked modifications as "dirty" in sync skip logic
 
 **What happened:** Cursor rules sync skipped overwriting an existing

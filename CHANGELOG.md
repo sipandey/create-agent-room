@@ -53,8 +53,8 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 - Close-the-loop hook is shared across Claude and Cursor (scaffold path
   prefixes now include `.cursor/hooks.json` / `.cursor/hooks/`). Cursor
-  rules template documents the stop-hook expectation and interpolates
-  `{{SKILL_LIST}}`.
+  rules scaffold as `.cursor/rules/agent-room.mdc` with `alwaysApply: true`
+  and correct `../../AGENTS.md` links (plain `.md` rules were not loaded).
 
 ### Fixed
 

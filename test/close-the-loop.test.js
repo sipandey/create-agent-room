@@ -72,7 +72,7 @@ test('checkClosingTheLoop: passes when only scaffold paths changed', () => {
     hasAgentRoom: true,
     isGitRepo: true,
     statusPorcelain:
-      ' M .agent-room/skills/foo.md\n M docs/plans/x.md\n M .cursor/hooks.json\n M .cursor/rules/agent-room.md\n'
+      ' M .agent-room/skills/foo.md\n M docs/plans/x.md\n M .cursor/hooks.json\n M .cursor/rules/agent-room.mdc\n'
   });
   assert.strictEqual(result.ok, true);
 });
