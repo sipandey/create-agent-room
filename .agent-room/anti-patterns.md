@@ -21,6 +21,18 @@ Append a new entry every time:
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-08-03 — agent-room-validate fails ETARGET right after a version-bump push
+
+**What happened:** `agent-room-validate` failed on the v2.3.1 release commit
+(and v2.3.0 before it) with `No matching version found for
+create-agent-room@X.Y.Z` while main `CI` passed.
+**Root cause:** the dogfood workflow installs the pinned version from npm, but
+the release commit was pushed before `npm publish` made that version available
+on the registry.
+**Avoid:** publish to npm before pushing the pin bump, or re-run
+`agent-room-validate` immediately after publish. See
+`docs/launch/release-checklist.md`.
+
 ### 2026-07-30 — Cursor rules scaffolded as plain `.md` with broken relative links
 
 **What happened:** dogfood validation in Cursor showed the agent ignored

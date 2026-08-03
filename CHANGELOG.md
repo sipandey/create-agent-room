@@ -10,6 +10,11 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+### Changed
+
+- Release checklist (`docs/launch/release-checklist.md`) documents npm
+  publish-before-push order for dogfood CI pins.
+
 ## [2.3.1] - 2026-08-03
 
 ### Added

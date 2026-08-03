@@ -145,16 +145,24 @@ must be bumped in lockstep, not left to drift. To cut a release:
    don't silently fold a version bump into an unrelated commit's message.
 9. **Tag the release commit:** `git tag vX.Y.Z` (matches existing tags:
    `v1.2.1`, `v1.3.0`). Marketplace consumers pin to major-version tags
-   (`sipandey/create-agent-room@v1`), so also move/create the rolling
-   `v1` tag to point at the new release commit if this is a `v1.x.y`
-   release — see `docs/github-action.md` for consumer-facing detail. (Tag
-   management for the Action is a human/CD step, not something this
-   session performs — see the "Do not run" note below.)
+   (`sipandey/create-agent-room@v2`), so also move/create the rolling
+   `v2` tag to point at the new release commit if this is a `v2.x.y`
+   release — see `docs/github-action.md` for consumer-facing detail.
+10. **`npm publish`** — must complete **before** `git push` if the dogfood
+    workflow (`.github/workflows/agent-room-validate.yml`) pins the new
+    version; that job installs from the registry, not the checkout. If you
+    already pushed and `agent-room-validate` failed with `ETARGET`, publish
+    then `gh run rerun <id> --failed`. Full order:
+    `docs/launch/release-checklist.md`.
+11. **Push:** `git push origin main && git push origin vX.Y.Z` (and
+    `git push origin v2 --force` if the rolling major tag moved).
+12. **GitHub Release:** `gh release create vX.Y.Z ...` (or verify the tag
+    release on github.com).
+13. **Marketplace (optional):** publish the Action from the release page —
+    `docs/launch/marketplace-publish.md`.
 
-**Do not run `npm publish`, `git push`, or `git push --tags` yourself.**
-Publishing and pushing a tag are irreversible and externally visible —
-prepare everything above locally, then stop and hand off to a human to
-review the diff and push/publish.
+**Do not run `npm publish`, `git push`, or `git push --tags` yourself**
+unless the human explicitly asked for that step in the session.
 
 ### Roadmap & issue conventions
 

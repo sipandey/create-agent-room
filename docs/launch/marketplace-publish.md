@@ -6,6 +6,8 @@ CI).
 
 ## Prerequisites
 
+- [ ] Version bumped and tested locally (see `release-checklist.md`)
+- [ ] **`npm publish` succeeded** before relying on the dogfood CI pin
 - [ ] v2.3.1 tagged and pushed to `main`
 - [ ] `git tag v2.3.1` points at the release commit
 - [ ] Rolling major tag `v2` updated to the release commit:
