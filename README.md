@@ -5,6 +5,14 @@
 
 **Define your agent governance rules once. `create-agent-room` enforces them at every layer an agent passes through — while it's working (Claude + Cursor stop hooks), when it commits, and in CI (including compliance evals) — instead of just documenting them and hoping.**
 
+**Try it in 30 seconds** (no global install required for a one-off):
+
+```bash
+npx create-agent-room@latest init . --yes --tools git,cursor --git
+```
+
+Then edit a file, try to end an agent turn without logging a decision, and watch the stop hook block you. Reproduce the full demo with `bash scripts/demo.sh`.
+
 ![Demo: a scaffolded pre-commit hook blocking a staged AWS key, then the Claude Code Stop hook blocking an agent turn without a logged decision](docs/demo.gif)
 
 *A staged AWS key blocked at commit time, then the same for an agent turn ending without a logged decision — both real, unmocked output. Reproduce it yourself with `bash scripts/demo.sh`.*
@@ -173,7 +181,7 @@ create-agent-room pr-desc . --write
 create-agent-room doctor .
 ```
 
-Pin a version when reproducibility matters: `npm install -g create-agent-room@2.3.0`.
+Pin a version when reproducibility matters: `npm install -g create-agent-room@2.3.1`.
 For a project-local install, use `npm install create-agent-room` and
 `./node_modules/.bin/create-agent-room` (or add an npm script).
 

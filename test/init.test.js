@@ -226,6 +226,27 @@ test('runInit: packaged templates/stacks/python override is actually used for --
   assert.match(agentsContent, /Virtual Environment/, 'AGENTS.md should contain Python-specific content, not the generic base template');
 });
 
+test('runInit: packaged templates/stacks/javascript override is used for --language javascript', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-packaged-javascript-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+
+  t.after(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  await runInit(tmpDir, {
+    yes: true,
+    tools: 'none',
+    name: 'PackagedJavascriptTest',
+    language: 'javascript',
+    force: true
+  });
+
+  const agentsContent = fs.readFileSync(path.join(tmpDir, 'AGENTS.md'), 'utf8');
+  assert.match(agentsContent, /JavaScript-specific workflow/, 'AGENTS.md should contain JavaScript-specific content');
+  assert.match(agentsContent, /node --test/, 'AGENTS.md should reference Node test runner');
+});
+
 const { detectWorkspace } = require('../lib/init');
 
 test('detectWorkspace: detects Cargo.toml correctly', () => {
@@ -767,7 +788,7 @@ test('runInit --profile minimal: AGENTS.md does not reference principles.md/work
   fs.mkdirSync(tmpDir, { recursive: true });
   t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
 
-  await runInit(tmpDir, { yes: true, tools: 'none', name: 'ProfileAgentsMinimalTest', force: true });
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'ProfileAgentsMinimalTest', language: 'rust', force: true });
   const agentsContent = fs.readFileSync(path.join(tmpDir, 'AGENTS.md'), 'utf8');
 
   // No dangling links/instructions pointing at files that don't exist under
@@ -787,7 +808,7 @@ test('runInit --profile full: AGENTS.md references principles.md/workflow-classi
   fs.mkdirSync(tmpDir, { recursive: true });
   t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
 
-  await runInit(tmpDir, { yes: true, tools: 'none', name: 'ProfileAgentsFullTest', profile: 'full', force: true });
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'ProfileAgentsFullTest', profile: 'full', language: 'rust', force: true });
   const agentsContent = fs.readFileSync(path.join(tmpDir, 'AGENTS.md'), 'utf8');
 
   assert.match(agentsContent, /principles\.md/);

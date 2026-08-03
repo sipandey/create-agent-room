@@ -27,7 +27,7 @@ check it yourself before repeating it.
 | Evidence/phase gating | Evidence-lite on stop hooks (diff must contain a valid waiver or `### YYYY-MM-DD` entry); `lint-sessions` rejects placeholder decisions on completed sessions — not per-task phase sequencing | None built in | `validate.sh` parses per-task work logs against required phases | None |
 | Multi-tool | Claude + Cursor runtime stop hooks; Windsurf/Cline/Codex get synced rule files (`sync` regenerates `.windsurfrules`, `.clinerules`, `.codexrules`, Cursor `.cursor/rules/agent-room.mdc`) — no stop hook outside Claude/Cursor | Whatever you build per tool | Claude/Codex/Gemini native; Cursor/Copilot "compatible" | Whichever tool reads the file |
 | Runtime deps | Zero (Node stdlib only) | Whatever you pick (gitleaks, pre-commit.com, Docker) | None hard-required; Python 3.9+ "recommended" for full validation, degrades to advisory without it | None |
-| Maturity (as of 2026-08-03) | v2.3.0 on npm, 0 GitHub stars, created 2026-07-08 — published and actively shipping | N/A (a practice, not a project) | 66 stars, 17 forks, v1.8.9, created 2026-04-12, active **[VERIFY]** | N/A |
+| Maturity (as of 2026-08-03) | v2.3.1 on npm, 0 GitHub stars, created 2026-07-08 — published and actively shipping | N/A (a practice, not a project) | 66 stars, 17 forks, v1.8.9, created 2026-04-12, active **[VERIFY]** | N/A |
 
 ---
 
@@ -98,7 +98,7 @@ document — genuinely overlapping goals (gated workflow phases, evidence
 requirements, multi-tool `AGENTS.md`/`CLAUDE.md` distribution, required CI
 checks) and, as of this writing, considerably more mature: v1.8.9, created
 2026-04-12, 66 stars / 17 forks, actively shipping (last push 2026-07-09).
-create-agent-room shipped v2.3.0 on npm (2026-07-30) but its GitHub repo
+create-agent-room shipped v2.3.1 on npm (2026-08-03) but its GitHub repo
 was created 2026-07-08 and still has 0 stars as of this snapshot — be
 aware of that maturity gap reading the rest of this section.
 

@@ -10,16 +10,22 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+## [2.3.1] - 2026-08-03
+
 ### Added
 
 - Scaffolded `.github/workflows/agent-room-validate.yml` (git adapter) now
   includes a `create-agent-room eval` step by default — adopters get Layer 4
   compliance regression checks on every push/PR, matching the dogfood pattern
   in this repo's CI.
+- `templates/stacks/javascript/` stack template for the default `--language
+  javascript` init path.
+- `docs/launch/` playbooks: GitHub Marketplace publish, Show HN draft, community
+  posts, awesome-list PR templates.
 
 ### Changed
 
-- `docs/comparisons.md` refreshed for v2.3.0: Cursor stop hook + shared
+- `docs/comparisons.md` refreshed for v2.3.0+: Cursor stop hook + shared
   checker via `sync`, evidence-lite (B.1) instead of presence-only gating,
   multi-tool `sync` for Windsurf/Cline/Codex, and updated maturity snapshot
   (2026-08-03).
@@ -27,6 +33,7 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
   scaffolded CI (`--tools git`) is documented as running `validate`,
   `lint-sessions`, and `eval` (composite GitHub Action still runs only the
   first two).
+- npm `description` and `keywords` emphasize enforcement over scaffolding.
 
 ## [2.3.0] - 2026-07-30
 
@@ -517,7 +524,8 @@ default (e.g. a script asserting `principles.md` exists after a bare
 - `package.json` now includes `repository`, `homepage`, `bugs`,
   `keywords`, and `author` metadata for npm.
 
-[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v2.3.0...HEAD
+[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v2.3.1...HEAD
+[2.3.1]: https://github.com/sipandey/create-agent-room/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/sipandey/create-agent-room/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/sipandey/create-agent-room/compare/v2.1.0...v2.2.0
 [2.1.0]: https://github.com/sipandey/create-agent-room/compare/v2.0.1...v2.1.0

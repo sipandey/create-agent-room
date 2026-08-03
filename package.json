@@ -1,7 +1,7 @@
 {
   "name": "create-agent-room",
-  "version": "2.3.0",
-  "description": "Scaffold an LLM-agent-friendly project structure: AGENTS.md, principles, workflow classifier, anti-patterns/decisions logs, and core skills (brainstorming, writing-plans, TDD, systematic debugging, verification-before-completion).",
+  "version": "2.3.1",
+  "description": "Mechanical agent governance for Claude, Cursor, and CI: stop hooks, guardrails, session lint, and compliance evals — not just AGENTS.md.",
   "bin": {
     "create-agent-room": "bin/cli.js"
   },
@@ -36,7 +36,11 @@
     "scaffold",
     "cli",
     "agents-md",
-    "governance"
+    "governance",
+    "claude-code",
+    "github-actions",
+    "enforcement",
+    "devops"
   ],
   "author": "Siddharth Pandey",
   "scripts": {

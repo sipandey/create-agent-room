@@ -775,3 +775,5 @@ actually wires," with near-zero cost (packaged fixtures, no API keys, fast).
 Layer 4 unless they noticed and uncommented it, recreating the same
 "documented but not scaffolded" drift `validate`/`lint-sessions` had
 before v1.3.0.
+
+<!-- no-log: v2.3.1 release — version bump, lockfile, action.yml/CI pin, javascript stack, launch docs, npm description; CHANGELOG is the record. -->
