@@ -14,11 +14,11 @@ For what's enforced vs guidance-only, see [CAPABILITIES.md](../CAPABILITIES.md).
 | 1 | End of agent turn | Stop hooks + evidence-lite | `.agent-room/hooks/close-the-loop-check.js` (Claude `Stop`, Cursor `stop`) | Yes — Claude `exit 2`; Cursor `followup_message` |
 | 2 | `git commit` | Pre-commit guardrails | `.agent-room/hooks/guardrails-check.js` | Yes — exit 1; `GUARDRAILS_BYPASS` audited |
 | 3 | CI push/PR | Schema + session lint | `validate`, `lint-sessions` (scaffolded workflow when `--tools git`) | Yes — exit 1 fails the build |
-| 4 | After upgrades (optional) | Compliance regression pack | `create-agent-room eval` | Yes — exit 1 if fixtures fail |
+| 4 | CI push/PR | Compliance regression pack | `create-agent-room eval` (scaffolded workflow when `--tools git`) | Yes — exit 1 if fixtures fail |
 
-Layers 1–3 are the default adoption path. Layer 4 confirms the **tool's own
-checks** still behave after you upgrade the CLI — not that your model
-followed instructions.
+Layers 1–4 are the default adoption path when `--tools git` scaffolds CI.
+Layer 4 confirms the **tool's own checks** still behave after you upgrade
+the CLI — not that your model followed instructions.
 
 ## Layer 1: Stop hooks (runtime)
 
@@ -70,13 +70,16 @@ is scaffolded, or via the [GitHub Action](github-action.md)).
 - `create-agent-room validate` — required files, skill frontmatter, guardrails schema
 - `create-agent-room lint-sessions` — session log structure; rejects placeholder
   `Decisions made` when status is `Completed`
+- `create-agent-room eval` — packaged compliance regression fixtures (Layer 4;
+  see below)
 
 Install pattern: `npm install -g create-agent-room@<version>` then invoke
 directly — not `npx` (see `.agent-room/anti-patterns.md`).
 
 ## Layer 4: Compliance evals
 
-**Trigger:** You run `create-agent-room eval` (optionally in CI after upgrades).
+**Trigger:** Push or pull request (same scaffolded workflow as Layer 3), or
+manual `create-agent-room eval` locally.
 
 **What it tests:** Packaged fixtures under `evals/builtin/` — close-the-loop
 inputs, lint-sessions fixture dirs, validate fixture rooms. Pure functions, no

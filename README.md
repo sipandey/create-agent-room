@@ -3,7 +3,7 @@
 [![npm version](https://img.shields.io/npm/v/create-agent-room.svg)](https://www.npmjs.com/package/create-agent-room)
 [![CI](https://github.com/sipandey/create-agent-room/actions/workflows/ci.yml/badge.svg)](https://github.com/sipandey/create-agent-room/actions/workflows/ci.yml)
 
-**Define your agent governance rules once. `create-agent-room` enforces them at every layer an agent passes through — while it's working (Claude + Cursor stop hooks), when it commits, in CI, and optionally via compliance evals — instead of just documenting them and hoping.**
+**Define your agent governance rules once. `create-agent-room` enforces them at every layer an agent passes through — while it's working (Claude + Cursor stop hooks), when it commits, and in CI (including compliance evals) — instead of just documenting them and hoping.**
 
 ![Demo: a scaffolded pre-commit hook blocking a staged AWS key, then the Claude Code Stop hook blocking an agent turn without a logged decision](docs/demo.gif)
 
@@ -14,7 +14,7 @@ Most "AI agent guidelines" are a Markdown file an agent may or may not read. `cr
 1. **While the agent is working** — shared **Claude Code `Stop`** and **Cursor `stop`** hooks (`.agent-room/hooks/close-the-loop-check.js`) block or loop the turn when source files changed without logging to `.agent-room/decisions.md` or `anti-patterns.md`. **Evidence-lite** checks go further: the log-file *diff* must contain a valid waiver (`<!-- no-log: ... -->` with ≥20 chars and a deliberate keyword) or a structured entry — not just a file touch. Cursor uses `followup_message`; Claude uses `exit 2`. No `--no-verify` equivalent.
 2. **When it commits** — a git pre-commit hook (`guardrails-check.js`) blocks commits that touch protected paths, match forbidden patterns (AWS keys, private keys, tokens), or exceed `scopeGuidance` limits. Every `GUARDRAILS_BYPASS` is recorded in `.agent-room/guardrails-bypass-log.md`.
 3. **In CI** — `validate` and `lint-sessions` fail the build if the guardrails schema, skill frontmatter, or session logs are malformed (`lint-sessions` also rejects placeholder `Decisions made` when status is Completed).
-4. **After upgrades (optional CI)** — `eval` runs packaged compliance regression scenarios (close-the-loop, lint-sessions, validate fixtures) with JSON/CSV export — no LLM, no API keys.
+4. **In CI (compliance evals)** — `eval` runs packaged regression scenarios (close-the-loop, lint-sessions, validate fixtures) on every push/PR when `--tools git` scaffolds the workflow — confirms governance checks still behave after CLI upgrades; JSON/CSV export available — no LLM, no API keys.
 
 ```mermaid
 flowchart LR
@@ -31,7 +31,7 @@ flowchart LR
   subgraph L3["③ In CI"]
     I[validate + lint-sessions]
   end
-  subgraph L4["④ After upgrade optional"]
+  subgraph L4["④ In CI — compliance evals"]
     J[create-agent-room eval]
   end
   C --> E
@@ -51,7 +51,7 @@ Not every feature here is enforced this way — see [Feature Categories](#featur
 - **Compliance Evals (`eval`)**: Packaged regression pack for close-the-loop, `lint-sessions`, and `validate` — `--format json|csv` for CI dashboards. Exit `1` on failure. No LLM.
 - **Agent Guardrails**: `guardrails.json` — protected paths, forbidden regex/literal patterns, `scopeGuidance` limits, durable bypass audit log. *[Pre-commit hook when `--tools git`]*
 - **Multi-Tool Sync (`sync`)**: Mirrors `.agent-room/skills/` → `.claude/skills/`; regenerates Cursor `.cursor/rules/agent-room.mdc` and Windsurf/Cline/Codex rule files from the current skill list.
-- **Session Log & Schema Validation**: `validate` + `lint-sessions` in scaffolded CI when `--tools git`. *[Fails build if malformed]*
+- **Session Log & Schema Validation**: `validate` + `lint-sessions` + `eval` in scaffolded CI when `--tools git`. *[Fails build if malformed or fixtures fail]*
 - **Health Check (`doctor`)**: Read-only drift/advisory report — hook template drift, stale CI pins, unwired tools. Never writes to disk.
 - **Multi-Agent Coordination**: Handoff, scope, session log templates. *[Guidance only — `--profile full`]*
 - **Inheritance & Composition**: Base → stack → org → project template layers.
@@ -69,7 +69,7 @@ These features actively constrain behavior and will fail/block operations if vio
 - **Agent Runtime Enforcement** — Claude `Stop` + Cursor `stop` hooks; evidence-lite diff validation on log files
 - **Compliance Evals** — `eval` runs builtin regression scenarios; `--format json|csv`; exit `1` on failure
 - **Agent Guardrails** — Pre-commit hook (optional; `--tools git`); bypass audit log
-- **Session Log Validation** — `lint-sessions` + scaffolded CI workflow (`--tools git`)
+- **Session Log Validation** — `lint-sessions` + scaffolded CI workflow (`--tools git`; includes `validate` and `eval`)
 - **Skill Frontmatter Validation** — `validate` command
 - **Multi-Tool Sync** — `sync` keeps Claude skills and Cursor/Windsurf/Cline/Codex rules aligned with `.agent-room/skills/`
 
@@ -367,17 +367,18 @@ via the composite [GitHub Action](action.yml) or by installing the CLI:
 - uses: sipandey/create-agent-room@v2
 ```
 
-The Action runs `validate` and `lint-sessions`. To also run compliance
-regressions after upgrades, add a step:
+The composite Action runs `validate` and `lint-sessions` only. The
+`init --tools git`-scaffolded workflow (`.github/workflows/agent-room-validate.yml`)
+also runs `create-agent-room eval` on every push/PR. To add eval when using
+the Action instead of the scaffolded workflow:
 
 ```yaml
 - run: npm install -g create-agent-room
 - run: create-agent-room eval --format json --output compliance-report.json
 ```
 
-This does the same thing as the `init --tools git`-scaffolded workflow
-above — use whichever fits how the repo was set up, not both. Full input
-reference and examples: [docs/github-action.md](docs/github-action.md).
+Use the Action or the scaffolded workflow — not both. Full input reference
+and examples: [docs/github-action.md](docs/github-action.md).
 
 ---
 

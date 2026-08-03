@@ -116,6 +116,7 @@ test('runInit: scaffolds git pre-commit hook when requested', async (t) => {
   assert.match(ciWorkflowContent, new RegExp(`npm install -g create-agent-room@${CAR_VERSION}`));
   assert.match(ciWorkflowContent, /run: create-agent-room validate \./);
   assert.match(ciWorkflowContent, /run: create-agent-room lint-sessions \./);
+  assert.match(ciWorkflowContent, /run: create-agent-room eval/);
   assert.doesNotMatch(ciWorkflowContent, /create-agent-room@latest/);
   assert.doesNotMatch(ciWorkflowContent, /run:.*npx/);
 });

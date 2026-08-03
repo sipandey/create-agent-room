@@ -23,11 +23,11 @@ check it yourself before repeating it.
 | | create-agent-room | Hand-rolled hooks | agentic-os | Plain AGENTS.md/CLAUDE.md |
 |:---|:---|:---|:---|:---|
 | Setup cost | One CLI command | Hours of copy/config per repo | One clone + deploy script | Write a file |
-| What's mechanically enforced | Stop hook (agent-runtime, Claude-only), guardrails pre-commit + CI | Whatever you wire (permission rules, pre-commit, sandbox) | 3 required CI checks (framework/shellcheck/markdown-links); credential scan runs pre-commit + every CI run but isn't a required merge check by default | Nothing |
-| Evidence/phase gating | Presence check only (did *any* log get touched) | None built in | `validate.sh` parses per-task work logs against required phases | None |
-| Multi-tool | Claude native; Cursor/Windsurf/Cline/Codex get rule files, no enforcement outside Claude | Whatever you build per tool | Claude/Codex/Gemini native; Cursor/Copilot "compatible" | Whichever tool reads the file |
+| What's mechanically enforced | Stop hooks (Claude `Stop` + Cursor `stop`, shared checker via `sync`), guardrails pre-commit, CI (`validate`, `lint-sessions`, `eval`) | Whatever you wire (permission rules, pre-commit, sandbox) | 3 required CI checks (framework/shellcheck/markdown-links); credential scan runs pre-commit + every CI run but isn't a required merge check by default | Nothing |
+| Evidence/phase gating | Evidence-lite on stop hooks (diff must contain a valid waiver or `### YYYY-MM-DD` entry); `lint-sessions` rejects placeholder decisions on completed sessions — not per-task phase sequencing | None built in | `validate.sh` parses per-task work logs against required phases | None |
+| Multi-tool | Claude + Cursor runtime stop hooks; Windsurf/Cline/Codex get synced rule files (`sync` regenerates `.windsurfrules`, `.clinerules`, `.codexrules`, Cursor `.cursor/rules/agent-room.mdc`) — no stop hook outside Claude/Cursor | Whatever you build per tool | Claude/Codex/Gemini native; Cursor/Copilot "compatible" | Whichever tool reads the file |
 | Runtime deps | Zero (Node stdlib only) | Whatever you pick (gitleaks, pre-commit.com, Docker) | None hard-required; Python 3.9+ "recommended" for full validation, degrades to advisory without it | None |
-| Maturity (as of 2026-07-09) | 0 GitHub stars, created 2026-07-08 — pre-release | N/A (a practice, not a project) | 66 stars, 17 forks, v1.8.9, created 2026-04-12, active | N/A |
+| Maturity (as of 2026-08-03) | v2.3.0 on npm, 0 GitHub stars, created 2026-07-08 — published and actively shipping | N/A (a practice, not a project) | 66 stars, 17 forks, v1.8.9, created 2026-04-12, active **[VERIFY]** | N/A |
 
 ---
 
@@ -74,9 +74,11 @@ container; and a `CLAUDE.md` with a prose "definition of done."
   create-agent-room's `guardrails.json` ships default patterns for AWS
   keys, private key headers, Slack/GitHub tokens, and generic API-key
   assignments, versioned and tested in this repo.)
-- **The Stop hook is a category the blog's toolkit doesn't have at all**:
-  something that blocks an *agent turn* from ending, before there's even
-  a commit to scan. The blog's audit log records what happened; it
+- **The Stop/`stop` hooks are a category the blog's toolkit doesn't have
+  at all**: something that blocks an *agent turn* from ending (Claude
+  Code `Stop`, Cursor `stop` with `followup_message`), before there's
+  even a commit to scan — with evidence-lite diff validation, not just a
+  file-touch check. The blog's audit log records what happened; it
   doesn't stop anything from happening.
 
 **Where this is a real tradeoff, not a clean win either way:** the DIY
@@ -96,8 +98,9 @@ document — genuinely overlapping goals (gated workflow phases, evidence
 requirements, multi-tool `AGENTS.md`/`CLAUDE.md` distribution, required CI
 checks) and, as of this writing, considerably more mature: v1.8.9, created
 2026-04-12, 66 stars / 17 forks, actively shipping (last push 2026-07-09).
-create-agent-room's GitHub repo was created 2026-07-08 and has 0 stars —
-be aware of that maturity gap reading the rest of this section.
+create-agent-room shipped v2.3.0 on npm (2026-07-30) but its GitHub repo
+was created 2026-07-08 and still has 0 stars as of this snapshot — be
+aware of that maturity gap reading the rest of this section.
 
 **Where agentic-os is ahead, concretely:**
 
@@ -107,11 +110,15 @@ be aware of that maturity gap reading the rest of this section.
   missing or under-evidenced (five classifications — tiny-fix through
   architecture-change — each with a different required phase sequence,
   e.g. `feature` requires Bootstrap → Spec → Plan → Implement → Review →
-  Test → Handoff → Ship). create-agent-room's Stop hook only checks
-  whether *any* entry landed in `anti-patterns.md`/`decisions.md` — it
-  has no concept of task classification, required phases, or evidence
-  content. This is the single biggest capability gap: agentic-os
-  enforces a workflow; create-agent-room enforces a logging habit.
+  Test → Handoff → Ship). create-agent-room's stop hooks now run
+  **evidence-lite** (B.1): a log-file touch alone is not enough — the
+  `git diff HEAD` on `anti-patterns.md`/`decisions.md` must contain a
+  valid `<!-- no-log: ... -->` waiver or a structured `### YYYY-MM-DD`
+  entry — and `lint-sessions` rejects placeholder `Decisions made` on
+  completed sessions. It still has no concept of task classification or
+  required phase sequences per classification. agentic-os enforces a
+  workflow; create-agent-room enforces a logging habit with stronger
+  content checks than a bare presence gate, but not full phase gating.
 - **A published, reproducible token-economics benchmark.**
   `docs/LIFECYCLE_BENCHMARK.md` reports real measured (not estimated)
   multi-phase lifecycle token costs, generated by a script
@@ -185,12 +192,14 @@ be aware of that maturity gap reading the rest of this section.
   in their own repo by default; a repo admin has to explicitly add them
   to branch protection, same as create-agent-room's scaffolded workflow
   isn't a required check unless the repo owner makes it one.
-- **Multi-tool support is comparably tiered on both sides**: a couple of
-  "native" integrations (Claude Code + Codex for both projects) and a
-  broader "reads the same Markdown, no special enforcement" tier for
-  everything else (Cursor/Windsurf/Cline/Copilot). Neither tool has
-  deeper enforcement in Cursor or Windsurf than "the rule file is
-  there."
+- **Multi-tool support is comparably tiered on both sides**, but not
+  identical: create-agent-room now wires **runtime stop hooks** for both
+  Claude Code and Cursor (shared checker, synced via `create-agent-room
+  sync`), and regenerates rule files for Windsurf/Cline/Codex from
+  `.agent-room/skills/`. agentic-os lists Claude/Codex/Gemini as native
+  and Cursor/Copilot as "compatible." Neither tool has runtime stop-hook
+  enforcement in Windsurf or Cline — for those, the rule file (or synced
+  rules) is the ceiling.
 
 ---
 
@@ -245,10 +254,12 @@ itself.
   blocking** (not just commit-time scanning) → hand-roll it, or pair
   create-agent-room's guardrails with the DIY permission-rules approach;
   they're not mutually exclusive.
-- **You need phase-sequenced, evidence-content-verified workflow
-  enforcement**, not just "was a log file touched" → agentic-os is
-  meaningfully more capable here today. **[VERIFY]** the current state of
-  both projects before deciding — this document is a snapshot, not a
+- **You need phase-sequenced, per-classification workflow enforcement**
+  (Bootstrap → Spec → Plan → … with content parsed per task type) →
+  agentic-os is meaningfully more capable here today. create-agent-room's
+  evidence-lite checks log *format* and *presence of real content*, not
+  which phase a classified task must be in. **[VERIFY]** the current state
+  of both projects before deciding — this document is a snapshot, not a
   standing fact.
 - **Your team is small and hasn't hit the failure mode yet** → a plain
   `AGENTS.md` might be all you need; don't adopt tooling to solve a
@@ -265,8 +276,9 @@ actually needs.
 *Sources: [agentic-os README](https://github.com/KbWen/agentic-os),
 [docs/INSTALL.md](https://github.com/KbWen/agentic-os/blob/main/docs/INSTALL.md),
 [docs/LIFECYCLE_BENCHMARK.md](https://github.com/KbWen/agentic-os/blob/main/docs/LIFECYCLE_BENCHMARK.md)
-(fetched 2026-07-09); GitHub API repo metadata for both projects (fetched
-2026-07-09); ["How to Safely Use AI Coding Agents in a Real
+(fetched 2026-07-09, agentic-os stats **[VERIFY]** at read time);
+GitHub API repo metadata for create-agent-room (fetched 2026-08-03);
+["How to Safely Use AI Coding Agents in a Real
 Codebase"](https://travis.media/blog/safely-use-ai-coding-agents/)
 (Travis Media). Found no other actively-maintained direct competitor with
 comparable scope during this research pass — if you know of one, open an

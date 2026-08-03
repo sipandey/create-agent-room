@@ -10,6 +10,24 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+### Added
+
+- Scaffolded `.github/workflows/agent-room-validate.yml` (git adapter) now
+  includes a `create-agent-room eval` step by default — adopters get Layer 4
+  compliance regression checks on every push/PR, matching the dogfood pattern
+  in this repo's CI.
+
+### Changed
+
+- `docs/comparisons.md` refreshed for v2.3.0: Cursor stop hook + shared
+  checker via `sync`, evidence-lite (B.1) instead of presence-only gating,
+  multi-tool `sync` for Windsurf/Cline/Codex, and updated maturity snapshot
+  (2026-08-03).
+- `README.md`, `CAPABILITIES.md`, and `docs/enforcement-model.md` updated so
+  scaffolded CI (`--tools git`) is documented as running `validate`,
+  `lint-sessions`, and `eval` (composite GitHub Action still runs only the
+  first two).
+
 ## [2.3.0] - 2026-07-30
 
 ### Added

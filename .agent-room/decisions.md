@@ -758,3 +758,20 @@ no blast radius outside `fsutil.js`.
 correct in the abstract (makes "structured" detection unambiguous) but a
 much larger diff for the same outcome, with no functional benefit since
 `getLayers()` can absorb the ambiguity in one place instead.
+
+### 2026-08-03 — scaffold eval as a default CI step, not an optional comment
+
+**Decision:** the git-adapter scaffold
+(`.github/workflows/agent-room-validate.yml` from
+`templates/adapters/ci/github-actions.yml.tmpl`) now runs
+`create-agent-room eval` after `validate` and `lint-sessions` on every
+push/PR — an always-on step, not a commented optional block.
+**Why:** Layer 4 in `docs/enforcement-model.md` exists to catch governance
+regressions after CLI upgrades; this repo already dogfoods `eval` in
+`.github/workflows/ci.yml`. Making it default for adopters closes the gap
+between "documented enforcement model" and "what `init --tools git`
+actually wires," with near-zero cost (packaged fixtures, no API keys, fast).
+**Rejected:** commented optional step — would leave most adopters without
+Layer 4 unless they noticed and uncommented it, recreating the same
+"documented but not scaffolded" drift `validate`/`lint-sessions` had
+before v1.3.0.

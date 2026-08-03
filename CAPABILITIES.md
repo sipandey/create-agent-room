@@ -113,7 +113,7 @@ These features **actively block, fail, or prevent** operations if violated:
   - Required sections: Goal, Files touched, Actions taken, Tests run, Decisions made, Outcome
   - Required fields: Date (YYYY-MM-DD HH:MM format), Agent, Classification (Bug|Enhancement|Feature|Product)
 - **How it fails:** Exit code 1 if any session is malformed
-- **CI integration:** Scaffolded automatically as `.github/workflows/agent-room-validate.yml` whenever the `git` adapter is active (see `--tools git`), running both `validate` and `lint-sessions` on push/PR
+- **CI integration:** Scaffolded automatically as `.github/workflows/agent-room-validate.yml` whenever the `git` adapter is active (see `--tools git`), running `validate`, `lint-sessions`, and `eval` on push/PR
 - **User action:** None — ships automatically with the git adapter; edit or remove the workflow file if you use a different CI provider
 
 ### Skill Frontmatter Validation
@@ -225,6 +225,7 @@ These provide a framework that requires external setup or effort:
 
 - **What it is:** Packaged regression scenarios that verify close-the-loop,
   `lint-sessions`, and `validate` behavior without running a live agent
+- **CI integration:** Included in the scaffolded `.github/workflows/agent-room-validate.yml` when the `git` adapter is active (same workflow as `validate` and `lint-sessions`)
 - **Current state:**
   - ✅ `create-agent-room eval` runs builtin fixtures; `--format json|csv`
     for CI/dashboard export; exit 1 on failure
@@ -260,13 +261,13 @@ These provide a framework that requires external setup or effort:
 1. `init .` with default templates
 2. Agents read `.agent-room/principles.md`, `workflow-classifier.md`, `coordination/handoff-protocol.md`
 3. Agents manually follow best practices
-4. Optionally run `validate` and `lint-sessions` in CI
+4. Optionally run `validate`, `lint-sessions`, and `eval` in CI
 
 ### Standard (Prescriptive + Guidance)
 
 1. `init . --tools git,claude --language python --org my-org` (or appropriate language/org)
 2. Git pre-commit hook enforces guardrails at commit time; Claude Code / Cursor stop hooks enforce decisions/anti-patterns logging at agent-runtime (requires the `claude` and/or `cursor` adapter — `--tools git` alone only gets you the pre-commit hook)
-3. CI includes `create-agent-room validate .` and `create-agent-room lint-sessions .`
+3. CI includes `create-agent-room validate .`, `create-agent-room lint-sessions .`, and `create-agent-room eval`
 4. Agents manually follow coordination and workflow guidance
 
 ### Advanced (Custom Org Stack)
@@ -285,7 +286,7 @@ Features planned for future releases:
 - **Real-time observability:** Dashboards, trending, alerting
 - **Session orchestration:** Query handoff state during execution, queue work
 - **Session metrics export:** JSON/CSV export of `.agent-room/sessions/` stats
-  (compliance `eval` JSON/CSV export shipped in unreleased; session metrics
+  (compliance `eval` JSON/CSV export shipped in v2.3.0; session metrics
   aggregation export still deferred)
 - **Approval workflows:** Simple gates for guardrails violations
 - **Performance tracking:** Cost, tokens, latency per session
