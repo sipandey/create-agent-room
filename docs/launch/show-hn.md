@@ -1,6 +1,19 @@
 # Show HN — launch post draft
 
-**Title:** Show HN: create-agent-room – mechanical agent governance (stop hooks, CI evals), not just AGENTS.md
+**Title (HN limit: 80 characters — do not include `Show HN:`; HN adds that):**
+
+```
+create-agent-room – mechanical governance (stop hooks, CI), not AGENTS.md
+```
+(73 chars)
+
+**Alternates:**
+
+| Chars | Title |
+|------:|-------|
+| 71 | `create-agent-room: agent governance with stop hooks + CI, not AGENTS.md` |
+| 67 | `create-agent-room: mechanical governance (hooks, CI), not AGENTS.md` |
+| 61 | `create-agent-room – stop hooks + CI evals, not just AGENTS.md` |
 
 **URL:** https://github.com/sipandey/create-agent-room
 
@@ -40,7 +53,22 @@ scaffolded CI or should stay opt-in.
 
 ## Posting checklist
 
-- [ ] Post Tuesday–Thursday, 8–10am US Eastern (typical HN peak)
+- [ ] **Account gate:** HN may block Show HN for new/low-karma accounts during influx
+  periods (“temporarily restricting Show HNs”). If blocked, use the channels below
+  first; build karma via genuine comments, then retry in a few weeks.
+- [ ] Read: [guidelines](https://news.ycombinator.com/newsguidelines.html),
+  [welcome](https://news.ycombinator.com/newswelcome.html),
+  [Show HN rules](https://news.ycombinator.com/showhn.html)
+- [ ] Post Tuesday–Thursday, 8–10am US Eastern (when eligible)
 - [ ] Reply to comments within the first 2 hours
 - [ ] Link to `docs/enforcement-model.md` when asked "how is this different from X?"
 - [ ] Don't argue with "just use AGENTS.md" — agree and show the demo
+
+## If Show HN is blocked (do these instead)
+
+1. **Reddit** — `docs/launch/community-posts.md` (r/ClaudeAI, r/cursor, r/programming)
+2. **Discord** — Cursor / Claude server (one thoughtful post, not spam)
+3. **Dev.to or personal blog** — same body as this draft; link GitHub + demo gif
+4. **Awesome-list PRs** — `docs/launch/awesome-list-prs.md` (compounding traffic)
+5. **HN karma (optional):** comment helpfully on threads in your domain for 1–2 weeks,
+   then retry Show HN — no gaming, just participate
