@@ -21,4 +21,5 @@ Show
 
 Type "bash scripts/demo.sh"
 Enter
-Sleep 17s
+# Script runtime is ~17s; buffer so the final "Done." line is visible.
+Sleep 20s

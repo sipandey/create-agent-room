@@ -776,4 +776,4 @@ Layer 4 unless they noticed and uncommented it, recreating the same
 "documented but not scaffolded" drift `validate`/`lint-sessions` had
 before v1.3.0.
 
-<!-- no-log: release checklist + AGENTS publish-order docs; routine post-v2.3.1 housekeeping. -->
+<!-- no-log: regenerated demo.gif + README caption; routine media refresh, no design decision. -->

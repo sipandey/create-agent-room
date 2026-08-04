@@ -12,6 +12,9 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ### Changed
 
+- Regenerated `docs/demo.gif` from current `scripts/demo.sh` (includes CI
+  `eval` in the scaffold summary); `docs/demo.tape` sleep buffer bumped so
+  the final line is visible.
 - Release checklist (`docs/launch/release-checklist.md`) documents npm
   publish-before-push order for dogfood CI pins.
 

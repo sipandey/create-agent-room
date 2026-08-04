@@ -13,9 +13,9 @@ npx create-agent-room@latest init . --yes --tools git,cursor --git
 
 Then edit a file, try to end an agent turn without logging a decision, and watch the stop hook block you. Reproduce the full demo with `bash scripts/demo.sh`.
 
-![Demo: a scaffolded pre-commit hook blocking a staged AWS key, then the Claude Code Stop hook blocking an agent turn without a logged decision](docs/demo.gif)
+![Demo: create-agent-room blocking a staged AWS key at commit, then blocking an agent turn with no decision log](docs/demo.gif)
 
-*A staged AWS key blocked at commit time, then the same for an agent turn ending without a logged decision — both real, unmocked output. Reproduce it yourself with `bash scripts/demo.sh`.*
+*Real, unmocked output from `bash scripts/demo.sh` (regenerate the GIF with `vhs docs/demo.tape`): staged AWS key blocked at commit, then Stop hook blocks ending a turn without a logged decision.*
 
 Most "AI agent guidelines" are a Markdown file an agent may or may not read. `create-agent-room` scaffolds that documentation (`AGENTS.md`, a principles playbook, a workflow classifier, multi-agent coordination protocols) but backs the parts that matter with **four concrete enforcement points**, each catching a different failure mode:
 
