@@ -590,3 +590,110 @@ test('guardrails-check: CAR_VERIFY_ON_COMMIT=1 triggers verification even withou
   assert.match(result.stderr, /exited with code 2/);
 });
 
+test('guardrails-check: blocks commit when staged file violates scopeBoundaries.allowedPaths', (t) => {
+  const dir = makeRepo('scope-allowed-paths-fail');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: [],
+    forbiddenActions: [],
+    scopeBoundaries: { allowedPaths: ['packages/frontend/**'] }
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.mkdirSync(path.join(dir, 'packages', 'backend'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'packages', 'backend', 'api.js'), 'api\n');
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 1);
+  assert.match(result.stderr, /Scope boundary violation/);
+  assert.match(result.stderr, /packages\/backend\/api\.js.*outside allowed scope/);
+});
+
+test('guardrails-check: allows commit when staged files are within scopeBoundaries.allowedPaths', (t) => {
+  const dir = makeRepo('scope-allowed-paths-pass');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: [],
+    forbiddenActions: [],
+    scopeBoundaries: { allowedPaths: ['packages/frontend/**'] }
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.mkdirSync(path.join(dir, 'packages', 'frontend'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'packages', 'frontend', 'app.js'), 'app\n');
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 0);
+});
+
+test('guardrails-check: blocks commit when staged files violate scopeBoundaries.disallowedCrossBoundaries', (t) => {
+  const dir = makeRepo('scope-cross-boundary-fail');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: [],
+    forbiddenActions: [],
+    scopeBoundaries: {
+      disallowedCrossBoundaries: [['packages/frontend/**', 'packages/backend/**']]
+    }
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.mkdirSync(path.join(dir, 'packages', 'frontend'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'packages', 'backend'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'packages', 'frontend', 'app.js'), 'app\n');
+  fs.writeFileSync(path.join(dir, 'packages', 'backend', 'api.js'), 'api\n');
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 1);
+  assert.match(result.stderr, /Scope boundary violation/);
+  assert.match(result.stderr, /change touches multiple isolated boundaries/);
+});
+
+test('guardrails-check: allows scope boundary violation to be bypassed with GUARDRAILS_BYPASS=1', (t) => {
+  const dir = makeRepo('scope-bypass');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: [],
+    forbiddenActions: [],
+    scopeBoundaries: { allowedPaths: ['docs/**'] }
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.writeFileSync(path.join(dir, 'src.js'), 'code\n');
+  stageAll(dir);
+
+  const result = runHook(dir, { GUARDRAILS_BYPASS: '1' });
+  assert.strictEqual(result.code, 0);
+  const logContent = fs.readFileSync(path.join(dir, BYPASS_LOG_REL), 'utf8');
+  assert.match(logContent, /Scope boundary violation/);
+});
+
+test('guardrails-check: CAR_ALLOWED_SCOPE env var enforces scope boundaries on commit', (t) => {
+  const dir = makeRepo('scope-env-flag');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, { protectedPaths: [], forbiddenActions: [] });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.writeFileSync(path.join(dir, 'backend.js'), 'code\n');
+  stageAll(dir);
+
+  const result = runHook(dir, { CAR_ALLOWED_SCOPE: 'frontend/**,docs/**' });
+  assert.strictEqual(result.code, 1);
+  assert.match(result.stderr, /Scope boundary violation/);
+  assert.match(result.stderr, /backend\.js/);
+});
+
+

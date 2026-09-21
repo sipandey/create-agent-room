@@ -231,6 +231,57 @@ if (scopeGuidance && !isInitialCommit()) {
   }
 }
 
+// scopeBoundaries: architectural boundary and blast radius enforcement.
+// Blocks commits touching files outside allowedPaths or crossing conflicting boundaries.
+const scopeBoundaries = guardrails.scopeBoundaries;
+const envAllowedScope = process.env.CAR_ALLOWED_SCOPE;
+if (!isInitialCommit() && (scopeBoundaries || envAllowedScope)) {
+  const allowedPaths = envAllowedScope
+    ? envAllowedScope.split(',').map((s) => s.trim()).filter(Boolean)
+    : (scopeBoundaries && Array.isArray(scopeBoundaries.allowedPaths) ? scopeBoundaries.allowedPaths : null);
+
+  const nonScaffoldStaged = stagedFiles.filter(
+    (p) =>
+      !p.startsWith('.agent-room/') &&
+      !p.startsWith('docs/plans/') &&
+      p !== 'AGENTS.md' &&
+      p !== 'CLAUDE.md' &&
+      p !== '.agent-room.json'
+  );
+
+  if (allowedPaths && allowedPaths.length > 0) {
+    for (const file of nonScaffoldStaged) {
+      const isAllowed = allowedPaths.some((pattern) => isPathProtected(file, pattern));
+      if (!isAllowed) {
+        violations.push(
+          `Scope boundary violation: "${file}" is outside allowed scope [${allowedPaths.join(', ')}]`
+        );
+      }
+    }
+  }
+
+  const disallowedCross =
+    scopeBoundaries && Array.isArray(scopeBoundaries.disallowedCrossBoundaries)
+      ? scopeBoundaries.disallowedCrossBoundaries
+      : [];
+
+  for (const group of disallowedCross) {
+    if (!Array.isArray(group) || group.length < 2) continue;
+    const matchedPatterns = [];
+    for (const pattern of group) {
+      const matched = nonScaffoldStaged.some((file) => isPathProtected(file, pattern));
+      if (matched) {
+        matchedPatterns.push(pattern);
+      }
+    }
+    if (matchedPatterns.length > 1) {
+      violations.push(
+        `Scope boundary violation: change touches multiple isolated boundaries: ${matchedPatterns.join(' AND ')}`
+      );
+    }
+  }
+}
+
 // verifyOnCommit: optional test verification gate before commit.
 // Runs the project's test command (from guardrails.json, .agent-room.json, or
 // auto-detected) and blocks the commit if tests fail, unless bypassed.

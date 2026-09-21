@@ -147,6 +147,117 @@ function runTestVerification(command, cwd, opts) {
   }
 }
 
+function matchesPathPattern(filePath, pattern) {
+  const normFile = filePath.replace(/^\.\//, '').replace(/\\/g, '/');
+  const normPattern = pattern.replace(/^\.\//, '').replace(/\\/g, '/');
+
+  if (normPattern.includes('*')) {
+    const regexPattern = normPattern
+      .split('*')
+      .map((part) => part.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))
+      .join('.*');
+    return new RegExp(`^${regexPattern}$`).test(normFile);
+  }
+  return normFile === normPattern || normFile.startsWith(normPattern + '/');
+}
+
+function resolveScopeBoundaries(cwd, opts) {
+  if (opts && opts.scopeBoundaries && typeof opts.scopeBoundaries === 'object') {
+    return opts.scopeBoundaries;
+  }
+  const guardrailsPath = path.join(cwd, '.agent-room', 'guardrails.json');
+  if (fs.existsSync(guardrailsPath)) {
+    try {
+      const guardrails = JSON.parse(fs.readFileSync(guardrailsPath, 'utf8'));
+      if (guardrails && typeof guardrails.scopeBoundaries === 'object') {
+        return guardrails.scopeBoundaries;
+      }
+    } catch (err) {
+      // ignore unreadable/malformed guardrails.json
+    }
+  }
+  return null;
+}
+
+function resolveAllowedPaths(scopeBoundaries, opts) {
+  if (process.env.CAR_ALLOWED_SCOPE) {
+    return process.env.CAR_ALLOWED_SCOPE.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+  if (opts && (opts.allowedScope || opts.allowedPaths)) {
+    const raw = opts.allowedScope || opts.allowedPaths;
+    return Array.isArray(raw) ? raw : raw.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+  if (scopeBoundaries && Array.isArray(scopeBoundaries.allowedPaths) && scopeBoundaries.allowedPaths.length > 0) {
+    return scopeBoundaries.allowedPaths;
+  }
+  return null;
+}
+
+function buildScopeViolationMessage(violations) {
+  let msg = 'Agent Scope Boundary check failed: modifications exceed allowed architectural boundaries.\n\n';
+  for (const v of violations) {
+    msg += `  - ${v}\n`;
+  }
+  msg += '\nRemediation guidance per .agent-room/coordination/scope-boundaries.md:\n';
+  msg += '1. Revert modifications outside your assigned scope before completing this turn.\n';
+  msg += '2. Partition work into separate, isolated sessions for each architectural boundary.\n';
+  msg += '3. Never modify files across conflicting boundaries in a single turn.\n';
+  return msg;
+}
+
+function checkScopeBoundaries(changedPaths, cwd, opts) {
+  if (
+    (opts && opts.skipScopeCheck) ||
+    process.env.CAR_SKIP_SCOPE_CHECK === '1' ||
+    process.env.SKIP_SCOPE_CHECK === '1'
+  ) {
+    return { ok: true, violations: [] };
+  }
+
+  const scopeBoundaries = resolveScopeBoundaries(cwd, opts);
+  const allowedPaths = resolveAllowedPaths(scopeBoundaries, opts);
+  const disallowedCross =
+    scopeBoundaries && Array.isArray(scopeBoundaries.disallowedCrossBoundaries)
+      ? scopeBoundaries.disallowedCrossBoundaries
+      : [];
+
+  if (!allowedPaths && disallowedCross.length === 0) {
+    return { ok: true, violations: [] };
+  }
+
+  const violations = [];
+
+  if (allowedPaths && allowedPaths.length > 0) {
+    for (const file of changedPaths) {
+      const isAllowed = allowedPaths.some((pattern) => matchesPathPattern(file, pattern));
+      if (!isAllowed) {
+        violations.push(`File "${file}" is outside allowed scope [${allowedPaths.join(', ')}]`);
+      }
+    }
+  }
+
+  for (const group of disallowedCross) {
+    if (!Array.isArray(group) || group.length < 2) continue;
+    const matchedPatterns = [];
+    for (const pattern of group) {
+      const matched = changedPaths.some((file) => matchesPathPattern(file, pattern));
+      if (matched) {
+        matchedPatterns.push(pattern);
+      }
+    }
+    if (matchedPatterns.length > 1) {
+      violations.push(
+        `Cross-boundary conflict: change touches multiple isolated boundaries: ${matchedPatterns.join(' AND ')}`
+      );
+    }
+  }
+
+  return {
+    ok: violations.length === 0,
+    violations,
+  };
+}
+
 function buildFailureMessage(sourceChanges) {
   const sample = sourceChanges.slice(0, 5).join(', ') + (sourceChanges.length > 5 ? ', ...' : '');
   return (
@@ -245,6 +356,18 @@ function checkClosingTheLoop(cwd, opts) {
         };
       }
     }
+  }
+
+  // --- Scope Boundaries / Blast Radius Gate ---
+  const scopeResult = checkScopeBoundaries(nonScaffold, cwd, opts);
+  if (!scopeResult.ok) {
+    return {
+      ok: false,
+      sourceChanges: nonScaffold,
+      message: buildScopeViolationMessage(scopeResult.violations),
+      reason: 'scope-boundary-violation',
+      scopeViolations: scopeResult.violations,
+    };
   }
 
   // --- Closing-the-loop Log Evidence Gate ---
@@ -350,7 +473,11 @@ function main() {
     args.includes('--skip-tests') ||
     args.includes('--skip-verification');
 
-  const result = checkClosingTheLoop(process.cwd(), { skipTestVerification });
+  const skipScopeCheck =
+    args.includes('--skip-scope') ||
+    args.includes('--skip-scope-check');
+
+  const result = checkClosingTheLoop(process.cwd(), { skipTestVerification, skipScopeCheck });
   applyAdapter(adapter, result);
 }
 
@@ -360,6 +487,11 @@ if (require.main === module) {
 
 module.exports = {
   checkClosingTheLoop,
+  checkScopeBoundaries,
+  buildScopeViolationMessage,
+  resolveScopeBoundaries,
+  resolveAllowedPaths,
+  matchesPathPattern,
   isScaffoldPath,
   parseAdapter,
   SCAFFOLD_PREFIXES,

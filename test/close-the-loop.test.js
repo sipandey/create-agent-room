@@ -359,3 +359,128 @@ test('adapter claude: respects --skip-tests flag on test verification', (t) => {
   assert.doesNotMatch(result.stderr, /Pre-stop test verification failed/);
 });
 
+test('checkScopeBoundaries: allows changes when within allowedPaths', () => {
+  const { checkScopeBoundaries } = loadHook();
+  const result = checkScopeBoundaries(['packages/frontend/src/App.js', 'docs/readme.md'], '/tmp/unused', {
+    scopeBoundaries: { allowedPaths: ['packages/frontend/**', 'docs/**'] }
+  });
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(result.violations.length, 0);
+});
+
+test('checkScopeBoundaries: blocks changes when a file is outside allowedPaths', () => {
+  const { checkScopeBoundaries } = loadHook();
+  const result = checkScopeBoundaries(['packages/frontend/src/App.js', 'packages/backend/api.js'], '/tmp/unused', {
+    scopeBoundaries: { allowedPaths: ['packages/frontend/**'] }
+  });
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.violations.length, 1);
+  assert.match(result.violations[0], /packages\/backend\/api\.js.*outside allowed scope/);
+});
+
+test('checkScopeBoundaries: blocks changes spanning across disallowedCrossBoundaries', () => {
+  const { checkScopeBoundaries } = loadHook();
+  const result = checkScopeBoundaries(
+    ['packages/frontend/src/App.js', 'packages/backend/src/server.js'],
+    '/tmp/unused',
+    {
+      scopeBoundaries: {
+        disallowedCrossBoundaries: [['packages/frontend/**', 'packages/backend/**']]
+      }
+    }
+  );
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.violations.length, 1);
+  assert.match(result.violations[0], /Cross-boundary conflict/);
+});
+
+test('checkScopeBoundaries: allows changes touching only one side of disallowedCrossBoundaries', () => {
+  const { checkScopeBoundaries } = loadHook();
+  const result = checkScopeBoundaries(
+    ['packages/frontend/src/App.js', 'packages/frontend/src/Button.js'],
+    '/tmp/unused',
+    {
+      scopeBoundaries: {
+        disallowedCrossBoundaries: [['packages/frontend/**', 'packages/backend/**']]
+      }
+    }
+  );
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(result.violations.length, 0);
+});
+
+test('checkClosingTheLoop: returns scope-boundary-violation when scope boundaries are exceeded', () => {
+  const { checkClosingTheLoop } = loadHook();
+  const result = checkClosingTheLoop('/tmp/unused', {
+    hasAgentRoom: true,
+    isGitRepo: true,
+    statusPorcelain: ' M packages/frontend/App.js\n M packages/backend/api.js\n',
+    scopeBoundaries: {
+      disallowedCrossBoundaries: [['packages/frontend/**', 'packages/backend/**']]
+    }
+  });
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.reason, 'scope-boundary-violation');
+  assert.match(result.message, /Scope Boundary check failed/);
+  assert.match(result.message, /scope-boundaries\.md/);
+});
+
+test('adapter claude: scope violation exits 2 with stderr remediation', (t) => {
+  const dir = makeRepo('claude-scope-fail');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(dir, 'app.js'), 'app\n');
+  fs.writeFileSync(
+    path.join(dir, '.agent-room', 'guardrails.json'),
+    JSON.stringify({
+      protectedPaths: [],
+      forbiddenActions: [],
+      scopeBoundaries: { allowedPaths: ['docs/**'] }
+    })
+  );
+
+  const result = runHookCli(dir, []);
+  assert.strictEqual(result.status, 2);
+  assert.match(result.stderr, /Agent Scope Boundary check failed/);
+  assert.match(result.stderr, /app\.js/);
+  assert.match(result.stderr, /scope-boundaries\.md/);
+});
+
+test('adapter cursor: scope violation exits 0 with followup_message JSON', (t) => {
+  const dir = makeRepo('cursor-scope-fail');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(dir, 'app.js'), 'app\n');
+  fs.writeFileSync(
+    path.join(dir, '.agent-room', 'guardrails.json'),
+    JSON.stringify({
+      protectedPaths: [],
+      forbiddenActions: [],
+      scopeBoundaries: { allowedPaths: ['docs/**'] }
+    })
+  );
+
+  const result = runHookCli(dir, ['--adapter=cursor'], JSON.stringify({ status: 'completed', loop_count: 0 }));
+  assert.strictEqual(result.status, 0);
+  const payload = JSON.parse(result.stdout.trim());
+  assert.match(payload.followup_message, /Agent Scope Boundary check failed/);
+});
+
+test('adapter claude: respects --skip-scope flag', (t) => {
+  const dir = makeRepo('claude-skip-scope');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(dir, 'app.js'), 'app\n');
+  fs.writeFileSync(
+    path.join(dir, '.agent-room', 'guardrails.json'),
+    JSON.stringify({
+      protectedPaths: [],
+      forbiddenActions: [],
+      scopeBoundaries: { allowedPaths: ['docs/**'] }
+    })
+  );
+
+  const result = runHookCli(dir, ['--skip-scope']);
+  assert.strictEqual(result.status, 2);
+  assert.match(result.stderr, /Closing-the-loop check failed/);
+  assert.doesNotMatch(result.stderr, /Agent Scope Boundary check failed/);
+});
+
+
