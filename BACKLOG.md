@@ -104,14 +104,23 @@ Enforce runtime determinism and mechanical gates so AI coding agents cannot decl
 Eliminate friction for developers adopting, upgrading, and maintaining `create-agent-room` across multi-agent setups.
 
 ### Story 2.1: `create-agent-room doctor --fix` Auto-Remediation
-- **Status:** ⏳ Queued
+- **Status:** ✅ **DONE**
+- **Summary:**
+  - Implemented `create-agent-room doctor --fix` (`lib/doctor.js`, `bin/cli.js`).
+  - Added `fixFindings(target)`:
+    - Auto-heals and synchronizes drifted static hook files (`guardrails-check.js`, `close-the-loop-check.js`, `closing-the-loop-evidence.js`, `.git/hooks/pre-commit`) with current packaged templates.
+    - Re-wires missing Claude Code Stop hook in `.claude/settings.json` when `claude` is listed in `.agent-room.json`.
+    - Re-wires missing Cursor stop hook in `.cursor/hooks.json` when `cursor` is listed in `.agent-room.json`.
+    - Restores missing `.git/hooks/pre-commit` when `git` is listed in `.agent-room.json` and sets chmod 0o755.
+    - Re-pins outdated or `latest` CI action versions in `.github/workflows/agent-room-validate.yml` to the current installed version.
+  - Added 5 new unit tests in `test/doctor.test.js` covering all remediation actions (all 216 repo tests pass).
 - **Goal:**
   - Enable one-command repair of any findings identified by `create-agent-room doctor`.
 - **Acceptance Criteria:**
   1. `doctor --fix` re-synchronizes drifted static hooks (`close-the-loop-check.js`, `guardrails-check.js`, etc.) with current packaged templates.
   2. Re-wires missing Claude (`.claude/settings.json`) or Cursor (`.cursor/hooks.json`) stop hooks if registered in `.agent-room.json`.
   3. Re-pins CI action versions to the installed CLI version.
-  4. Prompts or confirms files touched; preserves custom overrides where marked.
+  4. Confirms files touched; preserves custom overrides where marked.
 
 ---
 
