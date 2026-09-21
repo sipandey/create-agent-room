@@ -73,16 +73,25 @@ function extractAddedContent(diffText) {
     .join('\n');
 }
 
+const STRICT_WAIVER_MIN_LENGTH = 40;
+const STRICT_AUDIT_REF_RE = /(?:approved-by|waiver-approved|ticket|issue|ref|jira|#\d+)/i;
+
 /**
  * @param {string} addedContent
+ * @param {object} [options]
  * @returns {boolean}
  */
-function matchesWaiver(addedContent) {
+function matchesWaiver(addedContent, options) {
+  options = options || {};
   if (!addedContent || !addedContent.trim()) return false;
   const match = addedContent.match(WAIVER_RE);
   if (!match) return false;
   const reason = match[1].trim();
-  if (reason.length < NO_LOG_MIN_REASON_LENGTH) return false;
+  const minLength = options.strict ? STRICT_WAIVER_MIN_LENGTH : NO_LOG_MIN_REASON_LENGTH;
+  if (reason.length < minLength) return false;
+  if (options.strict && !STRICT_AUDIT_REF_RE.test(reason)) {
+    return false;
+  }
   return reasonHasWaiverVerb(reason);
 }
 
@@ -108,11 +117,12 @@ function matchesDecisionEntry(addedContent) {
 
 /**
  * @param {string} addedContent
+ * @param {object} [options]
  * @returns {boolean}
  */
-function hasValidLogEvidence(addedContent) {
+function hasValidLogEvidence(addedContent, options) {
   return (
-    matchesWaiver(addedContent) ||
+    matchesWaiver(addedContent, options) ||
     matchesAntiPatternEntry(addedContent) ||
     matchesDecisionEntry(addedContent)
   );
@@ -120,13 +130,27 @@ function hasValidLogEvidence(addedContent) {
 
 /**
  * @param {string} diffText git diff output for log file(s)
+ * @param {object} [options]
  * @returns {boolean}
  */
-function validateLogEvidenceFromDiff(diffText) {
-  return hasValidLogEvidence(extractAddedContent(diffText));
+function validateLogEvidenceFromDiff(diffText, options) {
+  return hasValidLogEvidence(extractAddedContent(diffText), options);
 }
 
-function buildEvidenceFailureMessage() {
+function buildEvidenceFailureMessage(options) {
+  options = options || {};
+  if (options.strict) {
+    return (
+      'Closing-the-loop check failed: decisions.md or anti-patterns.md was touched, ' +
+      'but the change does not contain valid evidence.\n\n' +
+      'Strict governance mode is active:\n' +
+      `- Waivers require an explicit audit reference (e.g. ticket: #123, approved-by: lead, ref:, waiver-approved:) ` +
+      `and at least ${STRICT_WAIVER_MIN_LENGTH} characters:\n` +
+      '  <!-- no-log: ticket: #123 approved-by: lead - urgent fix without architectural changes -->\n' +
+      '- An anti-pattern entry: ### YYYY-MM-DD — title plus **What happened:** / **Root cause:** / **Avoid:**\n' +
+      '- A decision entry: ### YYYY-MM-DD — title plus **Decision:** and **Why:**\n'
+    );
+  }
   return (
     'Closing-the-loop check failed: decisions.md or anti-patterns.md was touched, ' +
     'but the change does not contain valid evidence.\n\n' +
@@ -141,6 +165,8 @@ function buildEvidenceFailureMessage() {
 
 module.exports = {
   NO_LOG_MIN_REASON_LENGTH,
+  STRICT_WAIVER_MIN_LENGTH,
+  STRICT_AUDIT_REF_RE,
   WAIVER_VERB_TOKENS,
   reasonHasWaiverVerb,
   extractAddedContent,

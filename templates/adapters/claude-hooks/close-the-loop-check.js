@@ -275,9 +275,37 @@ function buildFailureMessage(sourceChanges) {
   );
 }
 
+function isStrictMode(cwd, opts) {
+  if (opts && typeof opts.strict === 'boolean') return opts.strict;
+  if (process.env.CAR_STRICT === '1' || process.env.CAR_STRICT === 'true') return true;
+
+  const configPath = path.join(cwd, '.agent-room.json');
+  if (fs.existsSync(configPath)) {
+    try {
+      const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      if (cfg && (cfg.preset === 'strict' || cfg.profile === 'strict')) return true;
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  const guardrailsPath = path.join(cwd, '.agent-room', 'guardrails.json');
+  if (fs.existsSync(guardrailsPath)) {
+    try {
+      const gr = JSON.parse(fs.readFileSync(guardrailsPath, 'utf8'));
+      if (gr && (gr.strictWaivers === true || (gr.verifyOnCommit && gr.verifyOnCommit.strict === true))) {
+        return true;
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+  return false;
+}
+
 /**
  * @param {string} cwd
- * @param {{ hasAgentRoom?: boolean, isGitRepo?: boolean, statusPorcelain?: string, logDiff?: string, testCommand?: string, verification?: any, timeoutMs?: number, runCommand?: function, skipTestVerification?: boolean }} [opts]
+ * @param {{ hasAgentRoom?: boolean, isGitRepo?: boolean, statusPorcelain?: string, logDiff?: string, testCommand?: string, verification?: any, timeoutMs?: number, runCommand?: function, skipTestVerification?: boolean, strict?: boolean }} [opts]
  * @returns {{ ok: boolean, sourceChanges: string[], message: string, reason?: string, testCommand?: string, testOutput?: string }}
  */
 function checkClosingTheLoop(cwd, opts) {
@@ -371,9 +399,10 @@ function checkClosingTheLoop(cwd, opts) {
   }
 
   // --- Closing-the-loop Log Evidence Gate ---
+  const strict = isStrictMode(cwd, opts);
   const logTouched = changedPaths.some(isLogPath);
   const logDiff = typeof opts.logDiff === 'string' ? opts.logDiff : getLogDiff(cwd);
-  const hasEvidence = validateLogEvidenceFromDiff(logDiff);
+  const hasEvidence = validateLogEvidenceFromDiff(logDiff, { strict });
 
   if (hasEvidence) {
     return { ok: true, sourceChanges: [], message: '' };
@@ -391,7 +420,7 @@ function checkClosingTheLoop(cwd, opts) {
   return {
     ok: false,
     sourceChanges: nonScaffold,
-    message: buildEvidenceFailureMessage(),
+    message: buildEvidenceFailureMessage({ strict }),
     reason: 'insufficient-evidence',
   };
 }
@@ -477,7 +506,13 @@ function main() {
     args.includes('--skip-scope') ||
     args.includes('--skip-scope-check');
 
-  const result = checkClosingTheLoop(process.cwd(), { skipTestVerification, skipScopeCheck });
+  const strict = args.includes('--strict');
+
+  const result = checkClosingTheLoop(process.cwd(), {
+    skipTestVerification,
+    skipScopeCheck,
+    ...(strict ? { strict: true } : {})
+  });
   applyAdapter(adapter, result);
 }
 
@@ -493,6 +528,7 @@ module.exports = {
   resolveAllowedPaths,
   matchesPathPattern,
   isScaffoldPath,
+  isStrictMode,
   parseAdapter,
   SCAFFOLD_PREFIXES,
   SCAFFOLD_FILES,

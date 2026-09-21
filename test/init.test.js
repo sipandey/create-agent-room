@@ -816,6 +816,63 @@ test('runInit --profile full: AGENTS.md references principles.md/workflow-classi
   assert.match(agentsContent, /coordination\//);
 });
 
+test('runInit --preset minimal: scaffolds minimal files with preset: minimal', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-preset-minimal-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'PresetMinimalTest', preset: 'minimal', force: true });
+
+  assert.ok(fs.existsSync(path.join(tmpDir, 'AGENTS.md')));
+  assert.ok(!fs.existsSync(path.join(tmpDir, '.agent-room', 'principles.md')));
+  assert.ok(!fs.existsSync(path.join(tmpDir, '.agent-room', 'workflow-classifier.md')));
+
+  const config = JSON.parse(fs.readFileSync(path.join(tmpDir, '.agent-room.json'), 'utf8'));
+  assert.strictEqual(config.preset, 'minimal');
+  assert.strictEqual(config.profile, 'minimal');
+});
+
+test('runInit --preset standard: scaffolds full guidance corpus and enables test verification', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-preset-standard-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'PresetStandardTest', preset: 'standard', force: true });
+
+  assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'principles.md')));
+  assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'workflow-classifier.md')));
+  assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'coordination', 'handoff-protocol.md')));
+
+  const config = JSON.parse(fs.readFileSync(path.join(tmpDir, '.agent-room.json'), 'utf8'));
+  assert.strictEqual(config.preset, 'standard');
+  assert.strictEqual(config.profile, 'standard');
+  assert.ok(config.verification && config.verification.testCommand);
+});
+
+test('runInit --preset strict: configures verifyOnCommit, importBoundaries, and strictWaivers', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-preset-strict-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'PresetStrictTest', preset: 'strict', language: 'rust', force: true });
+
+  assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'principles.md')));
+
+  const config = JSON.parse(fs.readFileSync(path.join(tmpDir, '.agent-room.json'), 'utf8'));
+  assert.strictEqual(config.preset, 'strict');
+  assert.strictEqual(config.profile, 'strict');
+  assert.ok(config.verification && config.verification.testCommand);
+
+  const guardrails = JSON.parse(fs.readFileSync(path.join(tmpDir, '.agent-room', 'guardrails.json'), 'utf8'));
+  assert.deepStrictEqual(guardrails.verifyOnCommit, { enabled: true, strict: true });
+  assert.strictEqual(guardrails.strictWaivers, true);
+  assert.deepStrictEqual(guardrails.scopeGuidance, { maxFilesPerChange: 10, maxLinesPerChange: 300 });
+  assert.ok(Array.isArray(guardrails.importBoundaries) && guardrails.importBoundaries.length > 0);
+
+  const agents = fs.readFileSync(path.join(tmpDir, 'AGENTS.md'), 'utf8');
+  assert.match(agents, /Scaffolded with `--preset strict`/);
+});
+
 test('runInit --test-command: writes verification block in .agent-room.json', async (t) => {
   const tmpDir = path.join(__dirname, 'tmp-init-test-command-' + Date.now());
   fs.mkdirSync(tmpDir, { recursive: true });

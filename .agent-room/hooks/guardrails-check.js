@@ -62,7 +62,8 @@ function logBypass(reasons) {
     if (!fs.existsSync(logPath)) {
       fs.writeFileSync(logPath, BYPASS_LOG_HEADER);
     }
-    const entry = `- ${new Date().toISOString()} | author: ${getGitIdentity()} | bypassed: ${reasons.join('; ')}\n`;
+    const reasonSuffix = process.env.GUARDRAILS_BYPASS_REASON ? ` | reason: ${process.env.GUARDRAILS_BYPASS_REASON}` : '';
+    const entry = `- ${new Date().toISOString()} | author: ${getGitIdentity()}${reasonSuffix} | bypassed: ${reasons.join('; ')}\n`;
     fs.appendFileSync(logPath, entry);
     execFileSync('git', ['add', BYPASS_LOG_REL], { cwd: projectRoot });
   } catch (err) {
@@ -278,6 +279,137 @@ if (!isInitialCommit() && (scopeBoundaries || envAllowedScope)) {
       violations.push(
         `Scope boundary violation: change touches multiple isolated boundaries: ${matchedPatterns.join(' AND ')}`
       );
+    }
+  }
+}
+
+// importBoundaries: architectural import boundary enforcement.
+// Blocks commits where files matching a source pattern import modules matching disallowed patterns.
+const importBoundaries = guardrails.importBoundaries;
+if (!isInitialCommit() && Array.isArray(importBoundaries) && importBoundaries.length > 0) {
+  for (const file of stagedFiles) {
+    if (isBinaryFile(file)) continue;
+    const matchingRules = importBoundaries.filter(
+      (rule) => rule && rule.source && isPathProtected(file, rule.source)
+    );
+    if (matchingRules.length === 0) continue;
+
+    let addedLines = '';
+    try {
+      const diff = execFileSync('git', ['diff', '--cached', '-U0', '--', file], {
+        cwd: projectRoot,
+        encoding: 'utf8'
+      });
+      addedLines = diff
+        .split('\n')
+        .filter((line) => line.startsWith('+') && !line.startsWith('+++'))
+        .map((line) => line.slice(1))
+        .join('\n');
+    } catch (err) {
+      try {
+        addedLines = fs.readFileSync(path.join(projectRoot, file), 'utf8');
+      } catch (readErr) {
+        continue;
+      }
+    }
+
+    if (!addedLines) continue;
+
+    // JavaScript / TypeScript / general require & import matches
+    const jsImportRegex = /(?:import\s+(?:[\w*\s{},]*\s+from\s+)?|require\s*\(\s*|import\s*\(\s*)['"]([^'"]+)['"]/g;
+    let match;
+    while ((match = jsImportRegex.exec(addedLines)) !== null) {
+      const importTarget = match[1];
+      const normalizedTarget = importTarget.replace(/\\/g, '/');
+      const targetPathFromRoot = importTarget.startsWith('.')
+        ? path.join(path.dirname(file), importTarget).replace(/\\/g, '/')
+        : normalizedTarget;
+
+      for (const rule of matchingRules) {
+        const disallowed = rule.disallowed || rule.forbiddenImports || [];
+        for (const disPattern of disallowed) {
+          if (
+            isPathProtected(normalizedTarget, disPattern) ||
+            isPathProtected(targetPathFromRoot, disPattern)
+          ) {
+            const desc = rule.description ? ` (${rule.description})` : '';
+            violations.push(
+              `Import boundary violation in "${file}": imports "${importTarget}" which matches disallowed pattern "${disPattern}"${desc}`
+            );
+          }
+        }
+      }
+    }
+
+    // Python import matches (e.g. `from tests.foo import bar` or `import tests.foo`)
+    if (file.endsWith('.py')) {
+      const pyImportRegex = /(?:^|\n)\s*(?:from|import)\s+([a-zA-Z0-9_.]+)/g;
+      while ((match = pyImportRegex.exec(addedLines)) !== null) {
+        const importTarget = match[1].replace(/\./g, '/');
+        for (const rule of matchingRules) {
+          const disallowed = rule.disallowed || rule.forbiddenImports || [];
+          for (const disPattern of disallowed) {
+            if (isPathProtected(importTarget, disPattern)) {
+              const desc = rule.description ? ` (${rule.description})` : '';
+              violations.push(
+                `Import boundary violation in "${file}": imports "${match[1]}" which matches disallowed pattern "${disPattern}"${desc}`
+              );
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// strictWaivers: strict waiver audit enforcement
+const isStrictWaivers =
+  guardrails.strictWaivers === true ||
+  (guardrails.verifyOnCommit && guardrails.verifyOnCommit.strict === true);
+
+if (isStrictWaivers && !isInitialCommit()) {
+  // 1. Audit bypasses: if GUARDRAILS_BYPASS is used, require GUARDRAILS_BYPASS_REASON
+  if (ALLOW_GUARDRAILS_BYPASS) {
+    const bypassReason = (process.env.GUARDRAILS_BYPASS_REASON || '').trim();
+    if (!bypassReason || bypassReason.length < 20) {
+      console.error('');
+      console.error('❌ Strict Waiver Audit Failed: GUARDRAILS_BYPASS requires GUARDRAILS_BYPASS_REASON');
+      console.error('In strict governance mode, bypasses must include an auditable explanation (>= 20 chars).');
+      console.error('Example: GUARDRAILS_BYPASS=1 GUARDRAILS_BYPASS_REASON="ticket #123: hotfix deployment" git commit');
+      console.error('');
+      process.exit(1);
+    }
+  }
+
+  // 2. Audit no-log waivers in decisions.md / anti-patterns.md
+  const stagedLogs = stagedFiles.filter(
+    (p) => p === '.agent-room/decisions.md' || p === '.agent-room/anti-patterns.md'
+  );
+  for (const logFile of stagedLogs) {
+    let diff = '';
+    try {
+      diff = execFileSync('git', ['diff', '--cached', '-U0', '--', logFile], {
+        cwd: projectRoot,
+        encoding: 'utf8'
+      });
+    } catch (err) {
+      // ignore
+    }
+    const addedContent = diff
+      .split('\n')
+      .filter((line) => line.startsWith('+') && !line.startsWith('+++'))
+      .map((line) => line.slice(1))
+      .join('\n');
+
+    const waiverMatch = addedContent.match(/<!--\s*no-log:\s*(.*?)\s*-->/s);
+    if (waiverMatch) {
+      const reason = waiverMatch[1].trim();
+      const hasAuditRef = /(?:approved-by|waiver-approved|ticket|issue|ref|jira|#\d+)/i.test(reason);
+      if (reason.length < 40 || !hasAuditRef) {
+        violations.push(
+          `Strict waiver audit failed in "${logFile}": waiver "${reason}" must be at least 40 characters and include an audit reference (ticket: #123, approved-by:, ref:, or waiver-approved:)`
+        );
+      }
     }
   }
 }

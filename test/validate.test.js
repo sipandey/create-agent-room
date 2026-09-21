@@ -244,3 +244,46 @@ test('runValidate: fails when guardrails.json scopeBoundaries has invalid struct
   }
 });
 
+test('runValidate: fails when guardrails.json importBoundaries has invalid structure', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-validate-import-invalid-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'ImportInvalidRoom', force: true });
+  const guardrailsPath = path.join(tmpDir, '.agent-room', 'guardrails.json');
+  const guardrails = JSON.parse(fs.readFileSync(guardrailsPath, 'utf8'));
+  guardrails.importBoundaries = [
+    {
+      source: '',
+      disallowed: []
+    }
+  ];
+  fs.writeFileSync(guardrailsPath, JSON.stringify(guardrails, null, 2));
+
+  const originalExitCode = process.exitCode;
+  process.exitCode = undefined;
+  try {
+    runValidate(tmpDir);
+    assert.strictEqual(process.exitCode, 1, 'invalid importBoundaries should fail validate');
+  } finally {
+    process.exitCode = originalExitCode;
+  }
+});
+
+test('runValidate: passes on a cleanly scaffolded strict-preset room', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-validate-strict-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'StrictCleanRoom', preset: 'strict', force: true });
+
+  const originalExitCode = process.exitCode;
+  process.exitCode = undefined;
+  try {
+    runValidate(tmpDir);
+    assert.strictEqual(process.exitCode, undefined, 'strict room should pass validation with no errors');
+  } finally {
+    process.exitCode = originalExitCode;
+  }
+});
+
