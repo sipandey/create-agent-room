@@ -89,6 +89,8 @@ function parseArgs(argv) {
       } else {
         throw new Error('Error: --test-command option requires a command string.');
       }
+    } else if (a === '--no-test-command' || a === '--skip-test-verification') {
+      args['no-test-command'] = true;
     } else if (a.startsWith('--tools=')) {
       args.tools = a.slice('--tools='.length);
     } else if (a.startsWith('--name=')) {
@@ -171,6 +173,7 @@ Options:
   --org <name>              Organization layer name for template inheritance (default: none)
   --profile <name>          minimal|full - how much of the guidance corpus to scaffold (default: minimal)
   --test-command <cmd>      Test command to verify changes before completing turns (e.g. "npm test")
+  --no-test-command         Skip pre-stop test verification even if a test suite is detected
   --git                     Run "git init" and create an initial commit in target-dir
   --force                   Overwrite existing files instead of skipping them
   --dry-run                 Print what init would create/skip; write nothing to disk
