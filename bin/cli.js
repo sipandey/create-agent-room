@@ -83,6 +83,12 @@ function parseArgs(argv) {
       } else {
         throw new Error('Error: --profile option requires "minimal" or "full".');
       }
+    } else if (a === '--test-command') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args['test-command'] = argv[++i];
+      } else {
+        throw new Error('Error: --test-command option requires a command string.');
+      }
     } else if (a.startsWith('--tools=')) {
       args.tools = a.slice('--tools='.length);
     } else if (a.startsWith('--name=')) {
@@ -97,6 +103,8 @@ function parseArgs(argv) {
       args.branch = a.slice('--branch='.length);
     } else if (a.startsWith('--skill-packs=')) {
       args['skill-packs'] = a.slice('--skill-packs='.length);
+    } else if (a.startsWith('--test-command=')) {
+      args['test-command'] = a.slice('--test-command='.length);
     } else if (a.startsWith('--org=')) {
       args.org = a.slice('--org='.length);
     } else if (a === '--format') {
@@ -162,6 +170,7 @@ Options:
   --skill-packs <list>      Comma-separated optional skill packs: testing,security,release (default: none)
   --org <name>              Organization layer name for template inheritance (default: none)
   --profile <name>          minimal|full - how much of the guidance corpus to scaffold (default: minimal)
+  --test-command <cmd>      Test command to verify changes before completing turns (e.g. "npm test")
   --git                     Run "git init" and create an initial commit in target-dir
   --force                   Overwrite existing files instead of skipping them
   --dry-run                 Print what init would create/skip; write nothing to disk

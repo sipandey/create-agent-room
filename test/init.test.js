@@ -816,4 +816,22 @@ test('runInit --profile full: AGENTS.md references principles.md/workflow-classi
   assert.match(agentsContent, /coordination\//);
 });
 
+test('runInit --test-command: writes verification block in .agent-room.json', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-init-test-command-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, {
+    yes: true,
+    tools: 'none',
+    name: 'InitTestCommandTest',
+    'test-command': 'npm test',
+    force: true,
+  });
+
+  const config = JSON.parse(fs.readFileSync(path.join(tmpDir, '.agent-room.json'), 'utf8'));
+  assert.deepStrictEqual(config.verification, { testCommand: 'npm test' });
+});
+
+
 

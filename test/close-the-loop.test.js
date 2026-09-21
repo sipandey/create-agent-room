@@ -163,3 +163,199 @@ test('adapter unknown: exits 1', () => {
   assert.strictEqual(result.status, 1);
   assert.match(result.stderr, /Unknown adapter/);
 });
+
+test('checkClosingTheLoop: runs testCommand when non-scaffold files changed and fails if testCommand exits non-zero', () => {
+  const { checkClosingTheLoop } = loadHook();
+  const result = checkClosingTheLoop('/tmp/unused', {
+    hasAgentRoom: true,
+    isGitRepo: true,
+    statusPorcelain: ' M src/index.js\n',
+    testCommand: 'npm test',
+    runCommand: (cmd) => {
+      assert.strictEqual(cmd, 'npm test');
+      return { status: 1, stdout: '', stderr: 'AssertionError: test failed\n' };
+    }
+  });
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.reason, 'test-verification-failed');
+  assert.match(result.message, /Pre-stop test verification failed/);
+  assert.match(result.message, /AssertionError: test failed/);
+});
+
+test('checkClosingTheLoop: test failure message contains test command, exit code, and trimmed output', () => {
+  const { checkClosingTheLoop } = loadHook();
+  const longOutput = 'x'.repeat(2000) + '\nFINAL_FAILURE_LINE';
+  const result = checkClosingTheLoop('/tmp/unused', {
+    hasAgentRoom: true,
+    isGitRepo: true,
+    statusPorcelain: ' M src/index.js\n',
+    testCommand: 'npm test',
+    runCommand: () => ({ status: 2, stdout: longOutput, stderr: '' })
+  });
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.reason, 'test-verification-failed');
+  assert.match(result.message, /exited with code 2/);
+  assert.match(result.message, /FINAL_FAILURE_LINE/);
+  assert.match(result.message, /output truncated/);
+  assert.ok(result.message.length < 2500, 'message should be trimmed to reasonable size');
+});
+
+test('checkClosingTheLoop: handles timeout when testCommand times out', () => {
+  const { checkClosingTheLoop } = loadHook();
+  const result = checkClosingTheLoop('/tmp/unused', {
+    hasAgentRoom: true,
+    isGitRepo: true,
+    statusPorcelain: ' M src/index.js\n',
+    testCommand: 'npm test',
+    timeoutMs: 5000,
+    runCommand: (cmd, opts) => {
+      assert.strictEqual(opts.timeout, 5000);
+      return { status: null, error: { code: 'ETIMEDOUT' }, stdout: '', stderr: '' };
+    }
+  });
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.reason, 'test-verification-failed');
+  assert.match(result.message, /timed out after 5000ms/);
+});
+
+test('checkClosingTheLoop: skips test verification when only scaffold files changed', () => {
+  let commandRan = false;
+  const { checkClosingTheLoop } = loadHook();
+  const result = checkClosingTheLoop('/tmp/unused', {
+    hasAgentRoom: true,
+    isGitRepo: true,
+    statusPorcelain: ' M .agent-room/skills/foo.md\n',
+    testCommand: 'npm test',
+    runCommand: () => {
+      commandRan = true;
+      return { status: 1, stdout: '', stderr: 'fail' };
+    }
+  });
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(commandRan, false);
+});
+
+test('checkClosingTheLoop: skips test verification when skipTestVerification is true', () => {
+  let commandRan = false;
+  const { checkClosingTheLoop } = loadHook();
+  const logDiff = '+<!-- no-log: routine validation test pass -->\n';
+  const result = checkClosingTheLoop('/tmp/unused', {
+    hasAgentRoom: true,
+    isGitRepo: true,
+    statusPorcelain: ' M src/index.js\n M .agent-room/decisions.md\n',
+    logDiff,
+    testCommand: 'npm test',
+    skipTestVerification: true,
+    runCommand: () => {
+      commandRan = true;
+      return { status: 1, stdout: '', stderr: 'fail' };
+    }
+  });
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(commandRan, false);
+});
+
+test('checkClosingTheLoop: passes when testCommand succeeds and log evidence is valid', () => {
+  let commandRan = false;
+  const { checkClosingTheLoop } = loadHook();
+  const logDiff = '+<!-- no-log: routine validation run -->\n';
+  const result = checkClosingTheLoop('/tmp/unused', {
+    hasAgentRoom: true,
+    isGitRepo: true,
+    statusPorcelain: ' M src/index.js\n M .agent-room/decisions.md\n',
+    logDiff,
+    testCommand: 'npm test',
+    runCommand: () => {
+      commandRan = true;
+      return { status: 0, stdout: 'All 10 tests passed\n', stderr: '' };
+    }
+  });
+  assert.strictEqual(commandRan, true);
+  assert.strictEqual(result.ok, true);
+});
+
+test('checkClosingTheLoop: proceeds to log check if testCommand succeeds but log is untouched', () => {
+  let commandRan = false;
+  const { checkClosingTheLoop } = loadHook();
+  const result = checkClosingTheLoop('/tmp/unused', {
+    hasAgentRoom: true,
+    isGitRepo: true,
+    statusPorcelain: ' M src/index.js\n',
+    testCommand: 'npm test',
+    runCommand: () => {
+      commandRan = true;
+      return { status: 0, stdout: 'ok', stderr: '' };
+    }
+  });
+  assert.strictEqual(commandRan, true);
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.reason, 'no-log-touch');
+  assert.match(result.message, /Closing-the-loop check failed/);
+});
+
+test('checkClosingTheLoop: reads testCommand from .agent-room.json in cwd', (t) => {
+  const dir = makeRepo('test-cmd-config');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  fs.writeFileSync(
+    path.join(dir, '.agent-room.json'),
+    JSON.stringify({ verification: { testCommand: 'npm test' } })
+  );
+  let ranCommand = null;
+  const { checkClosingTheLoop } = loadHook();
+  const result = checkClosingTheLoop(dir, {
+    statusPorcelain: ' M src/index.js\n',
+    runCommand: (cmd) => {
+      ranCommand = cmd;
+      return { status: 1, stdout: '', stderr: 'Test suite failed' };
+    }
+  });
+  assert.strictEqual(ranCommand, 'npm test');
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.reason, 'test-verification-failed');
+});
+
+test('adapter claude: fail on test verification exits 2 with stderr', (t) => {
+  const dir = makeRepo('claude-test-fail');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(dir, 'src.js'), 'x\n');
+  fs.writeFileSync(
+    path.join(dir, '.agent-room.json'),
+    JSON.stringify({ verification: { testCommand: 'exit 1' } })
+  );
+
+  const result = runHookCli(dir, []);
+  assert.strictEqual(result.status, 2);
+  assert.match(result.stderr, /Pre-stop test verification failed/);
+  assert.strictEqual((result.stdout || '').trim(), '');
+});
+
+test('adapter cursor: fail on test verification exits 0 with followup_message JSON', (t) => {
+  const dir = makeRepo('cursor-test-fail');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(dir, 'src.js'), 'x\n');
+  fs.writeFileSync(
+    path.join(dir, '.agent-room.json'),
+    JSON.stringify({ verification: { testCommand: 'exit 1' } })
+  );
+
+  const result = runHookCli(dir, ['--adapter=cursor'], JSON.stringify({ status: 'completed', loop_count: 0 }));
+  assert.strictEqual(result.status, 0);
+  const payload = JSON.parse(result.stdout.trim());
+  assert.match(payload.followup_message, /Pre-stop test verification failed/);
+});
+
+test('adapter claude: respects --skip-tests flag on test verification', (t) => {
+  const dir = makeRepo('claude-skip-tests');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  fs.writeFileSync(path.join(dir, 'src.js'), 'x\n');
+  fs.writeFileSync(
+    path.join(dir, '.agent-room.json'),
+    JSON.stringify({ verification: { testCommand: 'exit 1' } })
+  );
+
+  const result = runHookCli(dir, ['--skip-tests']);
+  assert.strictEqual(result.status, 2);
+  assert.match(result.stderr, /Closing-the-loop check failed/);
+  assert.doesNotMatch(result.stderr, /Pre-stop test verification failed/);
+});
+

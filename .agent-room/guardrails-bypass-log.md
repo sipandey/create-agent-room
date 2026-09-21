@@ -19,3 +19,4 @@ instead of scrolling off a terminal and being forgotten.
 - 2026-07-30T07:36:11.863Z | author: Siddharth Pandey <siddharth.pandey06@gmail.com> | bypassed: Protected path violation: .github/workflows/ci.yml; Forbidden pattern found in scripts/demo.sh: AWS access key ID; Change scope exceeds guidance: 47 files changed (limit 20); Change scope exceeds guidance: 1064 lines changed (limit 500)
 - 2026-07-30T07:54:45.097Z | author: Siddharth Pandey <siddharth.pandey06@gmail.com> | bypassed: Protected path violation: .github/workflows/agent-room-validate.yml
 - 2026-08-03T05:26:43.460Z | author: Siddharth Pandey <siddharth.pandey06@gmail.com> | bypassed: Protected path violation: .github/workflows/agent-room-validate.yml
+- 2026-09-21T12:13:37.158Z | author: Siddharth Pandey <siddharth.pandey06@gmail.com> | bypassed: Protected path violation: .agent-room/hooks/close-the-loop-check.js; Change scope exceeds guidance: 557 lines changed (limit 500)
