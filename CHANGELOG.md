@@ -13,8 +13,10 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 ### Added
 
 - Pre-Stop Test & Build Verification Gate in `close-the-loop-check.js` (Claude Code Stop & Cursor stop hooks): mechanically executes configured test command (`verification.testCommand` in `.agent-room.json` or `init --test-command`) when non-scaffold files change, capturing bounded failure output (~1,500 chars) and blocking turn completion if tests fail.
-- `--test-command <cmd>` flag for `create-agent-room init` to persist verification configuration into `.agent-room.json`.
+- Automated workspace stack detection for verification commands in `create-agent-room init` (`detectTestCommand`), discovering test runners for Node.js (`package.json` scripts, filtering dummy placeholders), Rust (`Cargo.toml`), Go (`go.mod`), Python (`pytest.ini`, `pyproject.toml`, test directories), Java/Kotlin (`gradlew`/`pom.xml`), and Makefiles (`test:` target).
+- `--test-command <cmd>` and `--no-test-command` flags for `create-agent-room init`.
 - Support for `--skip-tests` and `--skip-verification` CLI flags as well as `CAR_SKIP_TEST_VERIFICATION` env var in `close-the-loop-check.js`.
+- `computeEnforcedFeatures` reports active Pre-Stop test verification gate in post-scaffold output.
 
 ### Changed
 

@@ -833,5 +833,107 @@ test('runInit --test-command: writes verification block in .agent-room.json', as
   assert.deepStrictEqual(config.verification, { testCommand: 'npm test' });
 });
 
+test('detectWorkspace: detects package.json test script when defined and not dummy', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-detect-pkg-test-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({ scripts: { test: 'mocha' } }));
+  const detected = detectWorkspace(tmpDir);
+  assert.strictEqual(detected.testCommand, 'npm test');
+});
+
+test('detectWorkspace: ignores dummy npm default test script placeholder', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-detect-dummy-test-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  fs.writeFileSync(
+    path.join(tmpDir, 'package.json'),
+    JSON.stringify({ scripts: { test: 'echo "Error: no test specified" && exit 1' } })
+  );
+  const detected = detectWorkspace(tmpDir);
+  assert.strictEqual(detected.testCommand, null);
+});
+
+test('detectWorkspace: detects cargo test when Cargo.toml exists', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-detect-cargo-test-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  fs.writeFileSync(path.join(tmpDir, 'Cargo.toml'), '[package]');
+  const detected = detectWorkspace(tmpDir);
+  assert.strictEqual(detected.testCommand, 'cargo test');
+});
+
+test('detectWorkspace: detects go test when go.mod exists', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-detect-go-test-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  fs.writeFileSync(path.join(tmpDir, 'go.mod'), 'module example.com/test');
+  const detected = detectWorkspace(tmpDir);
+  assert.strictEqual(detected.testCommand, 'go test ./...');
+});
+
+test('detectWorkspace: detects pytest when pytest.ini exists', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-detect-pytest-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  fs.writeFileSync(path.join(tmpDir, 'pytest.ini'), '[pytest]');
+  const detected = detectWorkspace(tmpDir);
+  assert.strictEqual(detected.testCommand, 'pytest');
+});
+
+test('detectWorkspace: detects make test when Makefile has test target', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-detect-make-test-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  fs.writeFileSync(path.join(tmpDir, 'Makefile'), 'test:\n\t@echo "running tests"\n');
+  const detected = detectWorkspace(tmpDir);
+  assert.strictEqual(detected.testCommand, 'make test');
+});
+
+test('runInit: auto-populates verification block in .agent-room.json when test script detected', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-auto-detect-runinit-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({ scripts: { test: 'node --test' } }));
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'AutoInitTest', force: true });
+
+  const config = JSON.parse(fs.readFileSync(path.join(tmpDir, '.agent-room.json'), 'utf8'));
+  assert.deepStrictEqual(config.verification, { testCommand: 'npm test' });
+});
+
+test('runInit: skips verification block when --no-test-command is passed', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-skip-detect-runinit-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  fs.writeFileSync(path.join(tmpDir, 'package.json'), JSON.stringify({ scripts: { test: 'node --test' } }));
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'SkipInitTest', 'no-test-command': true, force: true });
+
+  const config = JSON.parse(fs.readFileSync(path.join(tmpDir, '.agent-room.json'), 'utf8'));
+  assert.strictEqual(config.verification, undefined);
+});
+
+test('computeEnforcedFeatures: includes Pre-Stop test verification gate when config has verification and hook wired', () => {
+  const results = [
+    { path: '.agent-room/hooks/close-the-loop-check.js', written: true },
+    { path: '.claude/settings.json', written: true }
+  ];
+  const config = {
+    verification: { testCommand: 'npm test' }
+  };
+  const enforced = computeEnforcedFeatures(results, config);
+  const labels = enforced.map((e) => e.label);
+  assert.ok(labels.includes('Claude Code Stop hook'));
+  assert.ok(labels.includes('Pre-Stop test verification gate'));
+});
+
+
 
 
