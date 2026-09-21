@@ -10,6 +10,7 @@ const { runPrDesc } = require('../lib/pr');
 const { runLintSessions } = require('../lib/lint-sessions');
 const { runDoctor } = require('../lib/doctor');
 const { runEvalCli } = require('../lib/eval');
+const { runVerify } = require('../lib/verify');
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -135,6 +136,16 @@ function parseArgs(argv) {
       args.suite = a.slice('--suite='.length);
     } else if (a.startsWith('--profile=')) {
       args.profile = a.slice('--profile='.length);
+    } else if (a === '--strict') {
+      args.strict = true;
+    } else if (a === '--timeout') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.timeout = parseInt(argv[++i], 10);
+      } else {
+        throw new Error('Error: --timeout option requires a millisecond duration.');
+      }
+    } else if (a.startsWith('--timeout=')) {
+      args.timeout = parseInt(a.slice('--timeout='.length), 10);
     } else if (a === '--help' || a === '-h' || a === 'help') {
       args.help = true;
     } else if (a === '--version' || a === '-v') {
@@ -161,6 +172,7 @@ Usage:
   create-agent-room pr-desc [target-dir] [options]
   create-agent-room doctor [target-dir]
   create-agent-room eval [options]
+  create-agent-room verify [target-dir] [options]
 
 Options:
   --name <name>             Project name used in templates (default: target dir name)
@@ -245,6 +257,8 @@ async function main() {
     runDoctor(target);
   } else if (command === 'eval') {
     runEvalCli(args);
+  } else if (command === 'verify') {
+    runVerify(target, args);
   } else {
     console.error(`Unknown command: ${command}`);
     printHelp();
