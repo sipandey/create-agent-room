@@ -80,12 +80,20 @@ Enforce runtime determinism and mechanical gates so AI coding agents cannot decl
 
 ---
 
-### Story 1.4: Blast Radius & Scope Guardrails in `guardrails-check.js`
-- **Status:** ⏳ Queued
+### Story 1.4: Blast Radius & Scope Guardrails in `guardrails-check.js` & `close-the-loop-check.js`
+- **Status:** ✅ **DONE**
+- **Summary:**
+  - Implemented active architectural boundary enforcement across both pre-commit (`guardrails-check.js`) and pre-stop turn gates (`close-the-loop-check.js`).
+  - Supported `scopeBoundaries` in `.agent-room/guardrails.json` with `allowedPaths` (allowed directories) and `disallowedCrossBoundaries` (mutually exclusive boundary groups).
+  - Supported per-session dynamic scope overrides via `CAR_ALLOWED_SCOPE` and emergency bypass via `CAR_SKIP_SCOPE_CHECK` / `--skip-scope`.
+  - Added structured remediation guidance in `stderr` (Claude Code exit code 2) and `followup_message` JSON (Cursor), pointing to `.agent-room/coordination/scope-boundaries.md`.
+  - Exempted governance and scaffold files (`.agent-room/**`, `docs/plans/`, `AGENTS.md`, `CLAUDE.md`, `.agent-room.json`) to allow required logging.
+  - Added schema validation in `lib/checks.js`.
+  - Comprehensive unit test coverage with 8 new tests in `test/close-the-loop.test.js`, 5 new tests in `test/guardrails-check.test.js`, and 1 new test in `test/validate.test.js` (all 211 repo tests pass).
 - **Goal:**
   - Prevent agents from making changes across too many modules or violating architectural boundaries during a single session.
 - **Acceptance Criteria:**
-  1. Support `scopeBoundaries` in `.agent-room/guardrails.json` (e.g. allowed directories per task or forbidden cross-boundary edits).
+  1. Support `scopeBoundaries` in `.agent-room/guardrails.json` (allowed directories per task or forbidden cross-boundary edits).
   2. Block pre-commit and stop hooks if an agent attempts edits outside the declared boundary.
   3. Emit structured remediation guidance in `stderr` / `followup_message`.
 

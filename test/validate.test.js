@@ -219,3 +219,28 @@ test('runValidate: treats a room with no .agent-room.json (or an unreadable one)
     process.exitCode = originalExitCode;
   }
 });
+
+test('runValidate: fails when guardrails.json scopeBoundaries has invalid structure', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-validate-scope-invalid-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'ScopeRoom', force: true });
+  const guardrailsPath = path.join(tmpDir, '.agent-room', 'guardrails.json');
+  const guardrails = JSON.parse(fs.readFileSync(guardrailsPath, 'utf8'));
+  guardrails.scopeBoundaries = {
+    allowedPaths: 'not-an-array',
+    disallowedCrossBoundaries: [['only-one-item']]
+  };
+  fs.writeFileSync(guardrailsPath, JSON.stringify(guardrails, null, 2));
+
+  const originalExitCode = process.exitCode;
+  process.exitCode = undefined;
+  try {
+    runValidate(tmpDir);
+    assert.strictEqual(process.exitCode, 1, 'invalid scopeBoundaries should fail validate');
+  } finally {
+    process.exitCode = originalExitCode;
+  }
+});
+

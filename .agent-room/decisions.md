@@ -16,6 +16,13 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-21 — blast radius & architectural scope guardrails
+
+**Decision:** Enforce architectural scope boundaries across both Pre-Commit hooks (`guardrails-check.js`) and Pre-Stop turn hooks (`close-the-loop-check.js`), converting the guidance in `.agent-room/coordination/scope-boundaries.md` into active mechanical enforcement. Supported via `scopeBoundaries` in `.agent-room/guardrails.json` (`allowedPaths` and `disallowedCrossBoundaries`) and dynamically via `CAR_ALLOWED_SCOPE`. Governance paths (`.agent-room/**`, `docs/plans/`, `AGENTS.md`, `CLAUDE.md`, `.agent-room.json`) remain exempt to allow required logging and decision tracking.
+**Why:** Agents assigned to isolated components frequently exhibit blast radius creep across the codebase (e.g. editing backend, migrations, or infra while on a frontend task), causing merge conflicts and broken parallel work. Mechanical enforcement guarantees adherence to architectural boundaries before commits or turn completions.
+**Rejected:** Blocking governance docs from being updated when scope is restricted (would prevent agents from satisfying closing-the-loop requirements).
+
+
 ### 2026-09-21 — cli `verify` subcommand and opt-in pre-commit verification gate
 
 **Decision:** Implement `create-agent-room verify` as a standalone subcommand in `bin/cli.js` and `lib/verify.js`, supporting `--format json`, `--strict`, `--timeout <ms>`, and `--output <path>`. Also add opt-in pre-commit verification to `guardrails-check.js` triggered by `guardrails.verifyOnCommit` (boolean or object) or `CAR_VERIFY_ON_COMMIT=1`. Commits failing verification are blocked unless bypassed via `GUARDRAILS_BYPASS=1` (which records durable audit log entries in `.agent-room/guardrails-bypass-log.md`).
