@@ -13,7 +13,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execSync, execFileSync } = require('child_process');
+const { execSync, execFileSync, spawnSync } = require('child_process');
 
 const projectRoot = process.cwd();
 const guardrailsPath = path.join(projectRoot, '.agent-room', 'guardrails.json');
@@ -231,6 +231,46 @@ if (scopeGuidance && !isInitialCommit()) {
   }
 }
 
+// verifyOnCommit: optional test verification gate before commit.
+// Runs the project's test command (from guardrails.json, .agent-room.json, or
+// auto-detected) and blocks the commit if tests fail, unless bypassed.
+if (!isInitialCommit() && isVerifyEnabled(guardrails)) {
+  const verifyCmd = resolveVerificationCommand(projectRoot, guardrails);
+  if (verifyCmd) {
+    const timeoutMs =
+      (guardrails.verifyOnCommit && guardrails.verifyOnCommit.timeout) ||
+      (process.env.CAR_VERIFY_TIMEOUT ? parseInt(process.env.CAR_VERIFY_TIMEOUT, 10) : 60000);
+
+    let res;
+    try {
+      res = spawnSync(verifyCmd, {
+        cwd: projectRoot,
+        shell: true,
+        timeout: timeoutMs,
+        encoding: 'utf8',
+        maxBuffer: 10 * 1024 * 1024
+      });
+    } catch (err) {
+      res = { status: 1, error: err, stdout: '', stderr: err.message || String(err) };
+    }
+
+    if (res.error && res.error.code === 'ETIMEDOUT') {
+      violations.push(`Pre-commit verification failed: "${verifyCmd}" timed out after ${timeoutMs}ms`);
+    } else {
+      const exitCode = res.status !== null && res.status !== undefined ? res.status : (res.signal ? 1 : 0);
+      if (exitCode !== 0) {
+        const output = [(res.stdout || ''), (res.stderr || '')].filter(Boolean).join('\n').trim();
+        const snippet = output.length > 500 ? output.slice(-500) + ' (truncated)' : output;
+        violations.push(
+          `Pre-commit verification failed: "${verifyCmd}" exited with code ${exitCode}${snippet ? `\n    Output:\n    ` + snippet.replace(/\n/g, '\n    ') : ''}`
+        );
+      }
+    }
+  } else if (guardrails.verifyOnCommit && guardrails.verifyOnCommit.strict) {
+    violations.push('Pre-commit verification failed: No test command configured or detected');
+  }
+}
+
 if (violations.length > 0) {
   console.error('');
   console.error('❌ Guardrails Check Failed: Commit violates project guardrails');
@@ -322,3 +362,75 @@ function isBinaryFile(filePath) {
   const binaryExts = ['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.zip', '.tar', '.exe', '.dll', '.so', '.bin'];
   return binaryExts.includes(ext);
 }
+
+function isVerifyEnabled(guardrailsConfig) {
+  if (process.env.CAR_VERIFY_ON_COMMIT === '0' || process.env.CAR_VERIFY_ON_COMMIT === 'false') {
+    return false;
+  }
+  if (process.env.CAR_VERIFY_ON_COMMIT === '1' || process.env.CAR_VERIFY_ON_COMMIT === 'true') {
+    return true;
+  }
+  if (guardrailsConfig.verifyOnCommit === true) {
+    return true;
+  }
+  if (guardrailsConfig.verifyOnCommit && typeof guardrailsConfig.verifyOnCommit === 'object') {
+    return guardrailsConfig.verifyOnCommit.enabled !== false;
+  }
+  return false;
+}
+
+function resolveVerificationCommand(root, guardrailsConfig) {
+  if (process.env.CAR_TEST_COMMAND) {
+    return process.env.CAR_TEST_COMMAND;
+  }
+  if (
+    guardrailsConfig.verifyOnCommit &&
+    typeof guardrailsConfig.verifyOnCommit === 'object' &&
+    guardrailsConfig.verifyOnCommit.command
+  ) {
+    return guardrailsConfig.verifyOnCommit.command;
+  }
+  const configPath = path.join(root, '.agent-room.json');
+  if (fs.existsSync(configPath)) {
+    try {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      if (config.verification && typeof config.verification.testCommand === 'string') {
+        return config.verification.testCommand;
+      }
+      if (typeof config.testCommand === 'string') {
+        return config.testCommand;
+      }
+    } catch (err) {
+      // ignore
+    }
+  }
+  const pkgPath = path.join(root, 'package.json');
+  if (fs.existsSync(pkgPath)) {
+    try {
+      const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+      if (pkg.scripts && pkg.scripts.test) {
+        if (fs.existsSync(path.join(root, 'pnpm-lock.yaml'))) return 'pnpm test';
+        if (fs.existsSync(path.join(root, 'yarn.lock'))) return 'yarn test';
+        if (fs.existsSync(path.join(root, 'bun.lockb')) || fs.existsSync(path.join(root, 'bun.lock'))) return 'bun test';
+        return 'npm test';
+      }
+    } catch (err) {
+      // ignore
+    }
+  }
+  if (fs.existsSync(path.join(root, 'Cargo.toml'))) {
+    return 'cargo test';
+  }
+  if (fs.existsSync(path.join(root, 'go.mod'))) {
+    return 'go test ./...';
+  }
+  if (
+    fs.existsSync(path.join(root, 'pytest.ini')) ||
+    fs.existsSync(path.join(root, 'pyproject.toml')) ||
+    fs.existsSync(path.join(root, 'setup.py'))
+  ) {
+    return 'pytest';
+  }
+  return null;
+}
+

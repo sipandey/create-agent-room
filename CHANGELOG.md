@@ -17,6 +17,8 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 - `--test-command <cmd>` and `--no-test-command` flags for `create-agent-room init`.
 - Support for `--skip-tests` and `--skip-verification` CLI flags as well as `CAR_SKIP_TEST_VERIFICATION` env var in `close-the-loop-check.js`.
 - `computeEnforcedFeatures` reports active Pre-Stop test verification gate in post-scaffold output.
+- `create-agent-room verify` subcommand (`lib/verify.js`): standalone test verification CLI supporting `--format json`, `--strict`, `--timeout <ms>`, and `--output <path>`.
+- Opt-in pre-commit verification gate in `guardrails-check.js` (`verifyOnCommit` in `guardrails.json` or `CAR_VERIFY_ON_COMMIT=1`), blocking commits that fail test verification unless bypassed via `GUARDRAILS_BYPASS=1`.
 
 ### Changed
 

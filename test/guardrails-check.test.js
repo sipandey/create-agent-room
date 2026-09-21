@@ -508,3 +508,85 @@ test('guardrails-check: a clean commit with no violations never touches the bypa
   assert.strictEqual(result.code, 0);
   assert.ok(!fs.existsSync(path.join(dir, BYPASS_LOG_REL)), 'a clean commit must not create a bypass log entry');
 });
+
+test('guardrails-check: verifyOnCommit passes when verification test command succeeds', (t) => {
+  const dir = makeRepo('verify-pass');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: [],
+    forbiddenActions: [],
+    verifyOnCommit: { command: 'node -e "process.exit(0)"' }
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.writeFileSync(path.join(dir, 'feature.js'), 'console.log("hello");\n');
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 0, 'successful verification should allow commit');
+});
+
+test('guardrails-check: verifyOnCommit blocks commit when verification test command fails', (t) => {
+  const dir = makeRepo('verify-fail');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: [],
+    forbiddenActions: [],
+    verifyOnCommit: { command: 'node -e "console.error(\\"Tests failed!\\"); process.exit(1)"' }
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.writeFileSync(path.join(dir, 'buggy.js'), 'bad code\n');
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 1, 'failing verification should block commit');
+  assert.match(result.stderr, /Pre-commit verification failed/);
+  assert.match(result.stderr, /Tests failed!/);
+});
+
+test('guardrails-check: verifyOnCommit failure can be bypassed with GUARDRAILS_BYPASS=1', (t) => {
+  const dir = makeRepo('verify-bypass');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: [],
+    forbiddenActions: [],
+    verifyOnCommit: { command: 'node -e "process.exit(1)"' }
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.writeFileSync(path.join(dir, 'wip.js'), 'wip\n');
+  stageAll(dir);
+
+  const result = runHook(dir, { GUARDRAILS_BYPASS: '1' });
+  assert.strictEqual(result.code, 0, 'GUARDRAILS_BYPASS should allow commit despite test failure');
+  const logContent = fs.readFileSync(path.join(dir, BYPASS_LOG_REL), 'utf8');
+  assert.match(logContent, /Pre-commit verification failed/);
+});
+
+test('guardrails-check: CAR_VERIFY_ON_COMMIT=1 triggers verification even without guardrails.json setting', (t) => {
+  const dir = makeRepo('verify-env-flag');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, { protectedPaths: [], forbiddenActions: [] });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.writeFileSync(path.join(dir, 'file.txt'), 'hello\n');
+  stageAll(dir);
+
+  const result = runHook(dir, {
+    CAR_VERIFY_ON_COMMIT: '1',
+    CAR_TEST_COMMAND: 'node -e "process.exit(2)"'
+  });
+  assert.strictEqual(result.code, 1, 'CAR_VERIFY_ON_COMMIT=1 should enforce verification');
+  assert.match(result.stderr, /Pre-commit verification failed/);
+  assert.match(result.stderr, /exited with code 2/);
+});
+

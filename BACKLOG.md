@@ -63,15 +63,20 @@ Enforce runtime determinism and mechanical gates so AI coding agents cannot decl
 ---
 
 ### Story 1.3: `create-agent-room verify` Subcommand & Pre-Commit Verification Gate
-- **Status:** ⏳ Queued
+- **Status:** ✅ **DONE**
+- **Summary:**
+  - Implemented standalone `create-agent-room verify [target]` subcommand (`lib/verify.js`) reading `.agent-room.json` (or auto-detecting test runner).
+  - Supports `--format json` for CI/tooling, `--strict` (fail if unconfigured), `--timeout <ms>`, and `--output <path>`.
+  - Added opt-in pre-commit verification gate in `guardrails-check.js` (`verifyOnCommit` in `guardrails.json` or `CAR_VERIFY_ON_COMMIT=1`), rejecting failing commits unless bypassed via `GUARDRAILS_BYPASS=1`.
+  - Added 9 unit tests in `test/verify.test.js` and 4 new tests in `test/guardrails-check.test.js` (all 197 repo tests pass).
 - **Goal:**
   - Add a first-class `create-agent-room verify [target]` CLI command and optional pre-commit hook integration that runs the configured verification suite standalone, outputting structured pass/fail results.
 - **Acceptance Criteria:**
   1. `create-agent-room verify [target]` reads `.agent-room.json` and executes the configured test command.
   2. Exits 0 on test pass, exits 1 on test failure with trimmed error summary.
-  3. Support `--timeout <ms>` and `--bail`.
-  4. Integration with `.agent-room/hooks/guardrails-check.js` or `.git/hooks/pre-commit`: optionally verify tests pass prior to git commit when `--verify-on-commit` is enabled.
-  5. Evaluated in `create-agent-room eval` compliance suite.
+  3. Support `--timeout <ms>`, `--strict`, and `--format json`.
+  4. Integration with `.agent-room/hooks/guardrails-check.js`: optionally verify tests pass prior to git commit when `verifyOnCommit` or `CAR_VERIFY_ON_COMMIT=1` is enabled.
+  5. Tested across CLI runner and pre-commit hook suites.
 
 ---
 

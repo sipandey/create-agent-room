@@ -16,6 +16,13 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-21 — cli `verify` subcommand and opt-in pre-commit verification gate
+
+**Decision:** Implement `create-agent-room verify` as a standalone subcommand in `bin/cli.js` and `lib/verify.js`, supporting `--format json`, `--strict`, `--timeout <ms>`, and `--output <path>`. Also add opt-in pre-commit verification to `guardrails-check.js` triggered by `guardrails.verifyOnCommit` (boolean or object) or `CAR_VERIFY_ON_COMMIT=1`. Commits failing verification are blocked unless bypassed via `GUARDRAILS_BYPASS=1` (which records durable audit log entries in `.agent-room/guardrails-bypass-log.md`).
+**Why:** Teams want to run test verification both standalone in CI pipelines / local scripts (`create-agent-room verify --format json`) and mechanically gate git commits before code is recorded. Bounded timeout prevents hung tests from freezing git hooks or agents indefinitely.
+**Rejected:** Running pre-commit verification by default without opt-in (would impose unexpected latency on standard developer workflows); running verification on initial genesis commit (dependencies might not yet be installed).
+
+
 ### 2026-09-21 — workspace test command auto-detection for verification
 
 **Decision:** Auto-detect existing test commands during `create-agent-room init` (`detectTestCommand`) by inspecting `package.json` scripts (ignoring empty/dummy npm placeholders), `Cargo.toml`, `go.mod`, Python pytest configurations, Java/Kotlin gradlew/mvn, and Makefiles. In `--yes` mode, populate `verification.testCommand` automatically; in interactive mode, prompt with the detected default; allow overriding via `--test-command` or disabling via `--no-test-command`.
