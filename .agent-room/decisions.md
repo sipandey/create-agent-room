@@ -16,6 +16,12 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-21 — pre-stop test & build verification gate
+
+**Decision:** Wire automated pre-stop test & build verification directly into `close-the-loop-check.js` (Claude Code Stop and Cursor stop hooks) and `init --test-command`. When non-scaffold files change during an agent turn, if `verification.testCommand` is defined in `.agent-room.json` (or passed via CLI/opts), the hook executes the test command before turn completion. Failure exits code 2 (Claude Code) or emits `followup_message` (Cursor) with a bounded (~1,500 chars) output snippet, blocking premature completion claims when tests fail.
+**Why:** Agents frequently declare task completion when tests are broken or unrun ("verification-before-completion" anti-pattern). While `.agent-room/skills/verification-before-completion.md` provides prose guidance, mechanical Stop hook enforcement guarantees that touched code compiles and passes tests before the agent can yield back to the user, converting the Layer 2 guidance into an active Layer 3 gate.
+**Rejected:** Running tests on every command/turn (too slow and disruptive); running tests when only `.agent-room/` documentation changed; unbounded failure log output that would blow out LLM context windows.
+
 <!-- no-log: v2.3.0 release commit — routine release mechanics (version bump, lockfile re-sync, action.yml and CI pin bump, CHANGELOG [Unreleased]→[2.3.0]). The CHANGELOG is the record; nothing new to add here. -->
 
 <!-- no-log: v2.2.0 release commit — routine release mechanics (version bump, lockfile re-sync, action.yml and CI pin bump, CHANGELOG [Unreleased]→[2.2.0]). The CHANGELOG is the record; nothing new to add here. -->

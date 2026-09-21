@@ -18,7 +18,7 @@
  *   since the last commit, not since the start of this turn.
  */
 
-const { execSync } = require('child_process');
+const { execSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const {
@@ -35,7 +35,7 @@ const SCAFFOLD_PREFIXES = [
   '.cursor/hooks.json',
   '.cursor/hooks/',
 ];
-const SCAFFOLD_FILES = ['AGENTS.md', 'CLAUDE.md'];
+const SCAFFOLD_FILES = ['AGENTS.md', 'CLAUDE.md', '.agent-room.json'];
 const LOG_PATHS = ['.agent-room/anti-patterns.md', '.agent-room/decisions.md'];
 
 function sh(cmd, cwd) {
@@ -62,6 +62,91 @@ function getLogDiff(cwd) {
   );
 }
 
+function resolveVerificationConfig(cwd, opts) {
+  if (opts && (opts.testCommand || opts.verification)) {
+    if (typeof opts.verification === 'object' && opts.verification !== null) {
+      return opts.verification;
+    }
+    if (typeof opts.testCommand === 'string') {
+      return {
+        testCommand: opts.testCommand,
+        timeoutMs: opts.timeoutMs,
+      };
+    }
+  }
+  const configPath = path.join(cwd, '.agent-room.json');
+  if (fs.existsSync(configPath)) {
+    try {
+      const parsed = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      if (parsed && typeof parsed.verification === 'object' && parsed.verification !== null) {
+        return parsed.verification;
+      }
+      if (parsed && typeof parsed.testCommand === 'string') {
+        return { testCommand: parsed.testCommand };
+      }
+    } catch (err) {
+      // ignore unreadable/malformed .agent-room.json
+    }
+  }
+  return null;
+}
+
+function formatTestOutput(stdout, stderr) {
+  const combined = [stdout, stderr]
+    .filter((chunk) => typeof chunk === 'string' && chunk.length > 0)
+    .join('\n')
+    .trim();
+  if (combined.length <= 1500) {
+    return combined;
+  }
+  return '... [output truncated] ...\n' + combined.slice(-1500);
+}
+
+function buildTestFailureMessage(command, exitCode, output) {
+  let msg =
+    'Pre-stop test verification failed: "' +
+    command +
+    '" exited with code ' +
+    exitCode +
+    '.\n';
+  if (output && output.trim()) {
+    msg += '\n--- Test Output ---\n' + output.trim() + '\n-------------------\n\n';
+  } else {
+    msg += '\n';
+  }
+  msg += 'Please fix the failing tests before completing this turn.';
+  return msg;
+}
+
+function buildTimeoutMessage(command, timeoutMs) {
+  return (
+    'Pre-stop test verification failed: "' +
+    command +
+    '" timed out after ' +
+    timeoutMs +
+    'ms.\n\n' +
+    'Please ensure tests finish within the timeout limit before completing this turn.'
+  );
+}
+
+function runTestVerification(command, cwd, opts) {
+  const timeoutMs = (opts && opts.timeoutMs) || 60000;
+  if (opts && typeof opts.runCommand === 'function') {
+    return opts.runCommand(command, { cwd, timeout: timeoutMs });
+  }
+  try {
+    return spawnSync(command, {
+      cwd: cwd || process.cwd(),
+      shell: true,
+      timeout: timeoutMs,
+      encoding: 'utf8',
+      maxBuffer: 1024 * 1024,
+    });
+  } catch (err) {
+    return { status: 1, stdout: '', stderr: err.message || String(err) };
+  }
+}
+
 function buildFailureMessage(sourceChanges) {
   const sample = sourceChanges.slice(0, 5).join(', ') + (sourceChanges.length > 5 ? ', ...' : '');
   return (
@@ -81,8 +166,8 @@ function buildFailureMessage(sourceChanges) {
 
 /**
  * @param {string} cwd
- * @param {{ hasAgentRoom?: boolean, isGitRepo?: boolean, statusPorcelain?: string, logDiff?: string }} [opts]
- * @returns {{ ok: boolean, sourceChanges: string[], message: string, reason?: string }}
+ * @param {{ hasAgentRoom?: boolean, isGitRepo?: boolean, statusPorcelain?: string, logDiff?: string, testCommand?: string, verification?: any, timeoutMs?: number, runCommand?: function, skipTestVerification?: boolean }} [opts]
+ * @returns {{ ok: boolean, sourceChanges: string[], message: string, reason?: string, testCommand?: string, testOutput?: string }}
  */
 function checkClosingTheLoop(cwd, opts) {
   opts = opts || {};
@@ -113,6 +198,56 @@ function checkClosingTheLoop(cwd, opts) {
     return { ok: true, sourceChanges: [], message: '' };
   }
 
+  // --- Pre-Stop Test Verification Gate ---
+  const skipTestVerification =
+    Boolean(opts.skipTestVerification) ||
+    process.env.CAR_SKIP_TEST_VERIFICATION === '1' ||
+    process.env.SKIP_TEST_VERIFICATION === '1';
+
+  if (!skipTestVerification) {
+    const verifConfig = resolveVerificationConfig(cwd, opts);
+    const testCmd =
+      verifConfig && (verifConfig.testCommand || verifConfig.command);
+    if (testCmd && typeof testCmd === 'string' && testCmd.trim()) {
+      const timeoutMs =
+        (opts && opts.timeoutMs) ||
+        (verifConfig && verifConfig.timeoutMs) ||
+        60000;
+      const testResult = runTestVerification(testCmd, cwd, {
+        timeoutMs,
+        runCommand: opts.runCommand,
+      });
+
+      if (testResult.error && testResult.error.code === 'ETIMEDOUT') {
+        return {
+          ok: false,
+          sourceChanges: nonScaffold,
+          message: buildTimeoutMessage(testCmd, timeoutMs),
+          reason: 'test-verification-failed',
+          testCommand: testCmd,
+        };
+      }
+
+      const exitCode =
+        testResult.status !== null && testResult.status !== undefined
+          ? testResult.status
+          : (testResult.signal || 1);
+
+      if (exitCode !== 0) {
+        const output = formatTestOutput(testResult.stdout, testResult.stderr);
+        return {
+          ok: false,
+          sourceChanges: nonScaffold,
+          message: buildTestFailureMessage(testCmd, exitCode, output),
+          reason: 'test-verification-failed',
+          testCommand: testCmd,
+          testOutput: output,
+        };
+      }
+    }
+  }
+
+  // --- Closing-the-loop Log Evidence Gate ---
   const logTouched = changedPaths.some(isLogPath);
   const logDiff = typeof opts.logDiff === 'string' ? opts.logDiff : getLogDiff(cwd);
   const hasEvidence = validateLogEvidenceFromDiff(logDiff);
@@ -196,7 +331,8 @@ function applyAdapter(adapter, result) {
 }
 
 function main() {
-  const adapter = parseAdapter(process.argv.slice(2));
+  const args = process.argv.slice(2);
+  const adapter = parseAdapter(args);
   if (adapter !== 'claude' && adapter !== 'cursor') {
     applyAdapter(adapter, { ok: true, sourceChanges: [], message: '' });
     return;
@@ -210,7 +346,11 @@ function main() {
     }
   }
 
-  const result = checkClosingTheLoop(process.cwd());
+  const skipTestVerification =
+    args.includes('--skip-tests') ||
+    args.includes('--skip-verification');
+
+  const result = checkClosingTheLoop(process.cwd(), { skipTestVerification });
   applyAdapter(adapter, result);
 }
 
@@ -223,5 +363,9 @@ module.exports = {
   isScaffoldPath,
   parseAdapter,
   SCAFFOLD_PREFIXES,
+  SCAFFOLD_FILES,
   getLogDiff,
+  resolveVerificationConfig,
+  buildTestFailureMessage,
+  formatTestOutput,
 };

@@ -11,5 +11,8 @@
     "testing",
     "release",
     "code-review"
-  ]
+  ],
+  "verification": {
+    "testCommand": "npm test"
+  }
 }

@@ -10,6 +10,12 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+### Added
+
+- Pre-Stop Test & Build Verification Gate in `close-the-loop-check.js` (Claude Code Stop & Cursor stop hooks): mechanically executes configured test command (`verification.testCommand` in `.agent-room.json` or `init --test-command`) when non-scaffold files change, capturing bounded failure output (~1,500 chars) and blocking turn completion if tests fail.
+- `--test-command <cmd>` flag for `create-agent-room init` to persist verification configuration into `.agent-room.json`.
+- Support for `--skip-tests` and `--skip-verification` CLI flags as well as `CAR_SKIP_TEST_VERIFICATION` env var in `close-the-loop-check.js`.
+
 ### Changed
 
 - Regenerated `docs/demo.gif` from current `scripts/demo.sh` (includes CI
