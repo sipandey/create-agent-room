@@ -138,6 +138,8 @@ function parseArgs(argv) {
       args.profile = a.slice('--profile='.length);
     } else if (a === '--strict') {
       args.strict = true;
+    } else if (a === '--fix') {
+      args.fix = true;
     } else if (a === '--timeout') {
       if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
         args.timeout = parseInt(argv[++i], 10);
@@ -170,11 +172,12 @@ Usage:
   create-agent-room validate [target-dir]
   create-agent-room lint-sessions [target-dir]
   create-agent-room pr-desc [target-dir] [options]
-  create-agent-room doctor [target-dir]
+  create-agent-room doctor [target-dir] [--fix]
   create-agent-room eval [options]
   create-agent-room verify [target-dir] [options]
 
 Options:
+  --fix                     Automatically repair drifted hooks, missing stop hooks, and CI pins
   --name <name>             Project name used in templates (default: target dir name)
   --tools <list>            Comma-separated: claude,cursor,windsurf,cline,codex,git,none (default: prompt)
   --template-source <path>  Custom template folder (default: search local/home/package)
@@ -214,6 +217,7 @@ Examples:
   create-agent-room lint-sessions .
   create-agent-room pr-desc . --write
   create-agent-room doctor .
+  create-agent-room doctor . --fix
   create-agent-room eval
   create-agent-room eval --format json --output compliance-report.json
   create-agent-room --version
@@ -254,7 +258,7 @@ async function main() {
   } else if (command === 'pr-desc') {
     runPrDesc(target, args);
   } else if (command === 'doctor') {
-    runDoctor(target);
+    runDoctor(target, args);
   } else if (command === 'eval') {
     runEvalCli(args);
   } else if (command === 'verify') {

@@ -16,6 +16,13 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-21 — doctor --fix auto-remediation
+
+**Decision:** Add `--fix` flag to `create-agent-room doctor` (`lib/doctor.js`) enabling one-command automated remediation of actionable findings: re-synchronizing drifted static hooks (`close-the-loop-check.js`, `guardrails-check.js`, `pre-commit`, etc.) with packaged templates, re-wiring missing Claude and Cursor stop hooks when registered in `.agent-room.json`, restoring missing git pre-commit hooks, and re-pinning CI action versions in `.github/workflows/agent-room-validate.yml` to the installed CLI version.
+**Why:** Developers and teams upgrade `create-agent-room` over time. Telling users that their hooks have drifted or their stop hooks are missing without providing a clean, non-destructive auto-repair command forced them to manually run `init --force` (which risks overwriting custom configs) or copy files by hand. `doctor --fix` provides targeted, safe auto-repair.
+**Rejected:** Full destructive re-scaffolding inside `doctor --fix` (users should use `init --force` if they want to overwrite full room configs and principles).
+
+
 ### 2026-09-21 — blast radius & architectural scope guardrails
 
 **Decision:** Enforce architectural scope boundaries across both Pre-Commit hooks (`guardrails-check.js`) and Pre-Stop turn hooks (`close-the-loop-check.js`), converting the guidance in `.agent-room/coordination/scope-boundaries.md` into active mechanical enforcement. Supported via `scopeBoundaries` in `.agent-room/guardrails.json` (`allowedPaths` and `disallowedCrossBoundaries`) and dynamically via `CAR_ALLOWED_SCOPE`. Governance paths (`.agent-room/**`, `docs/plans/`, `AGENTS.md`, `CLAUDE.md`, `.agent-room.json`) remain exempt to allow required logging and decision tracking.

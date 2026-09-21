@@ -20,6 +20,7 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 - `create-agent-room verify` subcommand (`lib/verify.js`): standalone test verification CLI supporting `--format json`, `--strict`, `--timeout <ms>`, and `--output <path>`.
 - Opt-in pre-commit verification gate in `guardrails-check.js` (`verifyOnCommit` in `guardrails.json` or `CAR_VERIFY_ON_COMMIT=1`), blocking commits that fail test verification unless bypassed via `GUARDRAILS_BYPASS=1`.
 - Blast radius & architectural scope guardrails across both pre-commit (`guardrails-check.js`) and pre-stop turn hooks (`close-the-loop-check.js`), supporting `scopeBoundaries.allowedPaths` and `scopeBoundaries.disallowedCrossBoundaries` in `guardrails.json` as well as dynamic `CAR_ALLOWED_SCOPE` session override.
+- `create-agent-room doctor --fix`: automated remediation command to re-synchronize drifted static hooks with packaged templates, re-wire missing Claude and Cursor stop hooks when registered in `.agent-room.json`, restore missing `.git/hooks/pre-commit`, and re-pin CI action versions in `.github/workflows/agent-room-validate.yml` to the installed CLI version.
 
 ### Changed
 

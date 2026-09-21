@@ -5,7 +5,7 @@ const assert = require('node:assert');
 const path = require('node:path');
 const fs = require('node:fs');
 const { runInit } = require('../lib/init');
-const { runDoctor, getFindings } = require('../lib/doctor');
+const { runDoctor, getFindings, fixFindings } = require('../lib/doctor');
 
 async function captureConsoleLog(asyncFn) {
   const lines = [];
@@ -229,3 +229,100 @@ test('getFindings: surfaces real structural errors as critical', async (t) => {
 
   assert.ok(findings.critical.includes('Missing required file: AGENTS.md'));
 });
+
+test('fixFindings: re-synchronizes drifted static hooks with packaged templates', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-fix-drift-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'git', git: true, name: 'FixDriftTest', force: true });
+  const hookPath = path.join(tmpDir, '.agent-room', 'hooks', 'guardrails-check.js');
+  fs.appendFileSync(hookPath, '\n// modified\n');
+
+  const beforeFindings = getFindings(tmpDir);
+  assert.ok(beforeFindings.advisory.some((a) => a.includes('guardrails-check.js')));
+
+  const fixed = fixFindings(tmpDir);
+  assert.ok(fixed.some((f) => f.includes('guardrails-check.js')));
+
+  const afterFindings = getFindings(tmpDir);
+  assert.strictEqual(afterFindings.advisory.length, 0);
+});
+
+test('fixFindings: re-pins outdated or latest CI action versions to installed version', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-fix-ci-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'git', git: true, name: 'FixCiTest', force: true });
+  const ciPath = path.join(tmpDir, '.github', 'workflows', 'agent-room-validate.yml');
+  fs.writeFileSync(
+    ciPath,
+    'name: ci\njobs:\n  run:\n    steps:\n      - run: npx create-agent-room@1.0.0 eval\n'
+  );
+
+  const beforeFindings = getFindings(tmpDir);
+  assert.ok(beforeFindings.advisory.some((a) => a.includes('create-agent-room@1.0.0')));
+
+  const fixed = fixFindings(tmpDir);
+  assert.ok(fixed.some((f) => f.includes('Re-pinned CI action version')));
+
+  const updatedContent = fs.readFileSync(ciPath, 'utf8');
+  assert.match(updatedContent, new RegExp(`create-agent-room@${require('../package.json').version}`));
+});
+
+test('fixFindings: re-wires missing Claude Stop hook when claude is in .agent-room.json', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-fix-claude-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'claude', name: 'FixClaudeTest', force: true });
+  const settingsPath = path.join(tmpDir, '.claude', 'settings.json');
+  fs.writeFileSync(settingsPath, JSON.stringify({ hooks: {} }));
+
+  const beforeFindings = getFindings(tmpDir);
+  assert.ok(beforeFindings.advisory.some((a) => a.includes('.claude/settings.json')));
+
+  const fixed = fixFindings(tmpDir);
+  assert.ok(fixed.some((f) => f.includes('Claude Code Stop hook')));
+
+  const afterFindings = getFindings(tmpDir);
+  assert.strictEqual(afterFindings.advisory.length, 0);
+});
+
+test('fixFindings: re-wires missing Cursor stop hook when cursor is in .agent-room.json', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-fix-cursor-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'cursor', name: 'FixCursorTest', force: true });
+  const hooksPath = path.join(tmpDir, '.cursor', 'hooks.json');
+  fs.writeFileSync(hooksPath, JSON.stringify({ version: 1, hooks: {} }));
+
+  const beforeFindings = getFindings(tmpDir);
+  assert.ok(beforeFindings.advisory.some((a) => a.includes('.cursor/hooks.json')));
+
+  const fixed = fixFindings(tmpDir);
+  assert.ok(fixed.some((f) => f.includes('Cursor stop hook')));
+
+  const afterFindings = getFindings(tmpDir);
+  assert.strictEqual(afterFindings.advisory.length, 0);
+});
+
+test('runDoctor: with { fix: true } auto-remediates drifted hooks and reports Looks good afterwards', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-doctor-fix-run-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'git', git: true, name: 'DoctorFixRunTest', force: true });
+  const hookPath = path.join(tmpDir, '.agent-room', 'hooks', 'guardrails-check.js');
+  fs.appendFileSync(hookPath, '\n// drifted\n');
+
+  const output = await captureConsoleLog(() => runDoctor(tmpDir, { fix: true }));
+
+  assert.match(output, /create-agent-room doctor --fix/);
+  assert.match(output, /Applied auto-remediations/);
+  assert.match(output, /Synchronized drifted hook: \.agent-room\/hooks\/guardrails-check\.js/);
+  assert.match(output, /Looks good/);
+});
+
