@@ -58,7 +58,7 @@ Not every feature here is enforced this way — see [Feature Categories](#featur
 - **Agent Runtime Enforcement (Stop Hooks)**: Shared checker for **Claude Code** (`Stop` → `exit 2`) and **Cursor** (`stop` → `followup_message`). **Evidence-lite** validates log-file diffs, not just porcelain touches. Requires `--tools claude` and/or `--tools cursor`.
 - **Compliance Evals (`eval`)**: Packaged regression pack for close-the-loop, `lint-sessions`, and `validate` — `--format json|csv` for CI dashboards. Exit `1` on failure. No LLM.
 - **Agent Guardrails**: `guardrails.json` — protected paths, forbidden regex/literal patterns, `scopeGuidance` limits, durable bypass audit log. *[Pre-commit hook when `--tools git`]*
-- **Multi-Tool Sync (`sync`)**: Mirrors `.agent-room/skills/` → `.claude/skills/`; regenerates Cursor `.cursor/rules/agent-room.mdc` and Windsurf/Cline/Codex rule files from the current skill list.
+- **Multi-Tool Sync (`sync`)**: Mirrors `.agent-room/skills/` → `.claude/skills/`; regenerates Cursor `.cursor/rules/agent-room.mdc`, Windsurf (`.windsurfrules`), Cline (`.clinerules`), Codex (`.codexrules`), and GitHub Copilot (`.github/copilot-instructions.md`) rule files from the current skill list. Supports `sync --all` to fan out across all tools in one command while preserving user customizations.
 - **Session Log & Schema Validation**: `validate` + `lint-sessions` + `eval` in scaffolded CI when `--tools git`. *[Fails build if malformed or fixtures fail]*
 - **Health Check (`doctor`)**: Read-only drift/advisory report — hook template drift, stale CI pins, unwired tools. Never writes to disk.
 - **Multi-Agent Coordination**: Handoff, scope, session log templates. *[Guidance only — `--profile full`]*
@@ -79,7 +79,7 @@ These features actively constrain behavior and will fail/block operations if vio
 - **Agent Guardrails** — Pre-commit hook (optional; `--tools git`); bypass audit log
 - **Session Log Validation** — `lint-sessions` + scaffolded CI workflow (`--tools git`; includes `validate` and `eval`)
 - **Skill Frontmatter Validation** — `validate` command
-- **Multi-Tool Sync** — `sync` keeps Claude skills and Cursor/Windsurf/Cline/Codex rules aligned with `.agent-room/skills/`
+- **Multi-Tool Sync** — `sync` (`--all`) keeps Claude skills and Cursor/Windsurf/Cline/Codex/Copilot rules aligned with `.agent-room/skills/`
 
 ### 🟡 Prescriptive Guidance (Requires Human Discipline)
 These features provide templates and protocols that agents must choose to follow:
@@ -93,7 +93,7 @@ These provide a framework that requires external setup:
 
 - **Stack-Specific Templates** — Inheritance system supports Python, TypeScript, React stacks, but these must be created or provided via `--org` or `--template-source`
 - **Observability Metrics** — Post-hoc aggregation of completed sessions; not real-time monitoring or alerting
-- **Tool Adapters** — Currently supports Claude, Cursor, Windsurf, Cline, Codex, and Git; `sync` mirrors skills to Claude and regenerates rules files for Cursor, Windsurf, Cline, and Codex from `.agent-room/skills/`
+- **Tool Adapters** — Currently supports Claude, Cursor, Windsurf, Cline, Codex, GitHub Copilot, and Git; `sync` mirrors skills to Claude and regenerates rules files for Cursor, Windsurf, Cline, Codex, and Copilot from `.agent-room/skills/`
 
 ---
 
@@ -258,12 +258,21 @@ Scaffold the agent workspace. If files already exist in the target, they are ski
 
 Synchronize custom skills from `.agent-room/skills/` into tool-specific mirrors:
 
-- **Claude** (when listed in `.agent-room.json`): `.claude/skills/<name>/SKILL.md`
-- **Cursor** (when listed): regenerate `.cursor/rules/agent-room.mdc` from the packaged template + current skill list
-- **Windsurf / Cline / Codex** (when listed): regenerate `.windsurfrules`, `.clinerules`, or `.codexrules` from the same skill list
+- **Claude**: mirrors skills to `.claude/skills/<name>/SKILL.md`
+- **Cursor**: regenerates `.cursor/rules/agent-room.mdc`
+- **Windsurf**: regenerates `.windsurfrules`
+- **Cline**: regenerates `.clinerules`
+- **Codex**: regenerates `.codexrules`
+- **GitHub Copilot**: regenerates `.github/copilot-instructions.md`
 
-- Run with `--check` to verify mirrors are out of date without rewriting them.
-- Sync will automatically skip overwriting files if they have uncommitted tracked edits, unless `--force` is used.
+Options and flags:
+- Pass `--all` to sync across all supported tools simultaneously.
+- Pass `--tools <list>` (e.g. `--tools cursor,copilot`) to target specific adapters.
+- When run without `--all` or `--tools`, `sync` synchronizes all tools registered in `.agent-room.json` plus any tools detected in the workspace.
+- Run with `--check` to verify whether mirrors are up to date without rewriting them (exits `1` on drift).
+- User customizations within marker blocks (`<!-- user-customizations-start -->` ... `<!-- user-customizations-end -->`) are automatically preserved across regenerations.
+- Sync will automatically skip overwriting files if they have uncommitted tracked edits in Git, unless `--force` is used.
+
 
 ### 3. `validate [target-dir]`
 
@@ -407,6 +416,7 @@ and examples: [docs/github-action.md](docs/github-action.md).
 | `--force`                  | Overwrite existing files instead of skipping them                                                                                                                                                                 |
 | `--dry-run`                | Print exactly what `init` would create/skip; write nothing to disk                                                                                                                                                |
 | `--write, -w`              | Save generated PR description output to `.agent-room/pr-description.md`                                                                                                                                           |
+| `--all`                    | `sync` only — sync rules and skills across all supported tools (claude, cursor, windsurf, cline, codex, copilot)                                                                                                  |
 | `--check`                  | `sync` only — verify mirrors are up to date without rewriting; exit `1` if drift detected                                                                                                                       |
 | `--format <text\|json\|csv>` | `eval` only — output format (default: `text`)                                                                                                                                                                   |
 | `--output <file>`          | `eval` only — write report to file instead of stdout                                                                                                                                                              |

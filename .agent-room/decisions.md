@@ -16,6 +16,17 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-22 — unified multi-agent sync & github copilot adapter (Story 2.3)
+
+**Decision:** Add GitHub Copilot (`copilot`) adapter support generating `.github/copilot-instructions.md` with links to `AGENTS.md` and `.agent-room/skills/`, and enhance `create-agent-room sync` with `--all`, `--tools <list>`, workspace tool auto-detection, and user-customization preservation (`<!-- user-customizations-start -->` ... `<!-- user-customizations-end -->` or `<!-- user-customizations -->`).
+- `sync --all`: Fans out skill mirrors and rules across all 6 supported tools (`claude`, `cursor`, `windsurf`, `cline`, `codex`, `copilot`) in a single command.
+- `sync --tools <list>`: Selectively targets specified tools (e.g. `--tools cursor,copilot`).
+- Workspace auto-detection: If `tools` is not defined in `.agent-room.json`, `sync` inspects the workspace to discover which tool rule files are present and syncs them automatically.
+- Idempotency & Customization Preservation: When regenerating rules files, user custom rules in designated marker blocks are extracted and preserved, avoiding clobbering user customizations on re-sync. Already in-sync files report `up-to-date` without touching file timestamps or rewriting.
+**Why:** Modern engineering organizations rarely standardize on a single AI coding agent; engineers simultaneously use Claude Code, Cursor, Windsurf, Cline, Codex, and GitHub Copilot. Previously, syncing across all tools required manual invocations or custom scripts, and regenerating rules files risked wiping out user-authored project rules. `sync --all` provides a single idempotent command to keep all AI agents aligned with zero maintenance overhead.
+**Rejected:** Forcing a single global agent format; requiring separate sync subcommands per tool; dropping support for uncommitted git edits check.
+
+
 ### 2026-09-21 — zero-friction governance profiles (--preset minimal|standard|strict)
 
 **Decision:** Implement governance presets (`--preset minimal|standard|strict`, with `--profile` as an interchangeable alias) allowing teams to select governance strictness out of the box without manual JSON edits.

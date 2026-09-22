@@ -144,6 +144,8 @@ function parseArgs(argv) {
       args.profile = args.preset;
     } else if (a === '--strict') {
       args.strict = true;
+    } else if (a === '--all') {
+      args.all = true;
     } else if (a === '--fix') {
       args.fix = true;
     } else if (a === '--timeout') {
@@ -185,7 +187,8 @@ Usage:
 Options:
   --fix                     Automatically repair drifted hooks, missing stop hooks, and CI pins
   --name <name>             Project name used in templates (default: target dir name)
-  --tools <list>            Comma-separated: claude,cursor,windsurf,cline,codex,git,none (default: prompt)
+  --tools <list>            Comma-separated: claude,cursor,windsurf,cline,codex,copilot,git,all,none (default: prompt)
+  --all                     Sync skills/rules across all supported tools (claude, cursor, windsurf, cline, codex, copilot)
   --template-source <path>  Custom template folder (default: search local/home/package)
   --package-manager <name>  Package manager to use (default: npm)
   --language <name>         Language used in project (default: javascript)
@@ -205,8 +208,8 @@ Options:
   --suite <name>            eval suite filter: close-the-loop, lint-sessions, validate, all
   --verbose                 Print detailed stack traces on failure
   --write, -w               Save generated PR description to .agent-room/pr-description.md
-  -y, --yes                 Don't prompt; use defaults for anything unspecified
-  -v, --version             Print the installed create-agent-room version and exit
+  --yes, -y                 Don't prompt; use defaults for anything unspecified
+  --version, -v             Print the installed create-agent-room version and exit
 
 --preset minimal (default) scaffolds AGENTS.md, guardrails, skills, and
 the Stop/pre-commit hooks (if applicable), skipping principles.md,
@@ -221,6 +224,9 @@ Examples:
   create-agent-room init . --yes --preset standard --tools claude,git --git
   create-agent-room init . --yes --preset strict --tools claude,cursor,git
   create-agent-room init . --dry-run --tools claude,git
+  create-agent-room sync .
+  create-agent-room sync . --all
+  create-agent-room sync . --tools cursor,copilot
   create-agent-room sync . --check
   create-agent-room metrics .
   create-agent-room validate .
@@ -233,8 +239,9 @@ Examples:
   create-agent-room --version
 
 Sync mirrors .agent-room/skills/ into .claude/skills/ (claude) and
-regenerates .cursor/rules/agent-room.mdc (cursor) when those tools are
-listed in .agent-room.json.
+regenerates rule files for cursor, windsurf, cline, codex, and copilot
+when those tools are detected in workspace, configured in .agent-room.json,
+or explicitly specified with --tools or --all.
 `);
 }
 

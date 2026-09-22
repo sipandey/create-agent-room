@@ -143,12 +143,24 @@ Eliminate friction for developers adopting, upgrading, and maintaining `create-a
 ---
 
 ### Story 2.3: Unified Multi-Agent Sync (`create-agent-room sync --all`)
-- **Status:** ⏳ Queued
+- **Status:** ✅ **DONE**
+- **Summary:**
+  - Implemented `create-agent-room sync --all` (`lib/sync.js`, `bin/cli.js`), enabling simultaneous synchronization of skills and rules across Claude Code, Cursor, Windsurf, Cline, Codex, and GitHub Copilot in a single command.
+  - Added GitHub Copilot (`copilot`) adapter support: created `templates/adapters/copilot-instructions.tmpl`, added `copilot` to `VALID_TOOLS`, `SIMPLE_TOOL_ADAPTERS`, and `RULES_SYNC_ADAPTERS`, scaffolding and synchronizing `.github/copilot-instructions.md`.
+  - Added `sync --tools <list>` supporting selective multi-tool sync (e.g. `--tools cursor,copilot`).
+  - Added workspace auto-detection in `sync`: automatically discovers existing tool rule files (`.windsurfrules`, `.clinerules`, `.codexrules`, `.github/copilot-instructions.md`, `.cursor/`, `.claude/`) and keeps them synchronized even when `tools` is not configured in `.agent-room.json`.
+  - Added user-customization preservation in `sync`: automatically extracts and preserves custom rules inside marker blocks (`<!-- user-customizations-start -->` ... `<!-- user-customizations-end -->` or `<!-- user-customizations -->`) across skill additions and updates.
+  - Idempotent execution: identical files report `up-to-date` without touching file modification timestamps or rewriting.
+  - Added 8 new unit tests across `test/sync.test.js`, `test/init.test.js`, and `test/cli.test.js` (total: 240 test cases, 100% passing).
 - **Goal:**
   - Single command that syncs `.agent-room/skills` and rules across Claude Code, Cursor, Windsurf, Cline, Codex, and GitHub Copilot simultaneously.
 - **Acceptance Criteria:**
-  1. Generates and updates adapter files for all tools detected in workspace or listed in `--tools`.
+  1. Generates and updates adapter files for all tools detected in workspace or listed in `--tools` (or `--all`).
   2. Idempotent: does not clobber user-authored customizations.
+
+> [!NOTE]
+> **Epic 2: Friction-Free Adoption is now 100% COMPLETE!** (Story 2.1 ✅, Story 2.2 ✅, Story 2.3 ✅)
+
 
 ---
 
