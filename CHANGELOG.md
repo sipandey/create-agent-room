@@ -21,6 +21,10 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 - Opt-in pre-commit verification gate in `guardrails-check.js` (`verifyOnCommit` in `guardrails.json` or `CAR_VERIFY_ON_COMMIT=1`), blocking commits that fail test verification unless bypassed via `GUARDRAILS_BYPASS=1`.
 - Blast radius & architectural scope guardrails across both pre-commit (`guardrails-check.js`) and pre-stop turn hooks (`close-the-loop-check.js`), supporting `scopeBoundaries.allowedPaths` and `scopeBoundaries.disallowedCrossBoundaries` in `guardrails.json` as well as dynamic `CAR_ALLOWED_SCOPE` session override.
 - `create-agent-room doctor --fix`: automated remediation command to re-synchronize drifted static hooks with packaged templates, re-wire missing Claude and Cursor stop hooks when registered in `.agent-room.json`, restore missing `.git/hooks/pre-commit`, and re-pin CI action versions in `.github/workflows/agent-room-validate.yml` to the installed CLI version.
+- Governance presets (`--preset minimal|standard|strict`, with `--profile` as an interchangeable alias) allowing teams to select governance strictness easily without manual JSON edits.
+- `--preset standard` (canonical name for `full`) scaffolds the full guidance corpus (`principles.md`, `workflow-classifier.md`, `coordination/`) and automatically configures pre-stop test verification gates.
+- `--preset strict` enables pre-commit test execution (`verifyOnCommit.strict: true`), architectural import boundaries (`importBoundaries` in `guardrails.json` and `guardrails-check.js`), strict waiver audits requiring auditable references (`ticket: #123`, `approved-by: lead`) and >= 40 chars, mandatory `GUARDRAILS_BYPASS_REASON` for bypasses, and tighter scope guidance limits (10 files / 300 lines).
+- `importBoundaries` validation in `lib/checks.js` and `guardrails-check.js`.
 
 ### Changed
 

@@ -483,4 +483,44 @@ test('adapter claude: respects --skip-scope flag', (t) => {
   assert.doesNotMatch(result.stderr, /Agent Scope Boundary check failed/);
 });
 
+test('checkClosingTheLoop: in strict mode, rejects un-audited waiver', (t) => {
+  const { checkClosingTheLoop } = loadHook();
+  const dir = makeRepo('strict-mode-nolog-reject');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  fs.writeFileSync(
+    path.join(dir, '.agent-room.json'),
+    JSON.stringify({ name: 'StrictRoom', preset: 'strict' })
+  );
+  fs.writeFileSync(path.join(dir, 'src.js'), 'change\n');
+
+  const result = checkClosingTheLoop(dir, {
+    statusPorcelain: ' M src.js\n M .agent-room/decisions.md',
+    logDiff: 'diff\n+<!-- no-log: routine change, no decision or anti-pattern worth recording -->\n'
+  });
+
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.reason, 'insufficient-evidence');
+  assert.match(result.message, /Strict governance mode is active/);
+});
+
+test('checkClosingTheLoop: in strict mode, accepts audited waiver with audit ref', (t) => {
+  const { checkClosingTheLoop } = loadHook();
+  const dir = makeRepo('strict-mode-nolog-accept');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  fs.writeFileSync(
+    path.join(dir, '.agent-room.json'),
+    JSON.stringify({ name: 'StrictRoom', preset: 'strict' })
+  );
+  fs.writeFileSync(path.join(dir, 'src.js'), 'change\n');
+
+  const result = checkClosingTheLoop(dir, {
+    statusPorcelain: ' M src.js\n M .agent-room/decisions.md',
+    logDiff: 'diff\n+<!-- no-log: ticket: #123 approved-by: lead - routine bump without architecture impact -->\n'
+  });
+
+  assert.strictEqual(result.ok, true);
+});
+
 

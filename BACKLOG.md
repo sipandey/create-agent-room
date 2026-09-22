@@ -125,7 +125,14 @@ Eliminate friction for developers adopting, upgrading, and maintaining `create-a
 ---
 
 ### Story 2.2: Zero-Friction Governance Profiles (`--preset minimal|standard|strict`)
-- **Status:** ⏳ Queued
+- **Status:** ✅ **DONE**
+- **Summary:**
+  - Implemented governance presets (`--preset minimal|standard|strict`) with `--profile` as an interchangeable alias (`bin/cli.js`, `lib/init.js`).
+  - `--preset minimal`: Lightweight scaffold (AGENTS.md, guardrails, skills, stop hooks), skipping principles.md/workflow-classifier.md/coordination/ to minimize token overhead.
+  - `--preset standard` (canonical name for legacy `full`): Scaffolds full guidance corpus and configures pre-stop test verification gate.
+  - `--preset strict`: Scaffolds full guidance corpus, configures pre-commit test execution (`verifyOnCommit.strict: true`), architectural import boundaries (`importBoundaries`), strict waiver audits (min 40 chars, audit reference like `ticket: #123` / `approved-by: lead`, required `GUARDRAILS_BYPASS_REASON`), and tight scope guidance (10 files / 300 lines).
+  - Added schema validation for `importBoundaries` in `lib/checks.js`.
+  - Added 16 new unit tests across `cli.test.js`, `init.test.js`, `guardrails-check.test.js`, `close-the-loop.test.js`, and `validate.test.js` (total: 232 test cases, all passing).
 - **Goal:**
   - Allow teams to choose governance strictness easily without manual JSON tweaking.
 - **Acceptance Criteria:**

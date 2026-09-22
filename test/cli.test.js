@@ -105,8 +105,22 @@ test('parseArgs: parses --profile option (space and equals forms)', () => {
   assert.strictEqual(result2.profile, 'minimal');
 });
 
+test('parseArgs: parses --preset option (space and equals forms)', () => {
+  const result1 = parseArgs(['--preset', 'standard']);
+  assert.strictEqual(result1.preset, 'standard');
+  assert.strictEqual(result1.profile, 'standard');
+
+  const result2 = parseArgs(['--preset=strict']);
+  assert.strictEqual(result2.preset, 'strict');
+  assert.strictEqual(result2.profile, 'strict');
+});
+
 test('parseArgs: throws error on missing --profile value', () => {
   assert.throws(() => parseArgs(['--profile']), /Error: --profile option requires/);
+});
+
+test('parseArgs: throws error on missing --preset value', () => {
+  assert.throws(() => parseArgs(['--preset']), /Error: --preset option requires/);
 });
 
 test('parseArgs: --dry-run and --profile combine with other init options', () => {
@@ -115,6 +129,13 @@ test('parseArgs: --dry-run and --profile combine with other init options', () =>
   assert.strictEqual(result.profile, 'full');
   assert.strictEqual(result['dry-run'], true);
   assert.strictEqual(result.yes, true);
+});
+
+test('parseArgs: --preset strict combines with other options', () => {
+  const result = parseArgs(['--preset', 'strict', '--tools', 'claude,git', '--yes']);
+  assert.strictEqual(result.preset, 'strict');
+  assert.strictEqual(result.profile, 'strict');
+  assert.strictEqual(result.tools, 'claude,git');
 });
 
 test('parseArgs: parses --version and -v flags', () => {

@@ -696,4 +696,153 @@ test('guardrails-check: CAR_ALLOWED_SCOPE env var enforces scope boundaries on c
   assert.match(result.stderr, /backend\.js/);
 });
 
+test('guardrails-check: blocks commit when importBoundaries rule is violated', (t) => {
+  const dir = makeRepo('import-boundaries-fail');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: [],
+    forbiddenActions: [],
+    importBoundaries: [
+      {
+        source: 'lib/**',
+        disallowed: ['test/**', 'tests/**'],
+        description: 'Source code cannot import test files'
+      }
+    ]
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.mkdirSync(path.join(dir, 'lib'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'lib', 'service.js'),
+    "const helper = require('../test/helper');\nmodule.exports = {};\n"
+  );
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 1);
+  assert.match(result.stderr, /Import boundary violation in "lib\/service\.js"/);
+  assert.match(result.stderr, /Source code cannot import test files/);
+});
+
+test('guardrails-check: allows commit when importBoundaries is respected', (t) => {
+  const dir = makeRepo('import-boundaries-pass');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: [],
+    forbiddenActions: [],
+    importBoundaries: [
+      {
+        source: 'lib/**',
+        disallowed: ['test/**', 'tests/**']
+      }
+    ]
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.mkdirSync(path.join(dir, 'lib'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'lib', 'service.js'),
+    "const util = require('./util');\nmodule.exports = {};\n"
+  );
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 0);
+});
+
+test('guardrails-check: strictWaivers blocks GUARDRAILS_BYPASS without GUARDRAILS_BYPASS_REASON', (t) => {
+  const dir = makeRepo('strict-waiver-bypass-fail');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: ['secret.txt'],
+    forbiddenActions: [],
+    strictWaivers: true
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.writeFileSync(path.join(dir, 'secret.txt'), 'leaked\n');
+  stageAll(dir);
+
+  const result = runHook(dir, { GUARDRAILS_BYPASS: '1' });
+  assert.strictEqual(result.code, 1);
+  assert.match(result.stderr, /Strict Waiver Audit Failed: GUARDRAILS_BYPASS requires GUARDRAILS_BYPASS_REASON/);
+});
+
+test('guardrails-check: strictWaivers allows GUARDRAILS_BYPASS with valid GUARDRAILS_BYPASS_REASON', (t) => {
+  const dir = makeRepo('strict-waiver-bypass-pass');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: ['secret.txt'],
+    forbiddenActions: [],
+    strictWaivers: true
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.writeFileSync(path.join(dir, 'secret.txt'), 'leaked\n');
+  stageAll(dir);
+
+  const result = runHook(dir, {
+    GUARDRAILS_BYPASS: '1',
+    GUARDRAILS_BYPASS_REASON: 'ticket #1234: emergency hotfix approved by security lead'
+  });
+  assert.strictEqual(result.code, 0);
+
+  const logContent = fs.readFileSync(path.join(dir, '.agent-room', 'guardrails-bypass-log.md'), 'utf8');
+  assert.match(logContent, /ticket #1234: emergency hotfix/);
+});
+
+test('guardrails-check: strictWaivers rejects un-audited no-log waiver in decisions.md', (t) => {
+  const dir = makeRepo('strict-waiver-nolog-fail');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: [],
+    forbiddenActions: [],
+    strictWaivers: true
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.writeFileSync(
+    path.join(dir, '.agent-room', 'decisions.md'),
+    '<!-- no-log: routine change, no decision or anti-pattern worth recording -->\n'
+  );
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 1);
+  assert.match(result.stderr, /Strict waiver audit failed/);
+});
+
+test('guardrails-check: strictWaivers accepts audited no-log waiver in decisions.md', (t) => {
+  const dir = makeRepo('strict-waiver-nolog-pass');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: [],
+    forbiddenActions: [],
+    strictWaivers: true
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.writeFileSync(
+    path.join(dir, '.agent-room', 'decisions.md'),
+    '<!-- no-log: ticket: #555 approved-by: lead - routine docs fix without architectural changes -->\n'
+  );
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 0);
+});
+
 

@@ -78,11 +78,13 @@ function parseArgs(argv) {
       } else {
         throw new Error('Error: --org option requires an organization name.');
       }
-    } else if (a === '--profile') {
+    } else if (a === '--profile' || a === '--preset') {
       if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
-        args.profile = argv[++i];
+        const val = argv[++i];
+        args.profile = val;
+        args.preset = val;
       } else {
-        throw new Error('Error: --profile option requires "minimal" or "full".');
+        throw new Error(`Error: ${a} option requires "minimal", "standard", or "strict".`);
       }
     } else if (a === '--test-command') {
       if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
@@ -136,6 +138,10 @@ function parseArgs(argv) {
       args.suite = a.slice('--suite='.length);
     } else if (a.startsWith('--profile=')) {
       args.profile = a.slice('--profile='.length);
+      args.preset = args.profile;
+    } else if (a.startsWith('--preset=')) {
+      args.preset = a.slice('--preset='.length);
+      args.profile = args.preset;
     } else if (a === '--strict') {
       args.strict = true;
     } else if (a === '--fix') {
@@ -186,7 +192,8 @@ Options:
   --branch <name>           Default branch name (default: main)
   --skill-packs <list>      Comma-separated optional skill packs: testing,security,release (default: none)
   --org <name>              Organization layer name for template inheritance (default: none)
-  --profile <name>          minimal|full - how much of the guidance corpus to scaffold (default: minimal)
+  --preset <name>           minimal|standard|strict - governance strictness preset (default: minimal)
+  --profile <name>          Alias for --preset (minimal|standard|strict|full)
   --test-command <cmd>      Test command to verify changes before completing turns (e.g. "npm test")
   --no-test-command         Skip pre-stop test verification even if a test suite is detected
   --git                     Run "git init" and create an initial commit in target-dir
@@ -201,15 +208,18 @@ Options:
   -y, --yes                 Don't prompt; use defaults for anything unspecified
   -v, --version             Print the installed create-agent-room version and exit
 
---profile minimal (default) scaffolds AGENTS.md, guardrails, skills, and
+--preset minimal (default) scaffolds AGENTS.md, guardrails, skills, and
 the Stop/pre-commit hooks (if applicable), skipping principles.md,
 workflow-classifier.md, coordination/, and skill packs unless requested
-via --skill-packs. --profile full restores everything.
+via --skill-packs. --preset standard adds the full guidance corpus and
+enables pre-stop test verification. --preset strict adds pre-commit test
+execution, import boundary enforcement, and strict waiver audits.
 
 Examples:
   create-agent-room init my-new-project --tools claude,cursor,git --git
   create-agent-room init . --yes --language python --package-manager pip --skill-packs testing
-  create-agent-room init . --yes --profile full --tools claude,git --git
+  create-agent-room init . --yes --preset standard --tools claude,git --git
+  create-agent-room init . --yes --preset strict --tools claude,cursor,git
   create-agent-room init . --dry-run --tools claude,git
   create-agent-room sync . --check
   create-agent-room metrics .

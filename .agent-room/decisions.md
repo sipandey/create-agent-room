@@ -16,6 +16,16 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-21 — zero-friction governance profiles (--preset minimal|standard|strict)
+
+**Decision:** Implement governance presets (`--preset minimal|standard|strict`, with `--profile` as an interchangeable alias) allowing teams to select governance strictness out of the box without manual JSON edits.
+- `minimal` (default): Lightweight scaffold (AGENTS.md, guardrails, skills, stop hooks), skipping verbose documentation files (`principles.md`, `workflow-classifier.md`, `coordination/`) to minimize agent token overhead.
+- `standard` (canonical name for legacy `full`): Restores the full guidance corpus and configures pre-stop test verification.
+- `strict` (enterprise governance): Enforces pre-commit test execution (`verifyOnCommit.strict: true`), architectural import boundaries (`importBoundaries` in `guardrails.json` and `guardrails-check.js`), strict waiver audits requiring auditable references (`ticket: #123`, `approved-by: lead`) and >= 40 chars, mandatory `GUARDRAILS_BYPASS_REASON` for bypasses, and tighter scope guidance limits (10 files / 300 lines).
+**Why:** Teams have different governance requirements depending on repo maturity and risk profile. Beginners and rapid prototyping teams need low token friction (`minimal`), standard product teams need comprehensive guidelines and pre-stop test gates (`standard`), while enterprise and security-sensitive teams require hard gates at pre-commit and strict waiver audits (`strict`).
+**Rejected:** Requiring manual hand-crafting of `guardrails.json` and `.agent-room.json` for every strict feature; dropping backward compatibility for `--profile full`.
+
+
 ### 2026-09-21 — doctor --fix auto-remediation
 
 **Decision:** Add `--fix` flag to `create-agent-room doctor` (`lib/doctor.js`) enabling one-command automated remediation of actionable findings: re-synchronizing drifted static hooks (`close-the-loop-check.js`, `guardrails-check.js`, `pre-commit`, etc.) with packaged templates, re-wiring missing Claude and Cursor stop hooks when registered in `.agent-room.json`, restoring missing git pre-commit hooks, and re-pinning CI action versions in `.github/workflows/agent-room-validate.yml` to the installed CLI version.
