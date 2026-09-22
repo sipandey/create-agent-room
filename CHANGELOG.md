@@ -25,6 +25,13 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 - `--preset standard` (canonical name for `full`) scaffolds the full guidance corpus (`principles.md`, `workflow-classifier.md`, `coordination/`) and automatically configures pre-stop test verification gates.
 - `--preset strict` enables pre-commit test execution (`verifyOnCommit.strict: true`), architectural import boundaries (`importBoundaries` in `guardrails.json` and `guardrails-check.js`), strict waiver audits requiring auditable references (`ticket: #123`, `approved-by: lead`) and >= 40 chars, mandatory `GUARDRAILS_BYPASS_REASON` for bypasses, and tighter scope guidance limits (10 files / 300 lines).
 - `importBoundaries` validation in `lib/checks.js` and `guardrails-check.js`.
+- Unified Multi-Agent Sync (`create-agent-room sync --all`): single command to fan out skill mirrors and rules across Claude Code, Cursor, Windsurf, Cline, Codex, and GitHub Copilot simultaneously.
+- GitHub Copilot (`copilot`) adapter support: `templates/adapters/copilot-instructions.tmpl` scaffolds `.github/copilot-instructions.md` with links to `AGENTS.md` and `.agent-room/skills/`.
+- `create-agent-room sync --tools <list>`: selectively synchronizes specified adapters (e.g. `--tools cursor,copilot`).
+- Workspace tool auto-detection in `sync`: automatically discovers tool rule files present in the workspace and keeps them up to date even when `tools` is not configured in `.agent-room.json`.
+- User-customization preservation in `sync`: extracts and preserves custom rules inside marker blocks (`<!-- user-customizations-start -->` ... `<!-- user-customizations-end -->` or `<!-- user-customizations -->`) across regenerations.
+- Idempotency in `sync`: already synchronized files report `up-to-date` without touching file modification timestamps or rewriting.
+- Added `--all` CLI flag in `bin/cli.js` and expanded `--tools all` in `init` to scaffold all supported adapters.
 
 ### Changed
 

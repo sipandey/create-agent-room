@@ -225,3 +225,187 @@ test('runSync: skips dirty files and overwrites with --force', (t) => {
   runSync(tmpDir, { force: true });
   assert.strictEqual(fs.readFileSync(mirroredSkill, 'utf8'), '# New Source Content', 'Should overwrite user edits with --force');
 });
+
+test('runSync --all: syncs Claude skills mirror, Cursor, Windsurf, Cline, Codex, and Copilot simultaneously', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-sync-all-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  const agentRoomDir = path.join(tmpDir, '.agent-room', 'skills');
+  fs.mkdirSync(agentRoomDir, { recursive: true });
+  fs.writeFileSync(path.join(agentRoomDir, 'alpha-skill.md'), '# Alpha Skill\n');
+  fs.writeFileSync(path.join(agentRoomDir, 'beta-skill.md'), '# Beta Skill\n');
+
+  fs.writeFileSync(
+    path.join(tmpDir, '.agent-room.json'),
+    JSON.stringify({ name: 'SyncAllProject' })
+  );
+
+  runSync(tmpDir, { all: true });
+
+  // 1. Claude skills mirror
+  assert.strictEqual(
+    fs.readFileSync(path.join(tmpDir, '.claude', 'skills', 'alpha-skill', 'SKILL.md'), 'utf8'),
+    '# Alpha Skill\n'
+  );
+  assert.strictEqual(
+    fs.readFileSync(path.join(tmpDir, '.claude', 'skills', 'beta-skill', 'SKILL.md'), 'utf8'),
+    '# Beta Skill\n'
+  );
+
+  // 2. Cursor rules
+  const cursorRules = fs.readFileSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.mdc'), 'utf8');
+  assert.match(cursorRules, /SyncAllProject/);
+  assert.match(cursorRules, /alpha-skill/);
+  assert.match(cursorRules, /beta-skill/);
+
+  // 3. Windsurf rules
+  const windsurfRules = fs.readFileSync(path.join(tmpDir, '.windsurfrules'), 'utf8');
+  assert.match(windsurfRules, /Windsurf rules — SyncAllProject/);
+  assert.match(windsurfRules, /alpha-skill/);
+
+  // 4. Cline rules
+  const clineRules = fs.readFileSync(path.join(tmpDir, '.clinerules'), 'utf8');
+  assert.match(clineRules, /Cline rules — SyncAllProject/);
+  assert.match(clineRules, /beta-skill/);
+
+  // 5. Codex rules
+  const codexRules = fs.readFileSync(path.join(tmpDir, '.codexrules'), 'utf8');
+  assert.match(codexRules, /Codex rules — SyncAllProject/);
+  assert.match(codexRules, /alpha-skill/);
+
+  // 6. Copilot instructions
+  const copilotRules = fs.readFileSync(path.join(tmpDir, '.github', 'copilot-instructions.md'), 'utf8');
+  assert.match(copilotRules, /GitHub Copilot instructions — SyncAllProject/);
+  assert.match(copilotRules, /alpha-skill/);
+  assert.match(copilotRules, /beta-skill/);
+});
+
+test('runSync --tools: syncs only specified tools', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-sync-tools-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  const agentRoomDir = path.join(tmpDir, '.agent-room', 'skills');
+  fs.mkdirSync(agentRoomDir, { recursive: true });
+  fs.writeFileSync(path.join(agentRoomDir, 'scoped-skill.md'), '# Scoped Skill\n');
+
+  runSync(tmpDir, { tools: 'cursor,copilot' });
+
+  assert.ok(fs.existsSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.mdc')));
+  assert.ok(fs.existsSync(path.join(tmpDir, '.github', 'copilot-instructions.md')));
+  assert.ok(!fs.existsSync(path.join(tmpDir, '.windsurfrules')));
+  assert.ok(!fs.existsSync(path.join(tmpDir, '.clinerules')));
+  assert.ok(!fs.existsSync(path.join(tmpDir, '.codexrules')));
+  assert.ok(!fs.existsSync(path.join(tmpDir, '.claude')));
+});
+
+test('runSync: auto-detects tools present in workspace without config.tools', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-sync-autodetect-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  const agentRoomDir = path.join(tmpDir, '.agent-room', 'skills');
+  fs.mkdirSync(agentRoomDir, { recursive: true });
+  fs.writeFileSync(path.join(agentRoomDir, 'auto-skill.md'), '# Auto Skill\n');
+
+  // Pre-create windsurf and copilot adapter files in workspace
+  fs.writeFileSync(path.join(tmpDir, '.windsurfrules'), '# stale windsurf\n');
+  fs.mkdirSync(path.join(tmpDir, '.github'), { recursive: true });
+  fs.writeFileSync(path.join(tmpDir, '.github', 'copilot-instructions.md'), '# stale copilot\n');
+
+  // No .agent-room.json
+  runSync(tmpDir);
+
+  const windsurf = fs.readFileSync(path.join(tmpDir, '.windsurfrules'), 'utf8');
+  assert.match(windsurf, /auto-skill/);
+
+  const copilot = fs.readFileSync(path.join(tmpDir, '.github', 'copilot-instructions.md'), 'utf8');
+  assert.match(copilot, /auto-skill/);
+
+  assert.ok(!fs.existsSync(path.join(tmpDir, '.clinerules')));
+  assert.ok(!fs.existsSync(path.join(tmpDir, '.codexrules')));
+});
+
+test('runSync: preserves user customizations in marker blocks and stays idempotent', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-sync-idempotent-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  const agentRoomDir = path.join(tmpDir, '.agent-room', 'skills');
+  fs.mkdirSync(agentRoomDir, { recursive: true });
+  fs.writeFileSync(path.join(agentRoomDir, 'base-skill.md'), '# Base Skill\n');
+
+  // Initial sync with --all
+  runSync(tmpDir, { all: true });
+
+  // User adds custom rules to .windsurfrules and .github/copilot-instructions.md
+  const customBlock = [
+    '<!-- user-customizations-start -->',
+    '## Team Custom Rules',
+    '- Enforce semantic commit titles',
+    '- Never commit secret files',
+    '<!-- user-customizations-end -->'
+  ].join('\n');
+
+  const windsurfFile = path.join(tmpDir, '.windsurfrules');
+  fs.appendFileSync(windsurfFile, '\n\n' + customBlock + '\n');
+
+  const copilotFile = path.join(tmpDir, '.github', 'copilot-instructions.md');
+  fs.appendFileSync(copilotFile, '\n\n' + customBlock + '\n');
+
+  // Add a second skill to trigger regeneration
+  fs.writeFileSync(path.join(agentRoomDir, 'second-skill.md'), '# Second Skill\n');
+
+  // Re-sync with --all
+  runSync(tmpDir, { all: true });
+
+  const updatedWindsurf = fs.readFileSync(windsurfFile, 'utf8');
+  assert.match(updatedWindsurf, /base-skill/);
+  assert.match(updatedWindsurf, /second-skill/);
+  assert.match(updatedWindsurf, /## Team Custom Rules/);
+  assert.match(updatedWindsurf, /Never commit secret files/);
+
+  const updatedCopilot = fs.readFileSync(copilotFile, 'utf8');
+  assert.match(updatedCopilot, /base-skill/);
+  assert.match(updatedCopilot, /second-skill/);
+  assert.match(updatedCopilot, /## Team Custom Rules/);
+  assert.match(updatedCopilot, /Never commit secret files/);
+
+  // Verify idempotency: running again should leave content identical
+  runSync(tmpDir, { all: true });
+  assert.strictEqual(fs.readFileSync(windsurfFile, 'utf8'), updatedWindsurf);
+  assert.strictEqual(fs.readFileSync(copilotFile, 'utf8'), updatedCopilot);
+});
+
+test('runSync --all --check: verifies drift detection across all 6 tools', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-sync-check-all-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  const agentRoomDir = path.join(tmpDir, '.agent-room', 'skills');
+  fs.mkdirSync(agentRoomDir, { recursive: true });
+  fs.writeFileSync(path.join(agentRoomDir, 'check-skill.md'), '# Check Skill\n');
+
+  // Missing files should fail --check
+  process.exitCode = undefined;
+  runSync(tmpDir, { all: true, check: true });
+  assert.strictEqual(process.exitCode, 1, 'missing adapters should fail --check');
+
+  // Sync everything
+  process.exitCode = undefined;
+  runSync(tmpDir, { all: true });
+
+  // Check should now pass
+  process.exitCode = undefined;
+  runSync(tmpDir, { all: true, check: true });
+  assert.strictEqual(process.exitCode, undefined, 'in-sync adapters should pass --check');
+
+  // Modify copilot instructions to introduce drift
+  fs.writeFileSync(path.join(tmpDir, '.github', 'copilot-instructions.md'), '# drifted copilot\n');
+  process.exitCode = undefined;
+  runSync(tmpDir, { all: true, check: true });
+  assert.strictEqual(process.exitCode, 1, 'drifted adapter should fail --check');
+  process.exitCode = undefined;
+});
+

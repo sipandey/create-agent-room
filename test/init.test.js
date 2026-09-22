@@ -991,6 +991,49 @@ test('computeEnforcedFeatures: includes Pre-Stop test verification gate when con
   assert.ok(labels.includes('Pre-Stop test verification gate'));
 });
 
+test('runInit: --tools copilot scaffolds .github/copilot-instructions.md', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-init-copilot-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, {
+    yes: true,
+    tools: 'copilot',
+    name: 'CopilotInitTest',
+    force: true,
+  });
+
+  const copilotPath = path.join(tmpDir, '.github', 'copilot-instructions.md');
+  assert.ok(fs.existsSync(copilotPath), '.github/copilot-instructions.md should exist');
+
+  const content = fs.readFileSync(copilotPath, 'utf8');
+  assert.match(content, /GitHub Copilot instructions — CopilotInitTest/);
+  assert.match(content, /AGENTS\.md/);
+  assert.match(content, /\.agent-room\//);
+});
+
+test('runInit: --tools all scaffolds all adapters (claude, cursor, windsurf, cline, codex, copilot, git)', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-init-all-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, {
+    yes: true,
+    tools: 'all',
+    name: 'AllToolsInitTest',
+    force: true,
+  });
+
+  // Verify all tool adapter files
+  assert.ok(fs.existsSync(path.join(tmpDir, 'CLAUDE.md')), 'CLAUDE.md should exist');
+  assert.ok(fs.existsSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.mdc')), 'cursor rules should exist');
+  assert.ok(fs.existsSync(path.join(tmpDir, '.windsurfrules')), '.windsurfrules should exist');
+  assert.ok(fs.existsSync(path.join(tmpDir, '.clinerules')), '.clinerules should exist');
+  assert.ok(fs.existsSync(path.join(tmpDir, '.codexrules')), '.codexrules should exist');
+  assert.ok(fs.existsSync(path.join(tmpDir, '.github', 'copilot-instructions.md')), 'copilot instructions should exist');
+});
+
+
 
 
 
