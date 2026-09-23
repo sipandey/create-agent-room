@@ -21,7 +21,7 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | **Epic 4: Active Defense & Lifecycle** | **4.1** | Comprehensive Guardrails Rule-Weakening & Anti-Tamper Gate | ✅ **DONE** (`f6871c1`) |
 | | **4.2** | Automated Session Logging & Handoff CLI (`create-agent-room session`) | ✅ **DONE** (`89097a6`) |
 | | **4.3** | Dynamic Skill Pack Management (`create-agent-room skill [list\|add\|remove]`) | ✅ **DONE** (`6eb2fac`) |
-| **Epic 5: Enterprise CI/CD Governance** | **5.1** | `create-agent-room ci` Unified Headless CI Runner | 🟡 **IN PROGRESS** |
+| **Epic 5: Enterprise CI/CD Governance** | **5.1** | `create-agent-room ci` Unified Headless CI Runner | ✅ **DONE** (`7181329`) |
 | | **5.2** | Remote PR Anti-Tamper & Bypass Audit Gate (`ci --base`) | 📋 Ready |
 | | **5.3** | Automated PR Compliance Reporter & GitHub Action | 📋 Ready |
 
@@ -310,7 +310,7 @@ Eliminate silent governance bypasses and streamline agent session lifecycle mana
 Close the "local-only" enforcement gap by transforming `create-agent-room` into a zero-friction, headless CI/CD policy gate for pull requests in GitHub Actions, GitLab CI, CircleCI, and automated agent pipelines.
 
 ### Story 5.1: `create-agent-room ci` Unified Headless CI Runner
-- **Status:** 🟡 **IN PROGRESS** (Branch `feature/ci-headless-runner`)
+- **Status:** ✅ **DONE** (Merged into `main` via PR #16, Commit `7181329`)
 - **Summary:**
   - Build `create-agent-room ci [target] [options]` in `lib/ci.js` and `bin/cli.js`.
   - Orchestrates all 5 room governance dimensions in a single invocation:
