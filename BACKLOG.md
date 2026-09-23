@@ -17,7 +17,10 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | | **2.3** | Unified Multi-Agent Sync (`create-agent-room sync --all`) | ✅ **DONE** (`dd82354`) |
 | **Epic 3: Enterprise Governance** | **3.1** | Session Telemetry & Governance Metrics Exporter | ✅ **DONE** (`0d8149c`) |
 | | **3.2** | PR Attestation & Verification Evidence Generator (`pr-desc --verify`) | ✅ **DONE** (`fbca05d`) |
-| | **3.3** | Custom Adopter Compliance Eval Suites (`evals/custom/`) | ✅ **DONE** |
+| | **3.3** | Custom Adopter Compliance Eval Suites (`evals/custom/`) | ✅ **DONE** (`7bda42e`) |
+| **Epic 4: Active Defense & Lifecycle** | **4.1** | Comprehensive Guardrails Rule-Weakening & Anti-Tamper Gate | ⏳ In Progress |
+| | **4.2** | Automated Session Logging & Handoff CLI (`create-agent-room session`) | ⏳ Queued |
+| | **4.3** | Dynamic Skill Pack Management (`create-agent-room skill [list\|add\|remove]`) | ⏳ Queued |
 
 ---
 
@@ -217,4 +220,45 @@ Provide engineering leadership with transparency, metrics, and regression proof 
 
 > [!NOTE]
 > **Epic 3: Enterprise Governance, Telemetry & Compliance is now 100% COMPLETE!** (Story 3.1 ✅, Story 3.2 ✅, Story 3.3 ✅)
+
+---
+
+## Epic 4: Active Defense & Lifecycle Management
+
+Eliminate silent governance bypasses and streamline agent session lifecycle management across repositories.
+
+### Story 4.1: Comprehensive Guardrails Rule-Weakening & Anti-Tamper Gate
+- **Status:** ⏳ In Progress (Branch `feature/guardrails-anti-tamper-weakening-gate`)
+- **Goal:**
+  - Eliminate the documented limitation in `CAPABILITIES.md`: mechanically prevent any commit from weakening, dropping, or loosening existing guardrail rules relative to `HEAD`.
+- **Acceptance Criteria:**
+  1. Detects dropped paths from `protectedPaths`.
+  2. Detects dropped patterns from `forbiddenActions`.
+  3. Detects loosened `scopeGuidance` (`maxFilesPerChange`, `maxLinesPerChange`).
+  4. Detects dropped or weakened `importBoundaries` and `scopeBoundaries`.
+  5. Detects disabling or deletion of `verifyOnCommit`.
+  6. Allows clean commits that strengthen or preserve rules.
+  7. Requires `GUARDRAILS_BYPASS=1` with logged audit justification to bypass.
+
+---
+
+### Story 4.2: Automated Session Logging & Handoff CLI (`create-agent-room session`)
+- **Status:** ⏳ Queued
+- **Goal:**
+  - Provide a CLI subcommand to scaffold compliant session logs (`--new <name>`), capture git diff / tests outcome (`--record`), and validate formatting against `session-log-format.md`.
+- **Acceptance Criteria:**
+  1. `create-agent-room session <name>` creates a properly formatted session log under `.agent-room/sessions/`.
+  2. Auto-populates date, author, branch, summary, and verification outcome.
+  3. Passes `create-agent-room lint-sessions` out of the box.
+
+---
+
+### Story 4.3: Dynamic Skill Pack Management (`create-agent-room skill [list|add|remove]`)
+- **Status:** ⏳ Queued
+- **Goal:**
+  - Manage built-in and remote/local skill packs post-init, automatically syncing to Claude, Cursor, Windsurf, Cline, Codex, and GitHub Copilot.
+- **Acceptance Criteria:**
+  1. `create-agent-room skill list` shows installed and available skill packs.
+  2. `create-agent-room skill add <pack>` installs and automatically runs `sync --all`.
+  3. Preserves user customizations during skill additions.
 

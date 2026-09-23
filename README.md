@@ -2,512 +2,303 @@
 
 [![npm version](https://img.shields.io/npm/v/create-agent-room.svg)](https://www.npmjs.com/package/create-agent-room)
 [![CI](https://github.com/sipandey/create-agent-room/actions/workflows/ci.yml/badge.svg)](https://github.com/sipandey/create-agent-room/actions/workflows/ci.yml)
+[![Zero Dependencies](https://img.shields.io/badge/dependencies-0-brightgreen.svg)](package.json)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**Define your agent governance rules once. `create-agent-room` enforces them at every layer an agent passes through — while it's working (Claude + Cursor stop hooks), when it commits, and in CI (including compliance evals) — instead of just documenting them and hoping.**
+**Physical seatbelts for AI coding agents.** Stop hoping your AI agents follow rules — mechanically prevent them from breaking tests, leaking secrets, or wandering outside their assigned tasks across Claude Code, Cursor, Copilot, Windsurf, Cline, and Codex.
 
-**Try it in 30 seconds** (no global install required for a one-off):
+---
 
-```bash
-npx create-agent-room@latest init . --yes --tools git,cursor --git
-```
+## 💡 What Problem Does This Solve?
 
-Then edit a file, try to end an agent turn without logging a decision, and watch the stop hook block you. Reproduce the full demo with `bash scripts/demo.sh`.
+Imagine hiring a brilliant junior developer who types at 200 words a minute, works 24/7, but has **zero impulse control**:
 
-![Demo: create-agent-room blocking a staged AWS key at commit, then blocking an agent turn with no decision log](docs/demo.gif)
+1. **The "Trust Me, It Works" Trap:** The AI agent says, *"I've refactored the login system and all tests pass!"* But in reality, it never ran your test suite — and it quietly broke 4 critical user flows.
+2. **The Accidental Secret Leak:** While testing an API, the agent paste-tests an active AWS access key, GitHub personal token, or modifies your `.env` file and stages it to Git.
+3. **The Blast Radius Creep:** You ask the agent to adjust a CSS margin on the homepage. Thirty seconds later, it has modified your database schema, rewritten the Dockerfile, and touched 18 unrelated backend files.
+4. **The Amnesic Coworker:** The agent rewrites a complex algorithm from scratch because it had no memory of *why* the original author designed it that way. No decisions were recorded, so history repeats itself every week.
 
-*Real, unmocked output from `bash scripts/demo.sh` (regenerate the GIF with `vhs docs/demo.tape`): staged AWS key blocked at commit, then Stop hook blocks ending a turn without a logged decision.*
+### Why "Just Write an `AGENTS.md`" Doesn't Work
 
-Most "AI agent guidelines" are a Markdown file an agent may or may not read. `create-agent-room` scaffolds that documentation (`AGENTS.md`, a principles playbook, a workflow classifier, multi-agent coordination protocols) but backs the parts that matter with **four concrete enforcement points**, each catching a different failure mode:
+Most teams try to solve this by creating an `AGENTS.md` or `.cursorrules` file filled with polite instructions:
+> *"Please run npm test before declaring victory."*  
+> *"Please never commit secrets."*  
+> *"Please stay within the frontend directory."*
 
-1. **While the agent is working** — shared **Claude Code `Stop`** and **Cursor `stop`** hooks (`.agent-room/hooks/close-the-loop-check.js`) block or loop the turn when source files changed without logging to `.agent-room/decisions.md` or `anti-patterns.md`. **Evidence-lite** checks go further: the log-file *diff* must contain a valid waiver (`<!-- no-log: ... -->` with ≥20 chars and a deliberate keyword) or a structured entry — not just a file touch. Cursor uses `followup_message`; Claude uses `exit 2`. No `--no-verify` equivalent.
-2. **When it commits** — a git pre-commit hook (`guardrails-check.js`) blocks commits that touch protected paths, match forbidden patterns (AWS keys, private keys, tokens), or exceed `scopeGuidance` limits. Every `GUARDRAILS_BYPASS` is recorded in `.agent-room/guardrails-bypass-log.md`.
-3. **In CI** — `validate` and `lint-sessions` fail the build if the guardrails schema, skill frontmatter, or session logs are malformed (`lint-sessions` also rejects placeholder `Decisions made` when status is Completed).
-4. **In CI (compliance evals)** — `eval` runs packaged regression scenarios (close-the-loop, lint-sessions, validate fixtures) on every push/PR when `--tools git` scaffolds the workflow — confirms governance checks still behave after CLI upgrades; JSON/CSV export available — no LLM, no API keys.
+**AI models do not consistently obey prose guidelines.** As soon as the conversation gets long or complex, the agent ignores instructions, forgets context, or hallucinates that it followed your rules.
+
+**You cannot solve a mechanical problem with polite documentation. You need physical seatbelts.**
+
+---
+
+## 🛡️ How `create-agent-room` Solves It: 4 Mechanical Seatbelts
+
+`create-agent-room` wraps your codebase in **active runtime gates** that make it physically impossible for an AI agent to cut corners:
 
 ```mermaid
 flowchart LR
-  subgraph L1["① During agent turn"]
-    A[Agent edits files] --> B{Stop hook}
-    B -->|Decision logged or valid waiver| C[Turn ends]
-    B -->|No evidence| D[Blocked / looped]
+  subgraph L1["① While Agent Is Working (Stop Hook)"]
+    A[Agent writes code] --> B{Did tests pass & decisions get logged?}
+    B -->|Yes| C[Agent yields turn cleanly]
+    B -->|Tests broken / no log| D[Turn BLOCKED — forced to fix]
   end
-  subgraph L2["② On commit"]
-    E[git commit] --> F{Pre-commit guardrails}
-    F -->|Pass| G[Commit]
-    F -->|Protected path / secret / scope| H[Blocked]
+  subgraph L2["② When Committing (Pre-Commit Hook)"]
+    E[git commit] --> F{Secrets scanned? Scope bounded?}
+    F -->|Clean| G[Commit succeeds]
+    F -->|Secret leaked / scope creep| H[Commit BLOCKED by Git]
   end
-  subgraph L3["③ In CI"]
-    I[validate + lint-sessions]
+  subgraph L3["③ In Pull Requests (pr-desc --verify)"]
+    I[create-agent-room pr-desc --verify] --> J[PR body with proof of test pass & review checklist]
   end
-  subgraph L4["④ In CI — compliance evals"]
-    J[create-agent-room eval]
+  subgraph L4["④ In CI & Quality (eval)"]
+    K[CI workflow] --> L[Deterministic compliance evals pass]
   end
   C --> E
   G --> I
+  I --> K
 ```
 
-Full detail — code paths, adapters, what `eval` does *not* cover:
-[docs/enforcement-model.md](docs/enforcement-model.md).
-
-Not every feature here is enforced this way — see [Feature Categories](#feature-categories) below and [CAPABILITIES.md](CAPABILITIES.md) for the honest breakdown of what's mechanical versus what still depends on an agent choosing to follow a doc.
-
----
-
-## Features
-
-- **Agent Runtime Enforcement (Stop Hooks)**: Shared checker for **Claude Code** (`Stop` → `exit 2`) and **Cursor** (`stop` → `followup_message`). **Evidence-lite** validates log-file diffs, not just porcelain touches. Requires `--tools claude` and/or `--tools cursor`.
-- **Compliance Evals (`eval`)**: Packaged regression pack for close-the-loop, `lint-sessions`, and `validate` — `--format json|csv` for CI dashboards. Exit `1` on failure. No LLM.
-- **Agent Guardrails**: `guardrails.json` — protected paths, forbidden regex/literal patterns, `scopeGuidance` limits, durable bypass audit log. *[Pre-commit hook when `--tools git`]*
-- **Multi-Tool Sync (`sync`)**: Mirrors `.agent-room/skills/` → `.claude/skills/`; regenerates Cursor `.cursor/rules/agent-room.mdc`, Windsurf (`.windsurfrules`), Cline (`.clinerules`), Codex (`.codexrules`), and GitHub Copilot (`.github/copilot-instructions.md`) rule files from the current skill list. Supports `sync --all` to fan out across all tools in one command while preserving user customizations.
-- **Session Log & Schema Validation**: `validate` + `lint-sessions` + `eval` in scaffolded CI when `--tools git`. *[Fails build if malformed or fixtures fail]*
-- **Health Check (`doctor`)**: Read-only drift/advisory report — hook template drift, stale CI pins, unwired tools. Never writes to disk.
-- **Multi-Agent Coordination**: Handoff, scope, session log templates. *[Guidance only — `--profile full`]*
-- **Inheritance & Composition**: Base → stack → org → project template layers.
-- **Built-in & External Skill Packs**: testing, security, release, code-review, etc., or remote Git/local paths via `--skill-packs`.
-- **Observability Metrics**: Post-hoc session dashboard from `.agent-room/sessions/`.
-- **PR Description Generator**: Latest session log → PR template (`pr-desc --write`).
+1. **Seatbelt 1 (During the Turn):** When Claude Code or Cursor tries to finish, CAR automatically runs your repository's test runner (`npm test`, `pytest`, `cargo test`, `go test`). If tests fail, CAR blocks the agent, feeds the failure logs back to the LLM, and forces it to fix the issue before it can stop.
+2. **Seatbelt 2 (At Commit Time):** A Git pre-commit hook scans staged diffs for AWS keys, private tokens, and protected paths (`.env`, CI configs). If a secret is detected or if the agent changed too many files outside its boundary, the commit is blocked.
+3. **Seatbelt 3 (At Pull Request Time):** When generating a PR (`create-agent-room pr-desc --verify`), CAR executes the test suite live, embeds tamper-evident test proof into the PR description, and generates an interactive reviewer compliance checklist.
+4. **Seatbelt 4 (Across the Whole Team):** Define your team's rules and skills once. Running `create-agent-room sync --all` automatically keeps Claude Code, Cursor, GitHub Copilot, Windsurf, Cline, and Codex in 100% alignment.
 
 ---
 
-## Feature Categories
+## ⚡ 30-Second Quickstart
 
-### 🟢 Actively Enforced Features
-These features actively constrain behavior and will fail/block operations if violated:
+You don't even need to install anything globally to try it on your project:
 
-- **Agent Runtime Enforcement** — Claude `Stop` + Cursor `stop` hooks; evidence-lite diff validation on log files
-- **Compliance Evals** — `eval` runs builtin regression scenarios; `--format json|csv`; exit `1` on failure
-- **Agent Guardrails** — Pre-commit hook (optional; `--tools git`); bypass audit log
-- **Session Log Validation** — `lint-sessions` + scaffolded CI workflow (`--tools git`; includes `validate` and `eval`)
-- **Skill Frontmatter Validation** — `validate` command
-- **Multi-Tool Sync** — `sync` (`--all`) keeps Claude skills and Cursor/Windsurf/Cline/Codex/Copilot rules aligned with `.agent-room/skills/`
+```bash
+# 1. Run in your project root (safe: skips existing files, never overwrites without permission)
+npx create-agent-room init . --yes
 
-### 🟡 Prescriptive Guidance (Requires Human Discipline)
-These features provide templates and protocols that agents must choose to follow:
+# 2. That's it! Your repository is now an Agent Room.
+```
 
-- **Workflow Classifier** — Guides agents to tag work as Bug / Enhancement / Feature / Product (not automatically enforced)
-- **Multi-Agent Coordination Protocols** — Handoff, scope, session log format templates exist but agents must follow them manually
-- **Principles Playbook** — 12 guidelines for reliable LLM output; agents must apply them
-
-### 🔵 Aspirational/Framework Features
-These provide a framework that requires external setup:
-
-- **Stack-Specific Templates** — Inheritance system supports Python, TypeScript, React stacks, but these must be created or provided via `--org` or `--template-source`
-- **Observability Metrics** — Post-hoc aggregation of completed sessions; not real-time monitoring or alerting
-- **Tool Adapters** — Currently supports Claude, Cursor, Windsurf, Cline, Codex, GitHub Copilot, and Git; `sync` mirrors skills to Claude and regenerates rules files for Cursor, Windsurf, Cline, Codex, and Copilot from `.agent-room/skills/`
-
----
-
-## What Requires Human Discipline?
-
-Some features depend on agents choosing to follow documented guidance. **There is no automatic enforcement**:
-
-- **Workflow Classification** — Agents must tag work as Bug / Enhancement / Feature / Product when creating session logs
-- **Following Coordination Protocols** — Agents must read and follow handoff, scope, and session log format guidelines
-- **Writing good Decisions & Anti-patterns entries** — Stop hooks force logging or a valid waiver; evidence-lite checks *structure* in the diff, not prose quality. Windsurf/Cline/Codex have rule files but no runtime stop hook.
-- **Applying Principles** — Agents must read the principles playbook and apply them; the tool provides no real-time guidance
-- **Respecting Tool Rules** — Tool adapters (Claude, Cursor, etc.) provide guidance files, but tools decide whether/how to apply them
-
-These features work **only if your team commits to following them**. The tool creates the structure and validation hooks; discipline is external.
-
-For comprehensive details on what's enforced, guidance, and aspirational, see [CAPABILITIES.md](CAPABILITIES.md). For the four enforcement layers, adapters, and what `eval` does not cover, see [docs/enforcement-model.md](docs/enforcement-model.md).
-
-Considering an alternative — hand-rolled hooks, a direct competitor, or
-just a plain `AGENTS.md`? See [docs/comparisons.md](docs/comparisons.md)
-for an honest comparison, including where this tool currently loses.
-
----
-
-## Usage
-
-`create-agent-room` is published on npm. **Install once, then invoke directly**
-— don't use `npx` for automation or repeat runs; its temporary install/exec
-path has failed intermittently (including on GitHub-hosted runners — see
-`.agent-room/anti-patterns.md`). An explicit global install is reliable:
+Or install globally for fast everyday use:
 
 ```bash
 npm install -g create-agent-room
 ```
 
-| Command | Purpose |
-| ------- | ------- |
-| `init` | Scaffold agent-room structure, hooks, and tool adapters |
-| `sync` | Mirror `.agent-room/skills/` → Claude/Cursor/Windsurf/Cline/Codex/Copilot |
-| `validate` | Structural + schema checks (exit `1` on failure) |
-| `verify` | Pre-commit/pre-stop test suite verification runner (exit `1` on failure) |
-| `lint-sessions` | Session log schema validation (exit `1` on failure) |
-| `eval` | Packaged compliance regression scenarios (exit `1` on failure) |
-| `metrics` | Session telemetry, quality pass rates & governance metrics exporter |
-| `pr-desc` | Generate attested PR description with verification proof & reviewer checklist |
-| `doctor` | Health check & auto-remediation (`--fix`) |
+### What Just Happened?
 
+`create-agent-room` added a lightweight, self-contained governance room:
+- **`AGENTS.md`**: The universal entry point explaining your project boundaries to any agent.
+- **`.agent-room/guardrails.json`**: Machine-readable safety rules (secrets scanning, protected paths, file limits).
+- **`.agent-room/decisions.md`**: An append-only log capturing architectural decisions so agents don't repeat past mistakes.
+- **`.agent-room/hooks/`**: The automatic pre-commit and stop hooks that enforce compliance behind the scenes.
+
+**Want to see it in action?**
 ```bash
-# Initialize a new project with all tool adapters, git initialization, and specific skill packs:
-create-agent-room init ../my-project --tools claude,cursor,git --git --skill-packs testing,security,observability
+# Try to end a Claude or Cursor session without logging a decision:
+# => The Stop Hook intercepts the agent and prompts it to record its reasoning.
 
-# Scaffolding using template inheritance (Base -> Python stack -> Acme Org rules):
-create-agent-room init . --yes --language python --org acme
-
-# Fetching skill packs dynamically from a remote git repository:
-create-agent-room init . --yes --skill-packs https://github.com/my-org/custom-skills.git
-
-# Preview exactly what init would create/skip, writing nothing to disk:
-create-agent-room init . --tools claude,git --git --dry-run
-
-# Opt into the full guidance corpus (principles, workflow classifier, coordination protocols):
-create-agent-room init . --yes --profile full --tools claude,git --git
-
-# Mirror skills and regenerate tool rule files after editing .agent-room/skills/:
-create-agent-room sync .
-
-# Verify mirrors are up to date without rewriting (CI-friendly):
-create-agent-room sync . --check
-
-# Run integrity validation on the room (exits with code 1 if files are missing or skill frontmatter is malformed):
-create-agent-room validate .
-
-# Validate session logs against required structure (exits 1 on error):
-create-agent-room lint-sessions .
-
-# Run packaged compliance regression scenarios (no LLM):
-create-agent-room eval
-create-agent-room eval --format json --output compliance-report.json
-
-# Run pre-commit/pre-stop verification test suite:
-create-agent-room verify .
-create-agent-room verify . --strict --format json
-
-# Generate an observability report dashboard based on session logs:
-create-agent-room metrics .
-create-agent-room metrics . --format json
-create-agent-room metrics . --format markdown --output docs/governance-report.md
-
-# Generate a Pull Request description from the latest session log:
-create-agent-room pr-desc . --write
-create-agent-room pr-desc . --verify --write
-create-agent-room pr-desc . --verify --output pr-body.md
-
-# Read-only health check — works whether or not init has been run yet, writes nothing:
-create-agent-room doctor .
+# Try to stage an AWS key or edit a protected file:
+# => The Git hook blocks the commit and logs an auditable entry.
 ```
 
-Pin a version when reproducibility matters: `npm install -g create-agent-room@2.3.1`.
-For a project-local install, use `npm install create-agent-room` and
-`./node_modules/.bin/create-agent-room` (or add an npm script).
-
-**Example: Init Command**
-
-![Create Agent Room Init Output](docs/images/media__1783509718671.png)
-
-If you're working from a clone of this repo instead (contributing, or
-testing an unreleased change), use `node bin/cli.js` in place of
-`create-agent-room`:
-
-```bash
-node bin/cli.js init my-new-project
-node bin/cli.js sync .
-node bin/cli.js validate .
-node bin/cli.js lint-sessions .
-node bin/cli.js eval
-node bin/cli.js metrics .
-node bin/cli.js pr-desc . --write
-node bin/cli.js doctor .
-```
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, tests/lint, and
-scope guidelines before opening a PR.
+![Demo: create-agent-room blocking a staged AWS key at commit, then blocking an agent turn with no decision log](docs/demo.gif)
 
 ---
 
-## Directory Structure
+## 🎬 Real-World Scenarios: Before & After
 
-```
-AGENTS.md                          Generic entry point read by any agent
-.agent-room/
-  principles.md                    12 playbooks for reliable LLM output           [--profile full only]
-  workflow-classifier.md           Bug / Enhancement / Feature / Product routing  [--profile full only]
-  guardrails.md                    Prose boundaries and constraints (what not to do)
-  guardrails.json                  Machine-readable guardrail rule schema
-  guardrails-bypass-log.md         Append-only, auto-written record of every GUARDRAILS_BYPASS use
-  anti-patterns.md                 Append-only negative-knowledge log (starts empty)
-  decisions.md                     Append-only decisions log (starts empty)
-  hooks/                           [--tools claude and/or cursor]
-    close-the-loop-check.js        Shared Stop/stop hook (Claude exit 2, Cursor followup_message)
-    closing-the-loop-evidence.js   Evidence-lite diff validation for log files
-  skills/
-    brainstorming.md               Brainstorming rules, hard-gated
-    writing-plans.md               Design-to-task plan blueprints
-    test-driven-development.md     TDD red-green-refactor loop
-    systematic-debugging.md        Root-cause analysis protocols
-    verification-before-completion.md   Double-checking results before completion
-    closing-the-loop.md            Closing out decisions and anti-patterns
-    [skill packs]                  observability.md, api-design.md, database-migrations.md, etc. (opt-in via --skill-packs, either profile)
-  coordination/                    [--profile full only]
-    handoff-protocol.md            Protocols for serializing state between sessions
-    scope-boundaries.md            Resource ownership guidelines
-    session-log-format.md          Layout template for writing session logs
-  sessions/                        Directory where session logs get saved
-docs/plans/                        Where design docs and task plans get saved
-.agent-room.json                   Project config tracking language, tools, branch, skill packs, and profile
-.claude/                           [--tools claude] skills mirror + settings.json Stop hook
-.cursor/rules/                     [--tools cursor] agent-room.mdc rule (regenerated by sync)
-```
-
-`--profile minimal` (the default) skips the two rows and the whole
-`coordination/` directory marked above — see [Profiles](#profiles-minimal-vs-full).
+### Scenario 1: The "I Fixed It" Hallucination
+* **The Problem:** Claude edits 3 files to fix a bug. It proudly declares: *"The authentication issue is resolved! Have a nice day!"* In reality, it broke your password-reset endpoint and never ran `npm test`.
+* **With CAR:** When Claude tries to complete the turn, CAR's Pre-Stop hook intercepts it, automatically runs `npm test`, detects the failure, and returns:
+  ```text
+  ❌ Verification Gate Failed: npm test exited with code 1
+     FAIL test/auth.test.js: password reset token mismatch
+  You must fix test failures before completing your turn.
+  ```
+  Claude sees the exact error, fixes the bug, re-runs tests until they pass, and only then yields back to you.
 
 ---
 
-## Subcommands
+### Scenario 2: The Leaked API Key
+* **The Problem:** An agent creates a temporary script to test an external API and hardcodes an AWS access key (`AKIA...`) or GitHub token directly in the source file. It stages the file and attempts to commit.
+* **With CAR:** Git immediately aborts the commit:
+  ```text
+  ❌ Guardrails Check Failed: Commit violates project guardrails
+     - Forbidden pattern found in api.js: AWS Access Key ID
+  To bypass in an emergency, use: GUARDRAILS_BYPASS=1 git commit
+  ```
+  If bypassed with `GUARDRAILS_BYPASS=1`, CAR permanently records who bypassed it, when, and why in `.agent-room/guardrails-bypass-log.md` so the waiver is visible in code review.
 
-### 1. `init [target-dir]`
+---
 
-Scaffold the agent workspace. If files already exist in the target, they are skipped by default to protect manual edits unless `--force` is specified. Defaults to `--profile minimal`; pass `--dry-run` to preview what would be created/skipped without writing anything. See [Options](#options) and [Profiles](#profiles-minimal-vs-full).
+### Scenario 3: The Multi-Tool Team
+* **The Problem:** Alice uses **Cursor**, Bob uses **Claude Code**, Charlie uses **GitHub Copilot**, and Dave uses **Windsurf**. Everyone creates their own custom prompt files (`.cursorrules`, `.claude/skills`, `.github/copilot-instructions.md`, `.windsurfrules`). Within two weeks, rules diverge, conflict, and cause chaos.
+* **With CAR:** You store your team's skills once in `.agent-room/skills/`. Run:
+  ```bash
+  create-agent-room sync --all
+  ```
+  CAR instantly updates all 6 tool adapters simultaneously. Have personal custom prompts in `.cursorrules` or `.windsurfrules`? CAR automatically detects marker comments (`<!-- user-customizations -->`) and preserves your custom edits untouched!
 
-### 2. `sync [target-dir]`
+---
 
-Synchronize custom skills from `.agent-room/skills/` into tool-specific mirrors:
+### Scenario 4: Scope Containment & Blast Radius Control
+* **The Problem:** You assign an AI agent to upgrade UI icons in `src/components/`. The agent gets confused by an import, starts refactoring your backend API routes, and ends up modifying 22 files across the repository.
+* **With CAR:** You configure scope guidance or pass allowed paths:
+  ```json
+  "scopeGuidance": { "maxFilesPerChange": 5, "maxLinesPerChange": 200 }
+  ```
+  If the agent touches more than 5 files or edits outside its boundary, the commit is immediately blocked before the merge conflict disaster occurs.
 
-- **Claude**: mirrors skills to `.claude/skills/<name>/SKILL.md`
-- **Cursor**: regenerates `.cursor/rules/agent-room.mdc`
-- **Windsurf**: regenerates `.windsurfrules`
-- **Cline**: regenerates `.clinerules`
-- **Codex**: regenerates `.codexrules`
-- **GitHub Copilot**: regenerates `.github/copilot-instructions.md`
+---
 
-Options and flags:
-- Pass `--all` to sync across all supported tools simultaneously.
-- Pass `--tools <list>` (e.g. `--tools cursor,copilot`) to target specific adapters.
-- When run without `--all` or `--tools`, `sync` synchronizes all tools registered in `.agent-room.json` plus any tools detected in the workspace.
-- Run with `--check` to verify whether mirrors are up to date without rewriting them (exits `1` on drift).
-- User customizations within marker blocks (`<!-- user-customizations-start -->` ... `<!-- user-customizations-end -->`) are automatically preserved across regenerations.
-- Sync will automatically skip overwriting files if they have uncommitted tracked edits in Git, unless `--force` is used.
+### Scenario 5: Reviewer-Ready PRs with Verified Evidence
+* **The Problem:** Developers submit PRs generated by AI with generic descriptions like *"Updated some functions"*. Human reviewers spend 30 minutes manually checking if the code compiles, if tests actually ran, and whether any architectural guidelines were broken.
+* **With CAR:** Run one command before opening your PR:
+  ```bash
+  create-agent-room pr-desc --verify --write
+  ```
+  CAR executes your test suite live, links your architectural decisions, checks for guardrail bypasses, and generates a rich PR description:
+  ```markdown
+  ### Verification Evidence
+  <details open>
+  <summary>✅ Verification Passed (npm test, exit 0, 1.2s)</summary>
+  261 tests passed, 0 failures.
+  </details>
 
+  ### Reviewer Compliance Checklist
+  - [x] Automated test suite executed & passed
+  - [x] Architectural decisions recorded in .agent-room/decisions.md
+  - [x] No unapproved guardrail bypasses
+  - [x] Scope contained within task boundaries
+  ```
 
-### 3. `validate [target-dir]`
+---
 
-Performs structural validation and linting on the room. Returns exit code `1` on error:
+### Scenario 6: Self-Healing Maintenance in 1 Second
+* **The Problem:** Over time, someone edits a Git hook by mistake, a package upgrade leaves templates out of sync, or a new developer clones the repo without setting up the Claude stop hook.
+* **With CAR:** Run:
+  ```bash
+  create-agent-room doctor --fix
+  ```
+  CAR diagnoses your entire repository, detects missing hooks or drifted templates, and repairs them automatically without clobbering your custom code.
 
-- Asserts presence of all mandatory files and folders (e.g. `AGENTS.md`, `guardrails.md`).
-- Lints skill files under `.agent-room/skills/*.md` to ensure they contain Jekyll-style frontmatter headers (`---`) with valid `name` and `description` attributes.
-- Parses and validates `.agent-room/guardrails.json` schema.
-- Reads the `profile` recorded in `.agent-room.json` to decide whether `principles.md`/`workflow-classifier.md`/`coordination/` are required (`full`) or merely recommended-with-a-warning (`minimal`) — a `--profile minimal` room is not an error.
+---
 
-**Example: Validation Passed**
+## 🎯 Choose Your Governance Preset
 
-![Validation Passed Output](docs/images/media__1783509718049.png)
-
-**Example: Validation Failed**
-
-![Validation Failed Output](docs/images/media__1783509718346.png)
-
-### 4. `lint-sessions [target-dir]`
-
-Validates all session logs in `.agent-room/sessions/` against the required schema (Date, Agent, Classification, Goal, Files touched, Actions taken, Tests run, Decisions, Outcome).
-
-- Returns exit code `1` if validation fails (suitable for CI gating)
-- Rejects placeholder `Decisions made` when status is `Completed`
-- Reports errors (missing required sections) and warnings (invalid classifications, missing files)
-
-**Usage in CI:**
-
-```yaml
-- name: Install create-agent-room
-  run: npm install -g create-agent-room
-- name: Validate Session Logs
-  run: create-agent-room lint-sessions .
-```
-
-(Use `npm install -g create-agent-room` — not `npx` — so install and exec
-are separate, diagnosable steps. The scaffolded `init --tools git` workflow
-does this automatically.)
-
-Already ran `init --tools git`? Use the workflow file it scaffolded
-instead of writing this by hand — see [GitHub Action](#github-action)
-below for when to use which.
-
-### 5. `metrics [target-dir]`
-
-Aggregates all JSON and Markdown session logs inside `.agent-room/sessions/`, architectural decisions from `.agent-room/decisions.md`, and guardrail bypass logs from `.agent-room/guardrails-bypass-log.md`. Renders an interactive CLI dashboard or structured reports detailing outcomes, task classification distributions, verification test pass rates, decision velocity, and auditable bypasses.
-
-Options:
-- `--format <text|json|csv|markdown>`: Output format (default: `text`).
-- `--output <file>`: Write formatted metrics report directly to a file.
+Every project is different. A weekend side-project has different needs than a regulated banking system. Choose the right strictness preset using `--preset` (or `--profile`):
 
 ```bash
-create-agent-room metrics .
-create-agent-room metrics . --format json
-create-agent-room metrics . --format csv --output metrics.csv
-create-agent-room metrics . --format markdown --output GOVERNANCE.md
+create-agent-room init . --yes --preset <minimal|standard|strict>
 ```
 
-**Example: Metrics Dashboard**
+| Preset | Who It's For | What It Enforces | Guidance Token Overhead |
+| :--- | :--- | :--- | :--- |
+| **`minimal`** *(Default)* | Solopreneurs, prototypes, and fast-moving small apps | Basic `AGENTS.md`, Git pre-commit secrets guardrails, Stop hook, and core skills. Skips secondary documentation to minimize LLM token costs. | ~6,500 tokens |
+| **`standard`** | Production software teams & established repos | Everything in `minimal` + **Automated Pre-Stop Test Verification Gate** + complete principles playbook, task classifier, and handoff protocols. | ~12,500 tokens |
+| **`strict`** | Enterprise, financial, healthcare, & high-compliance repos | Everything in `standard` + **Pre-Commit Test Execution** (`verifyOnCommit`) + **Architectural Import Boundaries** (`importBoundaries`) + **Strict Waiver Audits** (mandates ticket references like `ticket: #123` and ≥40 character rationale for overrides) + tight scope limits (10 files / 300 lines). | ~12,500 tokens |
 
-![Agent Session Dashboard](docs/images/media__1783509718617.png)
+---
 
-### 6. `pr-desc [target-dir]`
+## 🧰 Everyday Commands Cheatsheet
 
-Parses the latest session log inside `.agent-room/sessions/` (based on timestamp filename order) and formats it into a Pull Request description template.
+| Command | Everyday Scenario | Example |
+| :--- | :--- | :--- |
+| `init` | Protect a new or existing repository | `create-agent-room init . --yes --preset standard` |
+| `sync` | Sync skills across Claude, Cursor, Copilot, Windsurf, Cline, Codex | `create-agent-room sync --all` |
+| `verify` | Run the configured verification test suite standalone (CI / scripts) | `create-agent-room verify . --strict --format json` |
+| `pr-desc` | Generate an attested PR description with proof of tests & checklist | `create-agent-room pr-desc . --verify --write` |
+| `doctor` | Check repository health and auto-heal drifted configuration | `create-agent-room doctor . --fix` |
+| `metrics` | Export session productivity, pass rates & compliance data | `create-agent-room metrics . --format markdown --output AUDIT.md` |
+| `eval` | Run built-in and custom compliance regression eval packs | `create-agent-room eval . --format json` |
+| `validate` | Verify repository structure, guardrails schema, and skill frontmatter | `create-agent-room validate .` |
+| `lint-sessions` | Validate session logs against required structure | `create-agent-room lint-sessions .` |
 
-Options:
-- `--verify` (or `--with-verification`): Automatically executes the project's verification test suite and embeds durable verification attestation proofs, recent architectural decisions, guardrail compliance audits, and an interactive reviewer compliance checklist directly into the PR description.
-- `--strict`: When combined with `--verify`, exits with code `1` if verification tests fail or if no verification command is configured.
-- `--write` (or `-w`): Output and save directly to `.agent-room/pr-description.md`.
-- `--output <file>`: Write PR description to a custom destination file (e.g. `--output .github/pull_request_template.md`).
+---
 
+## 📖 Deep Dives for Common Tasks
+
+### 1. Auto-Detecting Test Suites
+You don't need to manually configure test commands. When you run `create-agent-room init`, CAR automatically inspects your project and detects your test suite:
+- **Node.js / TypeScript**: Reads `package.json` (`npm test`, `pnpm test`, `yarn test`), safely filtering out empty placeholder scripts.
+- **Python**: Detects `pytest.ini`, `pyproject.toml`, or test folders (`pytest`).
+- **Rust**: Detects `Cargo.toml` (`cargo test`).
+- **Go**: Detects `go.mod` (`go test ./...`).
+- **Java / Kotlin**: Detects `./gradlew test` or `mvn test`.
+- **Makefiles**: Detects `make test`.
+
+Want to override it? Pass `--test-command "npm run test:unit"` or opt out with `--no-test-command`.
+
+### 2. Multi-Agent Synchronization (`sync --all`)
+When developers on your team add or modify custom skills under `.agent-room/skills/`, run:
 ```bash
-# Standard PR description generation:
-create-agent-room pr-desc . --write
-
-# Generate verified PR description with test proof, ADRs, and reviewer checklist:
-create-agent-room pr-desc . --verify --write
-create-agent-room pr-desc . --verify --output pr-body.md
+create-agent-room sync --all
 ```
+CAR generates:
+- `.claude/skills/<name>/SKILL.md` (for Claude Code)
+- `.cursor/rules/agent-room.mdc` (for Cursor)
+- `.github/copilot-instructions.md` (for GitHub Copilot)
+- `.windsurfrules` (for Windsurf)
+- `.clinerules` (for Cline)
+- `.codexrules` (for Codex)
 
-**Example: PR Description Output**
-
-![Pull Request Description](docs/images/media__1783509718632.png)
-
-### 7. `doctor [target-dir]`
-
-Read-only health check for a project — works whether or not `init` has
-ever been run. Writes nothing to disk, regardless of what it finds.
-
-- **No `.agent-room/` found**: detects the workspace's language/tools and
-  prints the `init` (and `init --dry-run`) command to run.
-- **Already scaffolded**: reuses `validate`'s structural/schema checks,
-  plus advisory-only checks `validate` doesn't do — hook files that have
-  drifted from the CLI's current templates, a CI workflow pinned to a
-  stale or `@latest` `create-agent-room` version, and `.agent-room.json`
-  claiming a tool (`claude`, `git`) that isn't actually wired up on disk.
-- Prints `🔴 Needs attention` / `🟡 Recommended` / `🟢 Looks good`, and
-  suggests `init . --force` to refresh drifted files when relevant (this
-  overwrites manual edits to those files — review with `git diff`
-  afterward).
-
-Unlike `init --force`, `doctor` never writes — it's the tool to reach for
-when you just want to know what's wrong before deciding whether to fix it.
-
-### 8. `eval`
-
-Runs the **compliance regression harness** — combining built-in deterministic scenarios for close-the-loop, `lint-sessions`, and `validate` with **custom adopter eval suites** discovered from `<target>/.agent-room/evals/`, `<target>/evals/custom/`, or an explicit `--evals-dir <dir>`. Supports standalone `*.eval.json` files and fixture subdirectories with `eval.json`. In addition to built-in checks, custom evals can execute `command` (arbitrary shell commands) and `verify` (project verification test runner) case types.
-
+### 3. Writing Custom Organization Compliance Evals (`eval`)
+In addition to CAR's packaged regression suites, you can author repo-specific compliance tests in `.agent-room/evals/` or `evals/custom/`:
+```json
+{
+  "id": "require-clean-security-audit",
+  "suite": "security",
+  "type": "command",
+  "command": "npm audit --audit-level=high",
+  "expect": "pass"
+}
+```
+Run them with:
 ```bash
-# Run all compliance evals (builtin + custom)
-create-agent-room eval
-
-# Run only custom adopter evals
 create-agent-room eval . --custom-only
-
-# Run evals from a custom directory
-create-agent-room eval . --evals-dir ./custom-evals
-
-# Filter by suite name
-create-agent-room eval --suite close-the-loop
-
-# Machine-readable reports for CI/CD dashboards
 create-agent-room eval --format json --output compliance-report.json
-create-agent-room eval --format csv --output compliance-report.csv
 ```
-
-- Exit code `1` if any case fails
-- `--format text|json|csv` (default: `text`)
-- `--evals-dir <path>` or `--custom-evals <path>`: custom eval suites directory (default: `.agent-room/evals`, `evals/custom`)
-- `--custom-only`: execute only custom adopter eval suites
-- `--builtin-only`: execute only built-in compliance eval suites
-- `--suite <name>`: eval suite filter (e.g. `close-the-loop`, `lint-sessions`, `validate`, or custom suite name)
 
 ---
 
-## GitHub Action
+## ⚙️ Complete CLI Options Reference
 
-For repos that want CI validation without running `create-agent-room init`
-at all, `validate`, `lint-sessions`, and `eval` are also available — either
-via the composite [GitHub Action](action.yml) or by installing the CLI:
-
-```yaml
-- uses: actions/checkout@v4
-- uses: sipandey/create-agent-room@v2
-```
-
-The composite Action runs `validate` and `lint-sessions` only. The
-`init --tools git`-scaffolded workflow (`.github/workflows/agent-room-validate.yml`)
-also runs `create-agent-room eval` on every push/PR. To add eval when using
-the Action instead of the scaffolded workflow:
-
-```yaml
-- run: npm install -g create-agent-room
-- run: create-agent-room eval --format json --output compliance-report.json
-```
-
-Use the Action or the scaffolded workflow — not both. Full input reference
-and examples: [docs/github-action.md](docs/github-action.md).
-
----
-
-## Options
-
-| Flag                       | Effect                                                                                                                                                                                                            |
-| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--name <name>`            | Project name substituted into templates (default: target dir name)                                                                                                                                                |
-| `--tools <list>`           | Comma-separated: `claude,cursor,windsurf,cline,codex,git,none` (default: prompt)                                                                                                                                  |
-| `--template-source <path>` | Custom templates folder path (default: searches local, home, package)                                                                                                                                             |
-| `--package-manager <name>` | Package manager to use, e.g. npm, poetry, cargo (default: npm)                                                                                                                                                    |
-| `--language <name>`        | Target project language, e.g. typescript, python, rust (default: javascript)                                                                                                                                      |
-| `--branch <name>`          | Default git branch (default: main)                                                                                                                                                                                |
-| `--skill-packs <list>`     | Comma-separated built-in names (`testing`, `security`, `release`, `code-review`, `api-design`, `database`, `performance`, `observability`, `documentation`), Git URLs (`git+ssh://...`), or local directory paths |
-| `--org <name>`             | Organization layer directory name to look for during template inheritance overlays                                                                                                                                |
-| `--profile <name>`         | `minimal` (default) or `full` — see [Profiles](#profiles-minimal-vs-full) below                                                                                                                                   |
-| `--git`                    | Run `git init` and create an initial commit in the target directory                                                                                                                                               |
-| `--force`                  | Overwrite existing files instead of skipping them                                                                                                                                                                 |
-| `--dry-run`                | Print exactly what `init` would create/skip; write nothing to disk                                                                                                                                                |
-| `--write, -w`              | Save generated PR description output to `.agent-room/pr-description.md`                                                                                                                                           |
-| `--all`                    | `sync` only — sync rules and skills across all supported tools (claude, cursor, windsurf, cline, codex, copilot)                                                                                                  |
-| `--format <text\|json\|csv\|markdown>` | `eval`, `verify`, `metrics` — output format (default: `text`)                                                                                                                    |
-| `--output <file>`          | `eval`, `verify`, `metrics`, `pr-desc` — write report or PR description to file instead of stdout                                                                                 |
-| `--verify, --with-verification` | `pr-desc` only — run verification test suite and embed attestation proof and reviewer checklist                                                                                  |
-| `--strict`                 | `verify`, `pr-desc` — require tests to pass (exit `1` on test failure or missing configuration)                                                                                    |
-| `--fix`                    | `doctor` only — automatically remediate detected configuration issues, missing files, and template drift                                                                          |
-| `--evals-dir <path>`       | `eval` only — custom eval suites directory (default: `.agent-room/evals`, `evals/custom`)                                                                                        |
-| `--custom-only`            | `eval` only — run only custom adopter compliance evals                                                                                                                            |
-| `--builtin-only`           | `eval` only — run only packaged built-in compliance evals                                                                                                                         |
-| `--suite <name>`           | `eval` only — `close-the-loop`, `lint-sessions`, `validate`, or `all` (default: `all`)                                                                                             |
-| `--verbose`                | Print detailed stack traces on failure                                                                                                                                            |
-| `-y, --yes`                | Skip all prompts, use defaults                                                                                                                                                    |                                |
-
-### Profiles: `minimal` vs `full`
-
-`--profile minimal` is the default. It scaffolds `AGENTS.md` (kept slim),
-`guardrails.md` + `guardrails.json`, the base skills, and the Stop/pre-commit
-hooks (when the corresponding adapter is selected) — everything that's
-either mechanically enforced or directly load-bearing. It skips
-`principles.md`, `workflow-classifier.md`, `coordination/`, and skill packs
-(skill packs are opt-in regardless of profile — pass `--skill-packs` to add
-them under either profile).
-
-`--profile full` restores everything: the full guidance corpus described
-throughout this README.
-
-This default is deliberate, not arbitrary: per Gloaguen et al. 2026 (ETH
-Zurich), verbose LLM-facing context files measurably reduce agent
-performance and increase token cost relative to minimal ones. `init`
-reports an approximate token count for whatever it scaffolds (see the
-post-scaffold summary), so you can judge the trade-off directly rather than
-taking it on faith. Teams that want the complete framework should pass
-`--profile full` explicitly.
+| Flag | Description | Applicable Commands |
+| :--- | :--- | :--- |
+| `--preset <name>` | Governance strictness profile: `minimal`, `standard`, `strict` (default: `minimal`) | `init` |
+| `--profile <name>` | Interchangeable alias for `--preset` | `init` |
+| `--tools <list>` | Comma-separated tools: `claude,cursor,windsurf,cline,codex,copilot,git,all,none` | `init`, `sync` |
+| `--all` | Sync rules and skills across all supported tools simultaneously | `sync` |
+| `--test-command <cmd>` | Command executed to verify code changes before completing turns (e.g. `"npm test"`) | `init` |
+| `--no-test-command` | Skip pre-stop test verification even if a test suite is detected | `init` |
+| `--fix` | Automatically repair drifted hooks, missing stop hooks, and outdated CI pins | `doctor` |
+| `--verify`, `--with-verification` | Run verification test suite and embed attestation proof and reviewer checklist | `pr-desc` |
+| `--strict` | Require tests to pass (exit `1` on test failure or missing configuration) | `verify`, `pr-desc` |
+| `--evals-dir <path>` | Custom eval suites directory (default: `.agent-room/evals`, `evals/custom`) | `eval` |
+| `--custom-only` | Run only custom adopter compliance evals | `eval` |
+| `--builtin-only` | Run only packaged built-in compliance evals | `eval` |
+| `--format <type>` | Output format: `text`, `json`, `csv`, `markdown` | `eval`, `verify`, `metrics` |
+| `--output <file>` | Write report or PR description directly to a file path | `eval`, `verify`, `metrics`, `pr-desc` |
+| `--write`, `-w` | Save generated PR description output to `.agent-room/pr-description.md` | `pr-desc` |
+| `--git` | Run `git init` and create an initial commit in target directory | `init` |
+| `--force` | Overwrite existing files instead of skipping them | `init`, `sync` |
+| `--dry-run` | Preview what would be created or skipped without writing to disk | `init` |
+| `--check`, `-c` | Check if mirrored files are out of sync without writing changes (CI-friendly) | `sync` |
+| `--skill-packs <list>` | Add built-in (`testing`, `security`, `release`, etc.) or remote Git skill packs | `init` |
+| `--language <name>` | Target project language (e.g. `javascript`, `typescript`, `python`, `rust`) | `init` |
+| `--package-manager <name>` | Package manager to use (`npm`, `pnpm`, `yarn`, `poetry`, `cargo`) | `init` |
+| `--yes`, `-y` | Non-interactive mode; accept all defaults without prompting | `init` |
+| `--verbose` | Print detailed error stack traces on failure | All |
+| `--version`, `-v` | Print the installed `create-agent-room` version and exit | All |
 
 ---
 
-## Template Composition & Inheritance
+## 🔒 Security & Dogfooding Invariants
 
-`create-agent-room` supports a powerful hierarchical layering mechanism. The overlay resolver will find and inherit files, merging folders in order from lowest-priority to highest-priority:
+- **Strictly Zero Dependencies:** `create-agent-room` has exactly **0 external runtime dependencies**. It runs entirely on the Node.js standard library (`fs`, `path`, `child_process`). No supply-chain risk.
+- **100% Dogfooded:** This repository runs `create-agent-room` on itself. Every commit and turn is gated by the same stop hooks, pre-commit guardrails, and compliance evals described above.
+- **261 Automated Tests:** Verified across unit, integration, and CLI end-to-end tests on every release.
 
-1. **Packaged Default Templates** (built-in base rules) ✅ Provided
-2. **Packaged Stack-specific Templates** (e.g. `templates/stacks/python/`) ✅ Provided
-3. **Global Templates** (`~/.agent-room-templates/base/`) 🔵 User-provided (optional)
-4. **Global Stack-specific Templates** (`~/.agent-room-templates/stacks/python/`) 🔵 User-provided (optional)
-5. **Global Org-specific Templates** (`~/.agent-room-templates/org/<org-name>/`) 🔵 User-provided via `--org` (optional)
-6. **Local Templates** (`.agent-room-templates/` or `--template-source`) 🔵 User-provided (optional)
+---
 
-During this overlay process, files in higher-priority folders will overwrite conflicts from lower layers, enabling modular organization-wide guidelines with project-level overrides.
+## 📄 License
 
-**Note:** Layers 3-6 are **aspirational** — the framework supports them, but you must create or provide these templates yourself. Layers 1-2 ship with the package. To use stack inheritance effectively, create your org's stack templates in layer 5 or provide them at project init time.
+MIT © [Siddharth Pandey](https://github.com/sipandey)
