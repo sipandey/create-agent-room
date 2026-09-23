@@ -16,6 +16,16 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-23 — dynamic skill pack management CLI (Story 4.3)
+
+**Decision:** Implement `create-agent-room skill [list|add|remove]` in `lib/skill.js` to manage the lifecycle of skill packs post-initialization while ensuring seamless cross-tool rule updates and preserving local custom rules.
+- **Unified Catalog & Discovery:** Built-in catalog defines 9 domain packs (`testing`, `security`, `release`, `code-review`, `api-design`, `database`, `performance`, `observability`, `documentation`). `skill list` inspects both `.agent-room.json` and `.agent-room/skills/` to provide clear statuses (installed, available, custom) with human-friendly and `--json` outputs.
+- **Dynamic Installation (`skill add`):** Copies skill templates for built-in packs, clones shallow Git URLs for remote packs, and copies files from local paths into `.agent-room/skills/`. Updates `.agent-room.json` (`skillPacks`) deduplicated.
+- **Clean Removal & Orphan Purging (`skill remove`):** Deletes skill files associated with specified packs, updates `.agent-room.json`, and cleans up orphaned mirrored directories in `.claude/skills/`.
+- **Automatic Multi-Agent Sync:** By default, adding or removing packs automatically triggers `runSync(target, { all: true })` so that Claude, Cursor, Windsurf, Cline, Codex, and GitHub Copilot adapters remain in exact synchronization. Supports `--no-sync` for offline/manual pipelines.
+**Why:** Prior to Story 4.3, skill packs could only be configured during initial repository scaffolding via `init --skill-packs <list>`. Adding or removing skills after initialization required manual file copying, manual edits to `.agent-room.json`, manual invocations of `sync`, and manual cleanup of mirrored tool files. Providing a first-class CLI command automates this entire lifecycle reliably without breaking user customizations.
+**Rejected:** Silently leaving orphaned skill files in tool adapter mirrors (orphaned skills confuse agent tools and cause drift); omitting `--no-sync` (scripting and batch migrations benefit from decoupled sync).
+
 ### 2026-09-23 — automated session logging & handoff CLI (Story 4.2)
 
 **Decision:** Implement `create-agent-room session [name] [options]` to streamline session log creation and inter-agent handoffs while ensuring zero external dependencies and 100% compliance with `lint-sessions`.

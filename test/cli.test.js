@@ -214,6 +214,12 @@ test('parseArgs: throws on missing session option values', () => {
   assert.throws(() => parseArgs(['--new']), /Error: --new option requires a session name/);
 });
 
+test('parseArgs: parses --no-sync flag', () => {
+  const result = parseArgs(['--no-sync']);
+  assert.strictEqual(result['no-sync'], true);
+  assert.strictEqual(result.noSync, true);
+});
+
 // End-to-end (spawns the real CLI) rather than just parseArgs, since the
 // actual contract is "prints the version and exits 0" - behavior that
 // lives in main(), not the argument parser.

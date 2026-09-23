@@ -212,6 +212,7 @@ create-agent-room init . --yes --preset <minimal|standard|strict>
 | `validate` | Verify repository structure, guardrails schema, and skill frontmatter | `create-agent-room validate .` |
 | `lint-sessions` | Validate session logs against required structure | `create-agent-room lint-sessions .` |
 | `session` | Scaffold or record an audit-compliant session log & handoff | `create-agent-room session --record` |
+| `skill` | Inspect, install, or remove skill packs post-init with auto-sync | `create-agent-room skill add database,security` |
 
 ---
 
@@ -273,6 +274,20 @@ create-agent-room session --json --dry-run
 ```
 Every generated session log is guaranteed to pass `create-agent-room lint-sessions` with 0 errors and 0 warnings out of the box.
 
+### 5. Dynamic Skill Pack Management (`skill`)
+Easily manage your team's skill portfolio post-init without manually editing files:
+```bash
+# View installed, available, and custom workspace skill packs:
+create-agent-room skill list
+
+# Install built-in, remote Git, or local directory skill packs:
+create-agent-room skill add database,observability
+create-agent-room skill add https://github.com/org/ai-skills.git
+
+# Remove a skill pack (automatically purges files and re-syncs all tool adapters):
+create-agent-room skill remove database
+```
+
 ---
 
 ## ⚙️ Complete CLI Options Reference
@@ -300,10 +315,11 @@ Every generated session log is guaranteed to pass `create-agent-room lint-sessio
 | `--status <status>` | Session status (`Completed`, `Handed Off`, `In Progress`, `Blocked`) | `session` |
 | `--agent <name>` | Agent identity string (default: git user or CAR_AGENT) | `session` |
 | `--handoff <note>` | Handoff guidance for the next agent or human engineer | `session` |
-| `--json` | Output session log in structured JSON format | `session` |
+| `--json` | Output session or skill report in structured JSON format | `session`, `skill` |
+| `--no-sync` | Skip auto-syncing skill files and tool rules after add/remove | `skill` |
 | `--git` | Run `git init` and create an initial commit in target directory | `init` |
-| `--force` | Overwrite existing files instead of skipping them | `init`, `sync` |
-| `--dry-run` | Preview what would be created or outputted without writing to disk | `init`, `session` |
+| `--force` | Overwrite existing files instead of skipping them | `init`, `sync`, `skill` |
+| `--dry-run` | Preview what would be created or outputted without writing to disk | `init`, `session`, `skill` |
 | `--check`, `-c` | Check if mirrored files are out of sync without writing changes (CI-friendly) | `sync` |
 | `--skill-packs <list>` | Add built-in (`testing`, `security`, `release`, etc.) or remote Git skill packs | `init` |
 | `--language <name>` | Target project language (e.g. `javascript`, `typescript`, `python`, `rust`) | `init` |
@@ -318,7 +334,7 @@ Every generated session log is guaranteed to pass `create-agent-room lint-sessio
 
 - **Strictly Zero Dependencies:** `create-agent-room` has exactly **0 external runtime dependencies**. It runs entirely on the Node.js standard library (`fs`, `path`, `child_process`). No supply-chain risk.
 - **100% Dogfooded:** This repository runs `create-agent-room` on itself. Every commit and turn is gated by the same stop hooks, pre-commit guardrails, and compliance evals described above.
-- **284 Automated Tests:** Verified across unit, integration, and CLI end-to-end tests on every release.
+- **296 Automated Tests:** Verified across unit, integration, and CLI end-to-end tests on every release.
 
 ---
 
