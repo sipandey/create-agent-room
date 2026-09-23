@@ -72,6 +72,22 @@ function logBypass(reasons) {
 }
 
 if (!fs.existsSync(guardrailsPath)) {
+  const headGuardrails = getHeadGuardrails();
+  if (headGuardrails) {
+    console.error('');
+    console.error('❌ Anti-tamper violation: .agent-room/guardrails.json was deleted.');
+    console.error('Commits that remove active guardrails are blocked to prevent rule tampering.');
+    console.error('');
+    console.error('To bypass guardrails (requires approval), use:');
+    console.error('  GUARDRAILS_BYPASS=1 git commit');
+    console.error('');
+    if (!ALLOW_GUARDRAILS_BYPASS) {
+      process.exit(1);
+    }
+    console.warn('⚠️  Guardrails bypass enabled - proceeding with commit');
+    logBypass(['Anti-tamper violation: .agent-room/guardrails.json was deleted']);
+    process.exit(0);
+  }
   // No guardrails file, allow commit
   process.exit(0);
 }
@@ -127,23 +143,18 @@ if (!isInitialCommit()) {
   }
 }
 
-// Self-protect guardrails.json: the check above only evaluates staged files
-// against the protectedPaths in the version of guardrails.json being
-// committed. If a single commit both edits guardrails.json and removes its
-// own path from protectedPaths in that same edit, the newly-weakened rules
-// approve themselves. Compare against HEAD's protectedPaths (the rules that
-// applied before this commit) so that scenario is still caught.
+// Self-protect & anti-tamper guardrails.json: the check above only evaluates staged files
+// against the protectedPaths in the version of guardrails.json being committed.
+// Compare staged rules against HEAD's guardrails configuration across all rule categories
+// (protectedPaths, forbiddenActions, scopeGuidance, importBoundaries, scopeBoundaries,
+// and verifyOnCommit) so that rule weakening or self-weakening is caught.
 const guardrailsRelPath = path.relative(projectRoot, guardrailsPath).replace(/\\/g, '/');
 if (stagedFiles.includes(guardrailsRelPath)) {
   const headGuardrails = getHeadGuardrails();
   if (headGuardrails) {
-    const headProtectedPaths = headGuardrails.protectedPaths || [];
-    const wasProtected = headProtectedPaths.some((p) => isPathProtected(guardrailsRelPath, p));
-    const isStillProtected = protectedPaths.some((p) => isPathProtected(guardrailsRelPath, p));
-    if (wasProtected && !isStillProtected) {
-      violations.push(
-        `Protected path violation: ${guardrailsRelPath} (removed from protectedPaths in the same commit that edits it)`
-      );
+    const weakeningViolations = detectRuleWeakening(headGuardrails, guardrails, guardrailsRelPath);
+    for (const wv of weakeningViolations) {
+      violations.push(wv);
     }
   }
 }
@@ -525,7 +536,11 @@ function isPathProtected(filePath, protectedPattern) {
 function getHeadGuardrails() {
   let headContent;
   try {
-    headContent = execFileSync('git', ['show', 'HEAD:.agent-room/guardrails.json'], { encoding: 'utf8' });
+    headContent = execFileSync('git', ['show', 'HEAD:.agent-room/guardrails.json'], {
+      cwd: projectRoot,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    });
   } catch (err) {
     // No HEAD yet (genesis commit) or guardrails.json didn't exist at HEAD -
     // nothing to compare against.
@@ -538,6 +553,202 @@ function getHeadGuardrails() {
     // protection to compare against rather than crashing the hook.
     return null;
   }
+}
+
+function detectRuleWeakening(headGuardrails, currentGuardrails, guardrailsRelPath) {
+  const violations = [];
+  if (!headGuardrails || typeof headGuardrails !== 'object') {
+    return violations;
+  }
+  const curr = currentGuardrails || {};
+
+  // 1. protectedPaths: detect dropped or removed protected paths
+  const headProtected = (headGuardrails.protectedPaths || []).map((p) => String(p).replace(/\\/g, '/'));
+  const currProtected = Array.isArray(curr.protectedPaths)
+    ? curr.protectedPaths.map((p) => String(p).replace(/\\/g, '/'))
+    : [];
+
+  if (guardrailsRelPath) {
+    const wasProtected = headProtected.some((p) => isPathProtected(guardrailsRelPath, p));
+    const isStillProtected = currProtected.some((p) => isPathProtected(guardrailsRelPath, p));
+    if (wasProtected && !isStillProtected) {
+      violations.push(
+        `Protected path violation: ${guardrailsRelPath} (removed from protectedPaths in the same commit that edits it)`
+      );
+    }
+  }
+
+  for (const hp of headProtected) {
+    if (!currProtected.includes(hp)) {
+      if (
+        guardrailsRelPath &&
+        isPathProtected(guardrailsRelPath, hp) &&
+        violations.some((v) => v.includes('(removed from protectedPaths in the same commit that edits it)'))
+      ) {
+        continue;
+      }
+      violations.push(
+        `Rule weakening violation: protected path "${hp}" was removed from protectedPaths in .agent-room/guardrails.json`
+      );
+    }
+  }
+
+  // 2. forbiddenActions: detect dropped patterns or downgraded pattern types
+  const getPatternString = (item) => {
+    if (typeof item === 'string') return item.trim();
+    if (item && typeof item === 'object' && typeof item.pattern === 'string') {
+      return item.pattern.trim();
+    }
+    return '';
+  };
+
+  const headForbidden = Array.isArray(headGuardrails.forbiddenActions) ? headGuardrails.forbiddenActions : [];
+  const currForbidden = Array.isArray(curr.forbiddenActions) ? curr.forbiddenActions : [];
+  const currPatterns = currForbidden.map(getPatternString);
+
+  for (const item of headForbidden) {
+    const pattern = getPatternString(item);
+    if (!pattern) continue;
+    if (!currPatterns.includes(pattern)) {
+      violations.push(
+        `Rule weakening violation: forbidden action pattern "${pattern}" was removed from forbiddenActions in .agent-room/guardrails.json`
+      );
+    } else if (typeof item === 'object' && item.type === 'regex') {
+      const currentItem = currForbidden.find((ci) => getPatternString(ci) === pattern);
+      if (currentItem && typeof currentItem === 'object' && currentItem.type === 'literal') {
+        violations.push(
+          `Rule weakening violation: forbidden action pattern "${pattern}" type was downgraded from regex to literal in .agent-room/guardrails.json`
+        );
+      }
+    }
+  }
+
+  // 3. scopeGuidance: detect loosened file or line limits
+  if (headGuardrails.scopeGuidance && typeof headGuardrails.scopeGuidance === 'object') {
+    const headMaxFiles = headGuardrails.scopeGuidance.maxFilesPerChange;
+    const headMaxLines = headGuardrails.scopeGuidance.maxLinesPerChange;
+
+    if (typeof headMaxFiles === 'number' && headMaxFiles > 0) {
+      if (!curr.scopeGuidance || typeof curr.scopeGuidance.maxFilesPerChange !== 'number') {
+        violations.push(
+          'Rule weakening violation: scopeGuidance.maxFilesPerChange was removed from .agent-room/guardrails.json'
+        );
+      } else if (curr.scopeGuidance.maxFilesPerChange > headMaxFiles) {
+        violations.push(
+          `Rule weakening violation: scopeGuidance.maxFilesPerChange was increased from ${headMaxFiles} to ${curr.scopeGuidance.maxFilesPerChange} in .agent-room/guardrails.json`
+        );
+      }
+    }
+
+    if (typeof headMaxLines === 'number' && headMaxLines > 0) {
+      if (!curr.scopeGuidance || typeof curr.scopeGuidance.maxLinesPerChange !== 'number') {
+        violations.push(
+          'Rule weakening violation: scopeGuidance.maxLinesPerChange was removed from .agent-room/guardrails.json'
+        );
+      } else if (curr.scopeGuidance.maxLinesPerChange > headMaxLines) {
+        violations.push(
+          `Rule weakening violation: scopeGuidance.maxLinesPerChange was increased from ${headMaxLines} to ${curr.scopeGuidance.maxLinesPerChange} in .agent-room/guardrails.json`
+        );
+      }
+    }
+  }
+
+  // 4. importBoundaries: detect dropped source boundaries or dropped disallowed patterns
+  if (Array.isArray(headGuardrails.importBoundaries) && headGuardrails.importBoundaries.length > 0) {
+    const currImportRules = Array.isArray(curr.importBoundaries) ? curr.importBoundaries : [];
+    for (const headRule of headGuardrails.importBoundaries) {
+      if (!headRule || typeof headRule.source !== 'string') continue;
+      const headSource = headRule.source.replace(/\\/g, '/');
+      const matchingCurrRule = currImportRules.find(
+        (r) => r && typeof r.source === 'string' && r.source.replace(/\\/g, '/') === headSource
+      );
+      if (!matchingCurrRule) {
+        violations.push(
+          `Rule weakening violation: importBoundaries rule for source "${headRule.source}" was removed from .agent-room/guardrails.json`
+        );
+      } else {
+        const headDisallowed = (headRule.disallowed || headRule.forbiddenImports || []).map((p) =>
+          String(p).replace(/\\/g, '/')
+        );
+        const currDisallowed = (matchingCurrRule.disallowed || matchingCurrRule.forbiddenImports || []).map((p) =>
+          String(p).replace(/\\/g, '/')
+        );
+        for (const disPattern of headDisallowed) {
+          if (!currDisallowed.includes(disPattern)) {
+            violations.push(
+              `Rule weakening violation: importBoundaries for source "${headRule.source}" dropped disallowed import "${disPattern}" in .agent-room/guardrails.json`
+            );
+          }
+        }
+      }
+    }
+  }
+
+  // 5. scopeBoundaries: detect removed allowedPaths or weakened cross boundary groups
+  if (headGuardrails.scopeBoundaries && typeof headGuardrails.scopeBoundaries === 'object') {
+    if (
+      Array.isArray(headGuardrails.scopeBoundaries.allowedPaths) &&
+      headGuardrails.scopeBoundaries.allowedPaths.length > 0
+    ) {
+      if (
+        !curr.scopeBoundaries ||
+        !Array.isArray(curr.scopeBoundaries.allowedPaths) ||
+        curr.scopeBoundaries.allowedPaths.length === 0
+      ) {
+        violations.push(
+          'Rule weakening violation: scopeBoundaries.allowedPaths was removed or emptied in .agent-room/guardrails.json'
+        );
+      }
+    }
+
+    if (
+      Array.isArray(headGuardrails.scopeBoundaries.disallowedCrossBoundaries) &&
+      headGuardrails.scopeBoundaries.disallowedCrossBoundaries.length > 0
+    ) {
+      const currCross =
+        curr.scopeBoundaries && Array.isArray(curr.scopeBoundaries.disallowedCrossBoundaries)
+          ? curr.scopeBoundaries.disallowedCrossBoundaries
+          : [];
+      for (const group of headGuardrails.scopeBoundaries.disallowedCrossBoundaries) {
+        if (!Array.isArray(group) || group.length < 2) continue;
+        const headGroupNorm = group.map((p) => String(p).replace(/\\/g, '/'));
+        const matched = currCross.some((cg) => {
+          if (!Array.isArray(cg)) return false;
+          const cgNorm = cg.map((p) => String(p).replace(/\\/g, '/'));
+          return headGroupNorm.every((hp) => cgNorm.includes(hp));
+        });
+        if (!matched) {
+          violations.push(
+            `Rule weakening violation: scopeBoundaries.disallowedCrossBoundaries group [${headGroupNorm.join(', ')}] was removed or weakened in .agent-room/guardrails.json`
+          );
+        }
+      }
+    }
+  }
+
+  // 6. verifyOnCommit: detect disabling of verification gate or removal of strict mode
+  if (isVerifyEnabled(headGuardrails)) {
+    if (!isVerifyEnabled(curr)) {
+      violations.push(
+        'Rule weakening violation: verifyOnCommit was disabled or removed from .agent-room/guardrails.json'
+      );
+    } else if (
+      headGuardrails.verifyOnCommit &&
+      headGuardrails.verifyOnCommit.strict === true &&
+      (!curr.verifyOnCommit || curr.verifyOnCommit.strict !== true)
+    ) {
+      violations.push(
+        'Rule weakening violation: verifyOnCommit.strict was disabled in .agent-room/guardrails.json'
+      );
+    }
+  }
+
+  // 7. strictWaivers: detect disabling of strict waiver auditing
+  if (headGuardrails.strictWaivers === true && curr.strictWaivers !== true) {
+    violations.push('Rule weakening violation: strictWaivers was disabled in .agent-room/guardrails.json');
+  }
+
+  return violations;
 }
 
 function isBinaryFile(filePath) {
