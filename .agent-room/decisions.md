@@ -16,6 +16,17 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-23 — custom adopter compliance eval suites (Story 3.3)
+
+**Decision:** Expand `create-agent-room eval` (`lib/eval.js` and `bin/cli.js`) to discover and execute repo-specific compliance eval suites from `<target>/.agent-room/evals/`, `<target>/evals/custom/`, and custom directories specified via `--evals-dir <dir>` / `--custom-evals <dir>`.
+- **Custom Case Formats:** Supports both standalone `*.eval.json` files and fixture subdirectories containing `eval.json`.
+- **Extended Case Types:** Added first-class support for `verify` cases (running `verifyProject`) and `command` cases (running shell assertions or compliance scripts), in addition to built-in `close-the-loop`, `lint-sessions`, and `validate`.
+- **Flexible Execution Modes:** Added `--custom-only` (runs only custom adopter evals) and `--builtin-only` (runs only built-in evals). By default, both built-in and custom suites execute together and output aggregated results.
+- **Reporting & Attribution:** Each case tracks `source: 'builtin' | 'custom'`. Multi-format reports (`text`, `json`, `csv`) report unified pass/fail totals alongside a distinct `summary.builtin` and `summary.custom` breakdown.
+**Why:** While `create-agent-room` ships with built-in compliance evals for core governance invariants, organizations and adopters frequently enforce proprietary compliance checks, security policies, custom linting rules, or workspace-specific invariants. Story 3.3 delivers the Phase 2 custom pack discovery originally scoped in the compliance eval design doc, giving platform teams an extensible evaluation harness with zero external dependencies.
+**Rejected:** Requiring npm test runner dependencies or external test frameworks for custom evals; separating custom evals into an isolated subcommand instead of integrating into unified `create-agent-room eval`.
+
+
 ### 2026-09-23 — PR attestation & verification evidence generator (Story 3.2)
 
 **Decision:** Add `--verify` (alias `--with-verification`) and `--output <file>` options to `create-agent-room pr-desc` (`lib/pr.js` and `bin/cli.js`), enabling automated injection of test verification evidence, architectural decision links, guardrail compliance attestations, and reviewer compliance checklists directly into generated Pull Request descriptions.

@@ -162,6 +162,20 @@ function parseArgs(argv) {
       args.help = true;
     } else if (a === '--version' || a === '-v') {
       args.version = true;
+    } else if (a === '--evals-dir' || a === '--custom-evals') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args['evals-dir'] = argv[++i];
+      } else {
+        throw new Error(`Error: ${a} option requires a directory path.`);
+      }
+    } else if (a.startsWith('--evals-dir=')) {
+      args['evals-dir'] = a.slice('--evals-dir='.length);
+    } else if (a.startsWith('--custom-evals=')) {
+      args['evals-dir'] = a.slice('--custom-evals='.length);
+    } else if (a === '--custom-only') {
+      args['custom-only'] = true;
+    } else if (a === '--builtin-only') {
+      args['builtin-only'] = true;
     } else if (a.startsWith('-')) {
       throw new Error(`Error: Unknown option: ${a}`);
     } else {
@@ -183,7 +197,7 @@ Usage:
   create-agent-room lint-sessions [target-dir]
   create-agent-room pr-desc [target-dir] [options]
   create-agent-room doctor [target-dir] [--fix]
-  create-agent-room eval [options]
+  create-agent-room eval [target-dir] [options]
   create-agent-room verify [target-dir] [options]
 
 Options:
@@ -208,6 +222,9 @@ Options:
   --format <text|json|csv|markdown> Output format (eval, verify, metrics)
   --output <file>           Write report or PR description to a file (eval, verify, metrics, pr-desc)
   --verify, --with-verification Execute verification test suite and embed attestation in PR description
+  --evals-dir <path>        Custom eval suites directory (default: .agent-room/evals, evals/custom)
+  --custom-only             Execute only custom adopter eval suites
+  --builtin-only            Execute only built-in compliance eval suites
   --suite <name>            eval suite filter: close-the-loop, lint-sessions, validate, all
   --verbose                 Print detailed stack traces on failure
   --write, -w               Save generated PR description to .agent-room/pr-description.md
@@ -242,6 +259,8 @@ Examples:
   create-agent-room doctor .
   create-agent-room doctor . --fix
   create-agent-room eval
+  create-agent-room eval . --custom-only
+  create-agent-room eval . --evals-dir ./custom-evals
   create-agent-room eval --format json --output compliance-report.json
   create-agent-room --version
 
@@ -284,7 +303,7 @@ async function main() {
   } else if (command === 'doctor') {
     runDoctor(target, args);
   } else if (command === 'eval') {
-    runEvalCli(args);
+    runEvalCli(target, args);
   } else if (command === 'verify') {
     runVerify(target, args);
   } else {
