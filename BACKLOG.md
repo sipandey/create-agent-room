@@ -336,7 +336,7 @@ Close the "local-only" enforcement gap by transforming `create-agent-room` into 
 ---
 
 ### Story 5.2: Remote PR Anti-Tamper & Bypass Audit Gate (`create-agent-room ci --base <ref>`)
-- **Status:** 🟡 **IN PROGRESS** (Branch `feature/pr-anti-tamper-audit-gate`)
+- **Status:** ✅ **DONE** (Merged into `main` via PR #17, Commit `5427172`)
 - **Goal:**
   - Mechanically evaluate the complete pull request diff against the target branch (`--base origin/main` or `GITHUB_BASE_REF`).
   - Detect unauthorized rule weakening or guardrails deletion across the branch history.
