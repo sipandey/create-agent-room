@@ -18,7 +18,7 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | **Epic 3: Enterprise Governance** | **3.1** | Session Telemetry & Governance Metrics Exporter | ✅ **DONE** (`0d8149c`) |
 | | **3.2** | PR Attestation & Verification Evidence Generator (`pr-desc --verify`) | ✅ **DONE** (`fbca05d`) |
 | | **3.3** | Custom Adopter Compliance Eval Suites (`evals/custom/`) | ✅ **DONE** (`7bda42e`) |
-| **Epic 4: Active Defense & Lifecycle** | **4.1** | Comprehensive Guardrails Rule-Weakening & Anti-Tamper Gate | ⏳ In Progress |
+| **Epic 4: Active Defense & Lifecycle** | **4.1** | Comprehensive Guardrails Rule-Weakening & Anti-Tamper Gate | ✅ **DONE** |
 | | **4.2** | Automated Session Logging & Handoff CLI (`create-agent-room session`) | ⏳ Queued |
 | | **4.3** | Dynamic Skill Pack Management (`create-agent-room skill [list\|add\|remove]`) | ⏳ Queued |
 
@@ -228,7 +228,22 @@ Provide engineering leadership with transparency, metrics, and regression proof 
 Eliminate silent governance bypasses and streamline agent session lifecycle management across repositories.
 
 ### Story 4.1: Comprehensive Guardrails Rule-Weakening & Anti-Tamper Gate
-- **Status:** ⏳ In Progress (Branch `feature/guardrails-anti-tamper-weakening-gate`)
+- **Status:** ✅ **DONE** (Branch `feature/guardrails-anti-tamper-weakening-gate`)
+- **Summary:**
+  - Implemented comprehensive anti-tamper and rule-weakening detection in `templates/adapters/git-hooks/guardrails-check.js` and `.agent-room/hooks/guardrails-check.js`.
+  - Mechanically compares staged `guardrails.json` against `HEAD:.agent-room/guardrails.json` across all active rule categories:
+    - Protected paths: blocks commits dropping or narrowing any `protectedPaths` entry, including self-weakening.
+    - Forbidden patterns: blocks commits removing secret/credential scanning patterns from `forbiddenActions` or downgrading regex patterns to literals.
+    - Scope guidance: blocks commits increasing `maxFilesPerChange` / `maxLinesPerChange` or removing scope limits.
+    - Import boundaries: blocks commits removing source boundaries or dropping disallowed module patterns.
+    - Scope boundaries: blocks commits removing `allowedPaths` or weakening `disallowedCrossBoundaries` isolation groups.
+    - Verification gate: blocks commits disabling or removing `verifyOnCommit` or `verifyOnCommit.strict`.
+    - Strict waivers: blocks commits disabling `strictWaivers`.
+    - Anti-tamper deletion: blocks commits that delete `.agent-room/guardrails.json` entirely.
+  - Commits that strengthen or preserve rules proceed cleanly without requiring bypass.
+  - Any rule weakening requires `GUARDRAILS_BYPASS=1` with an auditable justification logged to `.agent-room/guardrails-bypass-log.md`.
+  - Updated `CAPABILITIES.md` to remove the documented security limitation.
+  - Added 11 new comprehensive unit tests in `test/guardrails-check.test.js` (all 272 repo tests pass).
 - **Goal:**
   - Eliminate the documented limitation in `CAPABILITIES.md`: mechanically prevent any commit from weakening, dropping, or loosening existing guardrail rules relative to `HEAD`.
 - **Acceptance Criteria:**

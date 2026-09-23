@@ -16,6 +16,24 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-23 — comprehensive guardrails rule-weakening & anti-tamper gate (Story 4.1)
+
+**Decision:** Eliminate the security limitation documented in `CAPABILITIES.md` by implementing mechanical rule-weakening and anti-tamper enforcement in `templates/adapters/git-hooks/guardrails-check.js` and `.agent-room/hooks/guardrails-check.js`.
+- **Comprehensive HEAD Comparison:** When `guardrails.json` is modified or deleted in any non-genesis commit, it is evaluated against `HEAD:.agent-room/guardrails.json`.
+- **Anti-Tamper Deletion Detection:** Deleting `.agent-room/guardrails.json` is detected immediately and blocked with an explicit anti-tamper error.
+- **Rule Weakening Detection Across All Categories:**
+  1. `protectedPaths`: Flag any dropped or narrowed protected path (including self-weakening).
+  2. `forbiddenActions`: Flag any dropped secret/credential detection pattern or pattern type downgrade from regex to literal.
+  3. `scopeGuidance`: Flag any increase in `maxFilesPerChange` or `maxLinesPerChange`, or removal of limits.
+  4. `importBoundaries`: Flag any removed source boundary rule or dropped disallowed import pattern.
+  5. `scopeBoundaries`: Flag any removed or emptied `allowedPaths` or weakened `disallowedCrossBoundaries` isolation groups.
+  6. `verifyOnCommit`: Flag any disabling of pre-commit verification or disabling of strict verification mode.
+  7. `strictWaivers`: Flag any disabling of strict waiver auditing.
+- **Strengthening Allowed:** Commits that preserve or tighten existing rules (adding protected paths/patterns, lowering scope limits, adding import boundaries, or adding new checks) proceed cleanly with exit code 0.
+- **Audit & Bypass Requirement:** Any intentional rule loosening requires `GUARDRAILS_BYPASS=1` (with `GUARDRAILS_BYPASS_REASON` in strict mode), automatically appending a permanent, machine-logged audit record into `.agent-room/guardrails-bypass-log.md`.
+**Why:** Prior to Story 4.1, the pre-commit hook only compared against HEAD to catch self-weakening (`guardrails.json` removing its own path from `protectedPaths`). An agent could silently drop secret patterns (like AWS or GitHub keys), delete import boundaries, or increase scope limits without triggering a violation. Story 4.1 closes this security loophole entirely, providing mechanical guarantees that guardrail defenses cannot be silently softened.
+**Rejected:** Allowing rule weakening without an auditable bypass justification; attempting semantic AST diffing across non-JSON configs (JSON structure provides deterministic, dependency-free validation).
+
 <!-- no-log: v2.4.0 release commit — routine release mechanics (version bump, lockfile re-sync, action.yml and CI pin bump, CHANGELOG [Unreleased]→[2.4.0]). The CHANGELOG is the record; nothing new to add here. -->
 
 ### 2026-09-23 — custom adopter compliance eval suites (Story 3.3)

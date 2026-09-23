@@ -10,6 +10,18 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+### Added
+
+- Comprehensive Guardrails Rule-Weakening & Anti-Tamper Gate (Story 4.1): mechanically evaluates staged or deleted `guardrails.json` against `HEAD:.agent-room/guardrails.json` across all active rule categories, preventing silent rule degradation.
+  - Detects and blocks dropping or narrowing any `protectedPaths` entry (including self-weakening).
+  - Detects and blocks dropping secret/credential patterns from `forbiddenActions` or downgrading regex patterns to literals.
+  - Detects and blocks loosening `scopeGuidance` (`maxFilesPerChange` or `maxLinesPerChange`) or removing scope limits.
+  - Detects and blocks removing `importBoundaries` rules or dropping disallowed module patterns.
+  - Detects and blocks removing `scopeBoundaries.allowedPaths` or weakening `disallowedCrossBoundaries` groups.
+  - Detects and blocks disabling or removing `verifyOnCommit` pre-commit test gates or `strictWaivers`.
+  - Anti-tamper deletion detection: blocks commits that delete `.agent-room/guardrails.json` entirely.
+  - Commits that strengthen or preserve existing rules proceed cleanly, while rule-weakening requires `GUARDRAILS_BYPASS=1` with an auditable justification logged to `.agent-room/guardrails-bypass-log.md`.
+
 ## [2.4.0] - 2026-09-23
 
 ### Added

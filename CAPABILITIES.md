@@ -57,19 +57,18 @@ These features **actively block, fail, or prevent** operations if violated:
   creates `guardrails.json` and the paths it protects in that same commit
   — there's nothing yet to protect a change *against*. Every commit after
   that is fully enforced, including edits to the protected-path list itself.
-- **Self-weakening protection:** a commit that both edits `guardrails.json`
-  and removes its own path from `protectedPaths` in that same edit is
-  compared against HEAD's prior `protectedPaths` (via
-  `git show HEAD:.agent-room/guardrails.json`) specifically to catch this
-  case, falling back to "no prior protection" on a genesis commit or an
-  unparseable HEAD copy rather than crashing.
-- **Known limitation:** the HEAD comparison above only covers
-  `guardrails.json` itself being weakened — a commit that narrows a glob,
-  drops an unrelated `protectedPaths` entry, or removes a `forbiddenActions`
-  rule while leaving `guardrails.json`'s own protected-path entry intact
-  still succeeds silently. Treat any commit touching
-  `.agent-room/guardrails.json` as requiring manual review regardless of
-  what the hook reports.
+- **Anti-tamper & rule-weakening protection:** any commit touching or
+  deleting `guardrails.json` is evaluated against HEAD's prior configuration
+  (via `git show HEAD:.agent-room/guardrails.json`). The hook mechanically
+  detects and blocks:
+  - Deleting `.agent-room/guardrails.json` entirely.
+  - Removing or narrowing any entry in `protectedPaths` (including self-weakening).
+  - Removing any secret-detection pattern from `forbiddenActions` or downgrading regex patterns to literals.
+  - Loosening or removing `scopeGuidance` (`maxFilesPerChange`, `maxLinesPerChange`).
+  - Removing module boundaries or dropping disallowed imports in `importBoundaries`.
+  - Removing `scopeBoundaries.allowedPaths` or weakening `disallowedCrossBoundaries`.
+  - Disabling or removing `verifyOnCommit` pre-commit verification or strict waiver audits.
+  Commits that strengthen or preserve existing rules proceed cleanly, while any rule-weakening requires `GUARDRAILS_BYPASS=1` with an auditable justification logged to `.agent-room/guardrails-bypass-log.md`.
 
 ### Anti-patterns & Decisions Logs (Stop Hooks — Claude Code + Cursor)
 

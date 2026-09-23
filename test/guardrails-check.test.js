@@ -845,4 +845,284 @@ test('guardrails-check: strictWaivers accepts audited no-log waiver in decisions
   assert.strictEqual(result.code, 0);
 });
 
+test('guardrails-check: blocks a commit that removes an unrelated path from protectedPaths', (t) => {
+  const dir = makeRepo('weaken-protected-paths');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json', 'infrastructure/**', '.env'],
+    forbiddenActions: []
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json', '.env'],
+    forbiddenActions: []
+  });
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 1);
+  assert.match(result.stderr, /Rule weakening violation: protected path "infrastructure\/\*\*" was removed/);
+});
+
+test('guardrails-check: blocks a commit that removes a pattern from forbiddenActions', (t) => {
+  const dir = makeRepo('weaken-forbidden-actions');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json'],
+    forbiddenActions: [
+      { pattern: 'AKIA[0-9A-Z]{16}', type: 'regex' },
+      { pattern: 'SECRET_TOKEN_XYZ', type: 'literal' }
+    ]
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json'],
+    forbiddenActions: [
+      { pattern: 'AKIA[0-9A-Z]{16}', type: 'regex' }
+    ]
+  });
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 1);
+  assert.match(result.stderr, /Rule weakening violation: forbidden action pattern "SECRET_TOKEN_XYZ" was removed/);
+});
+
+test('guardrails-check: blocks a commit that downgrades a forbidden action pattern from regex to literal', (t) => {
+  const dir = makeRepo('weaken-regex-to-literal');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json'],
+    forbiddenActions: [
+      { pattern: 'AKIA[0-9A-Z]{16}', type: 'regex' }
+    ]
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json'],
+    forbiddenActions: [
+      { pattern: 'AKIA[0-9A-Z]{16}', type: 'literal' }
+    ]
+  });
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 1);
+  assert.match(result.stderr, /type was downgraded from regex to literal/);
+});
+
+test('guardrails-check: blocks a commit that loosens scopeGuidance maxFilesPerChange or maxLinesPerChange', (t) => {
+  const dir = makeRepo('weaken-scope-guidance');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json'],
+    forbiddenActions: [],
+    scopeGuidance: { maxFilesPerChange: 10, maxLinesPerChange: 300 }
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json'],
+    forbiddenActions: [],
+    scopeGuidance: { maxFilesPerChange: 50, maxLinesPerChange: 300 }
+  });
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 1);
+  assert.match(result.stderr, /scopeGuidance\.maxFilesPerChange was increased from 10 to 50/);
+});
+
+test('guardrails-check: blocks a commit that removes scopeGuidance limits entirely', (t) => {
+  const dir = makeRepo('remove-scope-guidance');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json'],
+    forbiddenActions: [],
+    scopeGuidance: { maxFilesPerChange: 10, maxLinesPerChange: 300 }
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json'],
+    forbiddenActions: [],
+    scopeGuidance: {}
+  });
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 1);
+  assert.match(result.stderr, /scopeGuidance\.maxFilesPerChange was removed/);
+  assert.match(result.stderr, /scopeGuidance\.maxLinesPerChange was removed/);
+});
+
+test('guardrails-check: blocks a commit that drops an importBoundaries rule or disallowed pattern', (t) => {
+  const dir = makeRepo('weaken-import-boundaries');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json'],
+    forbiddenActions: [],
+    importBoundaries: [
+      { source: 'src/**', disallowed: ['test/**', 'fixtures/**'] }
+    ]
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json'],
+    forbiddenActions: [],
+    importBoundaries: [
+      { source: 'src/**', disallowed: ['test/**'] }
+    ]
+  });
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 1);
+  assert.match(result.stderr, /importBoundaries for source "src\/\*\*" dropped disallowed import "fixtures\/\*\*"/);
+});
+
+test('guardrails-check: blocks a commit that removes scopeBoundaries allowedPaths or weakens disallowedCrossBoundaries', (t) => {
+  const dir = makeRepo('weaken-scope-boundaries');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json'],
+    forbiddenActions: [],
+    scopeBoundaries: {
+      allowedPaths: ['src/**'],
+      disallowedCrossBoundaries: [['src/auth/**', 'src/billing/**']]
+    }
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json'],
+    forbiddenActions: [],
+    scopeBoundaries: {
+      disallowedCrossBoundaries: []
+    }
+  });
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 1);
+  assert.match(result.stderr, /scopeBoundaries\.allowedPaths was removed or emptied/);
+  assert.match(result.stderr, /scopeBoundaries\.disallowedCrossBoundaries group \[src\/auth\/\*\*, src\/billing\/\*\*\] was removed or weakened/);
+});
+
+test('guardrails-check: blocks a commit that disables verifyOnCommit', (t) => {
+  const dir = makeRepo('weaken-verify-on-commit');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json'],
+    forbiddenActions: [],
+    verifyOnCommit: { enabled: true, strict: true }
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json'],
+    forbiddenActions: [],
+    verifyOnCommit: false
+  });
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 1);
+  assert.match(result.stderr, /verifyOnCommit was disabled or removed/);
+});
+
+test('guardrails-check: blocks a commit that deletes guardrails.json entirely (anti-tamper)', (t) => {
+  const dir = makeRepo('tamper-delete-guardrails');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: ['infrastructure/**'],
+    forbiddenActions: []
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  fs.rmSync(path.join(dir, '.agent-room', 'guardrails.json'));
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 1);
+  assert.match(result.stderr, /Anti-tamper violation: \.agent-room\/guardrails\.json was deleted/);
+});
+
+test('guardrails-check: allows a commit that strengthens or preserves rules without bypass when guardrails.json is not in protectedPaths', (t) => {
+  const dir = makeRepo('strengthen-rules');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: ['infrastructure/**'],
+    forbiddenActions: [{ pattern: 'FOO', type: 'literal' }],
+    scopeGuidance: { maxFilesPerChange: 20 }
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  writeGuardrails(dir, {
+    protectedPaths: ['infrastructure/**', 'billing/**'],
+    forbiddenActions: [
+      { pattern: 'FOO', type: 'literal' },
+      { pattern: 'BAR', type: 'literal' }
+    ],
+    scopeGuidance: { maxFilesPerChange: 10 }
+  });
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 0);
+});
+
+test('guardrails-check: allows bypassing rule weakening when GUARDRAILS_BYPASS=1 is provided and logs the violation', (t) => {
+  const dir = makeRepo('weaken-with-bypass');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json', 'infrastructure/**'],
+    forbiddenActions: []
+  });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  writeGuardrails(dir, {
+    protectedPaths: ['.agent-room/guardrails.json'],
+    forbiddenActions: []
+  });
+  stageAll(dir);
+
+  const result = runHook(dir, {
+    GUARDRAILS_BYPASS: '1',
+    GUARDRAILS_BYPASS_REASON: 'ticket #999: retiring legacy infrastructure directory'
+  });
+
+  assert.strictEqual(result.code, 0, 'bypass should succeed');
+  const logContent = fs.readFileSync(path.join(dir, '.agent-room', 'guardrails-bypass-log.md'), 'utf8');
+  assert.match(logContent, /Rule weakening violation: protected path "infrastructure\/\*\*" was removed/);
+  assert.match(logContent, /ticket #999: retiring legacy infrastructure directory/);
+});
+
+
 
