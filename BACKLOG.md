@@ -258,7 +258,15 @@ Eliminate silent governance bypasses and streamline agent session lifecycle mana
 ---
 
 ### Story 4.2: Automated Session Logging & Handoff CLI (`create-agent-room session`)
-- **Status:** ⏳ Queued
+- **Status:** ✅ **DONE** (Branch `feature/automated-session-logging-cli`)
+- **Summary:**
+  - Implemented `createSession` and `runSessionCli` in `lib/session.js` and wired `session` command into `bin/cli.js`.
+  - Auto-captures session environment: date/time, branch name, Git user author or `CAR_AGENT`/`AGENT_NAME`, and sanitized topic slug.
+  - `--record` mode: automatically inspects `git status --porcelain` (Files touched), extracts recent Git commits (Actions taken), links recent architectural decisions from `.agent-room/decisions.md` (Decisions made), and runs `verifyProject` to capture test command and outcome (Tests run).
+  - Flexible CLI parameters: `--goal`, `--classification`, `--status`, `--agent`, `--handoff`, `--output <file>`, `--dry-run`, and `--json`.
+  - Updated `lib/lint-sessions.js` regex to tolerate standard markdown list spacing (`-\s*(Read|Created|Modified):`).
+  - 100% compliant out of the box: every generated markdown or JSON session passes `validateMarkdownSession` and `validateJSONSession` with 0 errors and 0 warnings.
+  - Added 9 unit/integration tests in `test/session.test.js` and 3 parser tests in `test/cli.test.js` (all 284 repo tests pass).
 - **Goal:**
   - Provide a CLI subcommand to scaffold compliant session logs (`--new <name>`), capture git diff / tests outcome (`--record`), and validate formatting against `session-log-format.md`.
 - **Acceptance Criteria:**

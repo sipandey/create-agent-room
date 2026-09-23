@@ -167,6 +167,53 @@ test('parseArgs: throws on missing evals-dir argument', () => {
   assert.throws(() => parseArgs(['--custom-evals']), /Error: --custom-evals option requires a directory path/);
 });
 
+test('parseArgs: parses session options with separate arguments', () => {
+  const result = parseArgs([
+    '--goal', 'Fix memory leak',
+    '--classification', 'Bug',
+    '--status', 'In Progress',
+    '--agent', 'Agent Beta',
+    '--handoff', 'Follow up with heap snapshot',
+    '--new', 'login-fix',
+    '--record',
+    '--json'
+  ]);
+  assert.strictEqual(result.goal, 'Fix memory leak');
+  assert.strictEqual(result.classification, 'Bug');
+  assert.strictEqual(result.status, 'In Progress');
+  assert.strictEqual(result.agent, 'Agent Beta');
+  assert.strictEqual(result.handoff, 'Follow up with heap snapshot');
+  assert.strictEqual(result.new, 'login-fix');
+  assert.strictEqual(result.record, true);
+  assert.strictEqual(result.json, true);
+});
+
+test('parseArgs: parses session options with equals syntax', () => {
+  const result = parseArgs([
+    '--goal=Add audit log',
+    '--classification=Feature',
+    '--status=Completed',
+    '--agent=Claude',
+    '--handoff=All done',
+    '--new=audit-log'
+  ]);
+  assert.strictEqual(result.goal, 'Add audit log');
+  assert.strictEqual(result.classification, 'Feature');
+  assert.strictEqual(result.status, 'Completed');
+  assert.strictEqual(result.agent, 'Claude');
+  assert.strictEqual(result.handoff, 'All done');
+  assert.strictEqual(result.new, 'audit-log');
+});
+
+test('parseArgs: throws on missing session option values', () => {
+  assert.throws(() => parseArgs(['--goal']), /Error: --goal option requires a sentence string/);
+  assert.throws(() => parseArgs(['--classification']), /Error: --classification option requires/);
+  assert.throws(() => parseArgs(['--status']), /Error: --status option requires/);
+  assert.throws(() => parseArgs(['--agent']), /Error: --agent option requires an agent name/);
+  assert.throws(() => parseArgs(['--handoff']), /Error: --handoff option requires a handoff note/);
+  assert.throws(() => parseArgs(['--new']), /Error: --new option requires a session name/);
+});
+
 // End-to-end (spawns the real CLI) rather than just parseArgs, since the
 // actual contract is "prints the version and exits 0" - behavior that
 // lives in main(), not the argument parser.

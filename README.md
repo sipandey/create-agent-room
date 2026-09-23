@@ -211,6 +211,7 @@ create-agent-room init . --yes --preset <minimal|standard|strict>
 | `eval` | Run built-in and custom compliance regression eval packs | `create-agent-room eval . --format json` |
 | `validate` | Verify repository structure, guardrails schema, and skill frontmatter | `create-agent-room validate .` |
 | `lint-sessions` | Validate session logs against required structure | `create-agent-room lint-sessions .` |
+| `session` | Scaffold or record an audit-compliant session log & handoff | `create-agent-room session --record` |
 
 ---
 
@@ -257,6 +258,21 @@ create-agent-room eval . --custom-only
 create-agent-room eval --format json --output compliance-report.json
 ```
 
+### 4. Automated Session Logging & Handoffs (`session`)
+When completing a development turn or handing off to another agent, never lose context:
+```bash
+# Auto-detect modified files, commit messages, recent ADRs, and run test verification:
+create-agent-room session --record
+
+# Customize session metadata:
+create-agent-room session fix-login --goal "Fix login race condition" --classification Bug --status Completed
+
+# Dry-run preview in Markdown or structured JSON:
+create-agent-room session --dry-run
+create-agent-room session --json --dry-run
+```
+Every generated session log is guaranteed to pass `create-agent-room lint-sessions` with 0 errors and 0 warnings out of the box.
+
 ---
 
 ## ⚙️ Complete CLI Options Reference
@@ -276,11 +292,18 @@ create-agent-room eval --format json --output compliance-report.json
 | `--custom-only` | Run only custom adopter compliance evals | `eval` |
 | `--builtin-only` | Run only packaged built-in compliance evals | `eval` |
 | `--format <type>` | Output format: `text`, `json`, `csv`, `markdown` | `eval`, `verify`, `metrics` |
-| `--output <file>` | Write report or PR description directly to a file path | `eval`, `verify`, `metrics`, `pr-desc` |
+| `--output <file>` | Write report, session, or PR description directly to a file path | `session`, `eval`, `verify`, `metrics`, `pr-desc` |
 | `--write`, `-w` | Save generated PR description output to `.agent-room/pr-description.md` | `pr-desc` |
+| `--record` | Auto-inspect git diff, recent commits, decisions.md, and run test suite | `session` |
+| `--goal <sentence>` | Goal statement for session log | `session` |
+| `--classification <type>` | Session classification (`Bug`, `Enhancement`, `Feature`, `Product`) | `session` |
+| `--status <status>` | Session status (`Completed`, `Handed Off`, `In Progress`, `Blocked`) | `session` |
+| `--agent <name>` | Agent identity string (default: git user or CAR_AGENT) | `session` |
+| `--handoff <note>` | Handoff guidance for the next agent or human engineer | `session` |
+| `--json` | Output session log in structured JSON format | `session` |
 | `--git` | Run `git init` and create an initial commit in target directory | `init` |
 | `--force` | Overwrite existing files instead of skipping them | `init`, `sync` |
-| `--dry-run` | Preview what would be created or skipped without writing to disk | `init` |
+| `--dry-run` | Preview what would be created or outputted without writing to disk | `init`, `session` |
 | `--check`, `-c` | Check if mirrored files are out of sync without writing changes (CI-friendly) | `sync` |
 | `--skill-packs <list>` | Add built-in (`testing`, `security`, `release`, etc.) or remote Git skill packs | `init` |
 | `--language <name>` | Target project language (e.g. `javascript`, `typescript`, `python`, `rust`) | `init` |
@@ -295,7 +318,7 @@ create-agent-room eval --format json --output compliance-report.json
 
 - **Strictly Zero Dependencies:** `create-agent-room` has exactly **0 external runtime dependencies**. It runs entirely on the Node.js standard library (`fs`, `path`, `child_process`). No supply-chain risk.
 - **100% Dogfooded:** This repository runs `create-agent-room` on itself. Every commit and turn is gated by the same stop hooks, pre-commit guardrails, and compliance evals described above.
-- **261 Automated Tests:** Verified across unit, integration, and CLI end-to-end tests on every release.
+- **284 Automated Tests:** Verified across unit, integration, and CLI end-to-end tests on every release.
 
 ---
 

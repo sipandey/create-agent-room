@@ -2,6 +2,7 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
 const { runInit } = require('../lib/init');
 const { runSync } = require('../lib/sync');
 const { runMetrics } = require('../lib/metrics');
@@ -11,6 +12,7 @@ const { runLintSessions } = require('../lib/lint-sessions');
 const { runDoctor } = require('../lib/doctor');
 const { runEvalCli } = require('../lib/eval');
 const { runVerify } = require('../lib/verify');
+const { runSessionCli } = require('../lib/session');
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -176,6 +178,58 @@ function parseArgs(argv) {
       args['custom-only'] = true;
     } else if (a === '--builtin-only') {
       args['builtin-only'] = true;
+    } else if (a === '--goal') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.goal = argv[++i];
+      } else {
+        throw new Error('Error: --goal option requires a sentence string.');
+      }
+    } else if (a.startsWith('--goal=')) {
+      args.goal = a.slice('--goal='.length);
+    } else if (a === '--classification') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.classification = argv[++i];
+      } else {
+        throw new Error('Error: --classification option requires Bug, Enhancement, Feature, or Product.');
+      }
+    } else if (a.startsWith('--classification=')) {
+      args.classification = a.slice('--classification='.length);
+    } else if (a === '--status') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.status = argv[++i];
+      } else {
+        throw new Error('Error: --status option requires Completed, Handed Off, In Progress, or Blocked.');
+      }
+    } else if (a.startsWith('--status=')) {
+      args.status = a.slice('--status='.length);
+    } else if (a === '--agent') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.agent = argv[++i];
+      } else {
+        throw new Error('Error: --agent option requires an agent name.');
+      }
+    } else if (a.startsWith('--agent=')) {
+      args.agent = a.slice('--agent='.length);
+    } else if (a === '--handoff') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.handoff = argv[++i];
+      } else {
+        throw new Error('Error: --handoff option requires a handoff note.');
+      }
+    } else if (a.startsWith('--handoff=')) {
+      args.handoff = a.slice('--handoff='.length);
+    } else if (a === '--new') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.new = argv[++i];
+      } else {
+        throw new Error('Error: --new option requires a session name.');
+      }
+    } else if (a.startsWith('--new=')) {
+      args.new = a.slice('--new='.length);
+    } else if (a === '--record') {
+      args.record = true;
+    } else if (a === '--json') {
+      args.json = true;
     } else if (a.startsWith('-')) {
       throw new Error(`Error: Unknown option: ${a}`);
     } else {
@@ -199,10 +253,19 @@ Usage:
   create-agent-room doctor [target-dir] [--fix]
   create-agent-room eval [target-dir] [options]
   create-agent-room verify [target-dir] [options]
+  create-agent-room session [target-dir] [name] [options]
 
 Options:
   --fix                     Automatically repair drifted hooks, missing stop hooks, and CI pins
   --name <name>             Project name used in templates (default: target dir name)
+  --new <name>              Session name/topic for session scaffolding
+  --record                  Auto-record git changes, verification tests, decisions, and actions
+  --goal <sentence>         Goal of the session log (one sentence)
+  --classification <type>   Bug, Enhancement, Feature, or Product (default: inferred or Enhancement)
+  --status <status>         Completed, Handed Off, In Progress, or Blocked (default: Completed)
+  --agent <name>            Agent name (default: git author or AI Agent)
+  --handoff <note>          Handoff note for subsequent agent sessions
+  --json                    Save session in JSON format instead of Markdown
   --tools <list>            Comma-separated: claude,cursor,windsurf,cline,codex,copilot,git,all,none (default: prompt)
   --all                     Sync skills/rules across all supported tools (claude, cursor, windsurf, cline, codex, copilot)
   --template-source <path>  Custom template folder (default: search local/home/package)
@@ -226,6 +289,13 @@ Options:
   --custom-only             Execute only custom adopter eval suites
   --builtin-only            Execute only built-in compliance eval suites
   --suite <name>            eval suite filter: close-the-loop, lint-sessions, validate, all
+  --goal <goal>             Explicit goal statement for session logging
+  --classification <type>   Session classification (Bug, Enhancement, Feature, Product)
+  --status <status>         Session outcome status (Completed, Handed Off, In Progress, Blocked)
+  --agent <name>            Agent name for session log (default: git user or CAR_AGENT)
+  --handoff <note>          Handoff notes for subsequent agent or human maintainer
+  --record                  Auto-record modified files, commit actions, ADRs, and run test verification
+  --json                    Output session log in structured JSON format
   --verbose                 Print detailed stack traces on failure
   --write, -w               Save generated PR description to .agent-room/pr-description.md
   --yes, -y                 Don't prompt; use defaults for anything unspecified
@@ -262,6 +332,9 @@ Examples:
   create-agent-room eval . --custom-only
   create-agent-room eval . --evals-dir ./custom-evals
   create-agent-room eval --format json --output compliance-report.json
+  create-agent-room session my-feature --record
+  create-agent-room session --goal "Fix login timeout" --classification Bug --record
+  create-agent-room session . my-feature --dry-run
   create-agent-room --version
 
 Sync mirrors .agent-room/skills/ into .claude/skills/ (claude) and
@@ -306,6 +379,23 @@ async function main() {
     runEvalCli(target, args);
   } else if (command === 'verify') {
     runVerify(target, args);
+  } else if (command === 'session') {
+    let sessionTarget = target;
+    let sessionName = args.name || args.new;
+    const firstArg = args._[0];
+    if (firstArg) {
+      if (firstArg === '.' || (fs.existsSync(firstArg) && fs.statSync(firstArg).isDirectory())) {
+        sessionTarget = path.resolve(firstArg);
+        sessionName = sessionName || args._[1];
+      } else {
+        sessionTarget = process.cwd();
+        sessionName = sessionName || firstArg;
+      }
+    } else {
+      sessionTarget = process.cwd();
+    }
+    args.name = sessionName;
+    runSessionCli(sessionTarget, args);
   } else {
     console.error(`Unknown command: ${command}`);
     printHelp();
