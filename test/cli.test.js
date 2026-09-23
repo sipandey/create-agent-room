@@ -239,6 +239,23 @@ test('parseArgs: parses ci flags --only, --only-verify, --summary', () => {
   assert.strictEqual(result2.summary, 'out.md');
 });
 
+test('parseArgs: parses ci flags --base, --skip-pr, --only-pr, --skip-pr-sessions', () => {
+  const result1 = parseArgs(['ci', '--base', 'main', '--skip-pr-sessions']);
+  assert.strictEqual(result1.base, 'main');
+  assert.strictEqual(result1.skipPrSessions, true);
+
+  const result2 = parseArgs(['ci', '--base=origin/main', '--skip-pr']);
+  assert.strictEqual(result2.base, 'origin/main');
+  assert.strictEqual(result2.skipPr, true);
+
+  const result3 = parseArgs(['ci', '--only-pr']);
+  assert.strictEqual(result3.onlyPr, true);
+});
+
+test('parseArgs: throws on missing --base value', () => {
+  assert.throws(() => parseArgs(['ci', '--base']), /Error: --base option requires a target git ref/);
+});
+
 // End-to-end (spawns the real CLI) rather than just parseArgs, since the
 // actual contract is "prints the version and exits 0" - behavior that
 // lives in main(), not the argument parser.

@@ -12,6 +12,15 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ### Added
 
+- Remote PR Anti-Tamper & Bypass Audit Gate (`create-agent-room ci --base <ref>`, Story 5.2): audits pull request diffs against the target base ref to prevent unauthorized guardrails tampering and rule degradation.
+  - Automatically calculates git `merge-base` against `--base <ref>` or CI environment variables (`GITHUB_BASE_REF`, `CI_MERGE_REQUEST_TARGET_BRANCH_NAME`).
+  - Detects deletion of `.agent-room/guardrails.json` across the PR diff.
+  - Detects rule weakening across 7 governance dimensions: `protectedPaths`, `forbiddenActions`, `scopeGuidance`, `importBoundaries`, `scopeBoundaries`, `verifyOnCommit`, and `strictWaivers`.
+  - Blocks PR merging on rule weakening unless authorized via a structured bypass entry added directly to `.agent-room/guardrails-bypass-log.md` in the PR diff.
+  - Enforces bypass quality standards: requires author, ISO timestamp, and minimum 20-character rationale (plus ticket/issue/ref under `--strict` mode).
+  - Enforces presence of a valid session log under `.agent-room/sessions/` whenever non-scaffold code files are touched in the PR, with `--skip-pr-sessions` override.
+  - Integrated into `create-agent-room ci` as the 6th check stage (`pr`) with `--skip-pr` and `--only-pr` flags.
+
 - Unified Headless CI Runner (`create-agent-room ci`, Story 5.1): single command orchestrating all room governance dimensions in CI/CD pipelines (GitHub Actions, GitLab CI, CircleCI, Bitbucket, pre-push scripts).
   - Runs 5 core health dimensions in a single deterministic pass: `validate` (structure and schema), `doctor` (hook drift, permissions, CI pins), `lint-sessions` (session log format compliance), `verify` (codebase test suite), and `eval` (compliance evals).
   - Supports `--format <text|json|markdown>`, `--output <file>`, and `--strict` mode.

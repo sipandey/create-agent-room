@@ -15,17 +15,17 @@ const {
 
 test('resolveChecksToRun: defaults to all checks', () => {
   const checks = resolveChecksToRun({});
-  assert.deepStrictEqual(checks, ['validate', 'doctor', 'sessions', 'verify', 'eval']);
+  assert.deepStrictEqual(checks, ['validate', 'doctor', 'sessions', 'verify', 'eval', 'pr']);
 });
 
 test('resolveChecksToRun: skips specified checks', () => {
   const checks = resolveChecksToRun({ skipVerify: true, skipDoctor: true });
-  assert.deepStrictEqual(checks, ['validate', 'sessions', 'eval']);
+  assert.deepStrictEqual(checks, ['validate', 'sessions', 'eval', 'pr']);
 });
 
 test('resolveChecksToRun: supports dashed skip flags', () => {
   const checks = resolveChecksToRun({ 'skip-eval': true, 'skip-sessions': true });
-  assert.deepStrictEqual(checks, ['validate', 'doctor', 'verify']);
+  assert.deepStrictEqual(checks, ['validate', 'doctor', 'verify', 'pr']);
 });
 
 test('resolveChecksToRun: supports only list or flags', () => {
@@ -37,6 +37,12 @@ test('resolveChecksToRun: supports only list or flags', () => {
 
   const checks3 = resolveChecksToRun({ onlySessions: true });
   assert.deepStrictEqual(checks3, ['sessions']);
+
+  const checks4 = resolveChecksToRun({ onlyPr: true });
+  assert.deepStrictEqual(checks4, ['pr']);
+
+  const checks5 = resolveChecksToRun({ skipPr: true });
+  assert.deepStrictEqual(checks5, ['validate', 'doctor', 'sessions', 'verify', 'eval']);
 });
 
 test('runCi: passes on a freshly scaffolded clean room', async (t) => {
@@ -59,6 +65,7 @@ test('runCi: passes on a freshly scaffolded clean room', async (t) => {
   assert.strictEqual(report.checks.doctor.ok, true, 'Doctor check should pass');
   assert.strictEqual(report.checks.sessions.ok, true, 'Sessions check should pass');
   assert.strictEqual(report.checks.eval.ok, true, 'Eval check should pass');
+  assert.strictEqual(report.checks.pr.ok, true, 'PR check should pass');
   assert.strictEqual(report.checks.verify.skipped, true, 'Verify check should be skipped');
 });
 
@@ -167,8 +174,9 @@ test('formatCiReport: supports markdown format with failure diagnostics', () => 
       sessions: { ok: false, skipped: false, durationMs: 5, filesScanned: 1, errors: ['Missing Goal section'], warnings: [] },
       verify: { ok: false, skipped: false, durationMs: 35, command: 'npm test', exitCode: 1, output: 'AssertionError' },
       eval: { ok: false, skipped: false, durationMs: 30, passedCount: 7, failedCount: 1, total: 8, cases: [{ id: 'case-1', error: 'Timed out' }] },
+      pr: { ok: false, skipped: false, durationMs: 12, baseRef: 'main', errors: ['Anti-tamper violation: guardrails.json deleted'], antiTamper: { authorized: false } },
     },
-    summary: { total: 5, executed: 5, passed: 1, failed: 4, skipped: 0 },
+    summary: { total: 6, executed: 6, passed: 1, failed: 5, skipped: 0 },
   };
 
   const md = formatCiReport(failedReport, 'markdown');
@@ -178,6 +186,7 @@ test('formatCiReport: supports markdown format with failure diagnostics', () => 
   assert(md.includes('Missing Goal section'), 'Should include session error');
   assert(md.includes('AssertionError'), 'Should include verify error output');
   assert(md.includes('case-1'), 'Should include eval error');
+  assert(md.includes('Anti-tamper violation'), 'Should include PR anti-tamper error');
 });
 
 test('formatCiReport: supports text format with ANSI badges', () => {
@@ -193,12 +202,14 @@ test('formatCiReport: supports text format with ANSI badges', () => {
       sessions: { ok: true, skipped: false, durationMs: 10, filesScanned: 2, errors: [], warnings: [] },
       verify: { ok: true, skipped: false, durationMs: 10, command: 'npm test', exitCode: 0, output: '' },
       eval: { ok: true, skipped: false, durationMs: 10, passedCount: 5, failedCount: 0, total: 5, cases: [] },
+      pr: { ok: true, skipped: false, durationMs: 10, baseRef: 'main', antiTamper: { authorized: false } },
     },
-    summary: { total: 5, executed: 5, passed: 5, failed: 0, skipped: 0 },
+    summary: { total: 6, executed: 6, passed: 6, failed: 0, skipped: 0 },
   };
 
   const text = formatCiReport(cleanReport, 'text');
   assert(text.includes('create-agent-room CI Runner'), 'Should include banner');
+  assert(text.includes('pr-audit'), 'Should include pr-audit line');
   assert(text.includes('Result: PASSED'), 'Should include passed footer');
 });
 
