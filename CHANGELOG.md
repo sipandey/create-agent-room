@@ -12,6 +12,13 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ### Added
 
+- Unified Headless CI Runner (`create-agent-room ci`, Story 5.1): single command orchestrating all room governance dimensions in CI/CD pipelines (GitHub Actions, GitLab CI, CircleCI, Bitbucket, pre-push scripts).
+  - Runs 5 core health dimensions in a single deterministic pass: `validate` (structure and schema), `doctor` (hook drift, permissions, CI pins), `lint-sessions` (session log format compliance), `verify` (codebase test suite), and `eval` (compliance evals).
+  - Supports `--format <text|json|markdown>`, `--output <file>`, and `--strict` mode.
+  - Automatically writes or appends an interactive Markdown scorecard to the GitHub Actions Job Summary via `--summary` or `$GITHUB_STEP_SUMMARY`.
+  - Supports selective check execution via `--skip-verify`, `--skip-doctor`, `--skip-eval`, `--skip-sessions`, `--skip-validate`, or `--only <checks>`.
+  - Refactored `lib/lint-sessions.js` to export pure programmatic `lintSessions(target)` alongside CLI runner.
+
 - Dynamic Skill Pack Management CLI (`create-agent-room skill [list|add|remove]`, Story 4.3): enables managing built-in, remote Git, and local skill packs post-init with automatic multi-agent tool adapter synchronization.
   - `create-agent-room skill list` (or `ls`, `status`): inspects `.agent-room.json` and `.agent-room/skills/` to display installed skill packs, available built-in packs, and custom workspace skills, with `--json` / `--format json` support.
   - `create-agent-room skill add <pack...>` (or `install`): installs built-in packs (`testing`, `security`, `release`, `code-review`, `api-design`, `database`, `performance`, `observability`, `documentation`), remote Git repositories (`git+...`, `https://...`), or local directory packs, updates `.agent-room.json`, and triggers automatic synchronization across all configured tool adapters.
