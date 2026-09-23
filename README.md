@@ -137,7 +137,7 @@ npm install -g create-agent-room
 | `lint-sessions` | Session log schema validation (exit `1` on failure) |
 | `eval` | Packaged compliance regression scenarios (exit `1` on failure) |
 | `metrics` | Session telemetry, quality pass rates & governance metrics exporter |
-| `pr-desc` | Generate PR description from latest session log |
+| `pr-desc` | Generate attested PR description with verification proof & reviewer checklist |
 | `doctor` | Health check & auto-remediation (`--fix`) |
 
 ```bash
@@ -181,8 +181,10 @@ create-agent-room metrics .
 create-agent-room metrics . --format json
 create-agent-room metrics . --format markdown --output docs/governance-report.md
 
-# Generate a Pull Request description from the latest session log and save it:
+# Generate a Pull Request description from the latest session log:
 create-agent-room pr-desc . --write
+create-agent-room pr-desc . --verify --write
+create-agent-room pr-desc . --verify --output pr-body.md
 
 # Read-only health check — works whether or not init has been run yet, writes nothing:
 create-agent-room doctor .
@@ -346,7 +348,20 @@ create-agent-room metrics . --format markdown --output GOVERNANCE.md
 
 Parses the latest session log inside `.agent-room/sessions/` (based on timestamp filename order) and formats it into a Pull Request description template.
 
-- Use `--write` (or `-w`) to output and save it directly to `.agent-room/pr-description.md`.
+Options:
+- `--verify` (or `--with-verification`): Automatically executes the project's verification test suite and embeds durable verification attestation proofs, recent architectural decisions, guardrail compliance audits, and an interactive reviewer compliance checklist directly into the PR description.
+- `--strict`: When combined with `--verify`, exits with code `1` if verification tests fail or if no verification command is configured.
+- `--write` (or `-w`): Output and save directly to `.agent-room/pr-description.md`.
+- `--output <file>`: Write PR description to a custom destination file (e.g. `--output .github/pull_request_template.md`).
+
+```bash
+# Standard PR description generation:
+create-agent-room pr-desc . --write
+
+# Generate verified PR description with test proof, ADRs, and reviewer checklist:
+create-agent-room pr-desc . --verify --write
+create-agent-room pr-desc . --verify --output pr-body.md
+```
 
 **Example: PR Description Output**
 
@@ -436,8 +451,9 @@ and examples: [docs/github-action.md](docs/github-action.md).
 | `--write, -w`              | Save generated PR description output to `.agent-room/pr-description.md`                                                                                                                                           |
 | `--all`                    | `sync` only — sync rules and skills across all supported tools (claude, cursor, windsurf, cline, codex, copilot)                                                                                                  |
 | `--format <text\|json\|csv\|markdown>` | `eval`, `verify`, `metrics` — output format (default: `text`)                                                                                                                    |
-| `--output <file>`          | `eval`, `verify`, `metrics` — write report to file instead of stdout                                                                                                              |
-| `--strict`                 | `verify` only — require an explicitly configured verification command (exit `1` if missing)                                                                                       |
+| `--output <file>`          | `eval`, `verify`, `metrics`, `pr-desc` — write report or PR description to file instead of stdout                                                                                 |
+| `--verify, --with-verification` | `pr-desc` only — run verification test suite and embed attestation proof and reviewer checklist                                                                                  |
+| `--strict`                 | `verify`, `pr-desc` — require tests to pass (exit `1` on test failure or missing configuration)                                                                                    |
 | `--fix`                    | `doctor` only — automatically remediate detected configuration issues, missing files, and template drift                                                                          |
 | `--suite <name>`           | `eval` only — `close-the-loop`, `lint-sessions`, `validate`, or `all` (default: `all`)                                                                                             |
 | `--verbose`                | Print detailed stack traces on failure                                                                                                                                            |

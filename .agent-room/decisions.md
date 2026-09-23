@@ -16,6 +16,17 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-23 — PR attestation & verification evidence generator (Story 3.2)
+
+**Decision:** Add `--verify` (alias `--with-verification`) and `--output <file>` options to `create-agent-room pr-desc` (`lib/pr.js` and `bin/cli.js`), enabling automated injection of test verification evidence, architectural decision links, guardrail compliance attestations, and reviewer compliance checklists directly into generated Pull Request descriptions.
+- **Verification Proof Attestation:** Automatically triggers `verifyProject(target, args)` to execute the repository's configured test command, capturing exit code, duration, ISO timestamp, and bounded test output inside a collapsible `<details>` block.
+- **Guardrails & Decisions Attestation:** Inspects `.agent-room/guardrails-bypass-log.md` and `.agent-room/decisions.md` to attest whether the changes adhered cleanly to project guardrails or whether auditable bypasses were logged, cross-referencing recent ADRs.
+- **Reviewer Compliance Checklist:** Pre-populates a structured markdown checklist with interactive status checkboxes (`[x]` or `[ ]`) verifying automated test results, architectural documentation, scope containment, and session tracking.
+- **Output Flexibility:** Supports `--output <file>` to direct output to custom files (such as `.github/pull_request_template.md` or CI artifacts) in addition to `--write` (`.agent-room/pr-description.md`), and supports `--strict` to exit 1 if verification fails.
+**Why:** Pull request reviewers and compliance auditors need verifiable evidence that AI agents actually ran and passed the repository's test suite, recorded necessary architectural decisions, and obeyed guardrails. Manual copy-pasting of test terminal outputs into PR descriptions is error-prone and frequently skipped by agents. Automated attestation gives human reviewers immediate cryptographic and execution certainty.
+**Rejected:** Generating PR descriptions purely from git diffs without session logs (session logs capture the agent's explicit goal, decisions, and handoff reasoning).
+
+
 ### 2026-09-23 — session telemetry & governance metrics exporter (Story 3.1)
 
 **Decision:** Expand `create-agent-room metrics` from a simple terminal dashboard into a comprehensive multi-format telemetry and governance metrics engine (`lib/metrics.js` and `bin/cli.js`).

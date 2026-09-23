@@ -4,7 +4,14 @@ const test = require('node:test');
 const assert = require('node:assert');
 const path = require('node:path');
 const fs = require('node:fs');
-const { parseMarkdownSession, parseJSONSession, runPrDesc } = require('../lib/pr');
+const {
+  parseMarkdownSession,
+  parseJSONSession,
+  generatePrDescription,
+  generateAttestationBlock,
+  generateComplianceChecklist,
+  runPrDesc
+} = require('../lib/pr');
 
 test('parseMarkdownSession (PR): correctly extracts markdown log sections', () => {
   const tmpDir = path.join(__dirname, 'tmp-pr-md-' + Date.now());
@@ -166,5 +173,244 @@ Requires database credentials.
     assert.match(savedContent, /Requires database credentials/);
   } finally {
     console.log = originalLog;
+  }
+});
+
+test('generateAttestationBlock: formats passing, failing, and skipped verification results', () => {
+  // 1. Passing
+  const passResult = {
+    ok: true,
+    command: 'npm test',
+    exitCode: 0,
+    durationMs: 120,
+    output: '✔ 10 tests passed'
+  };
+  const passBlock = generateAttestationBlock(passResult);
+  assert.match(passBlock, /### Verification Attestation Proof/);
+  assert.match(passBlock, /\* \*\*Verification Command:\*\* `npm test`/);
+  assert.match(passBlock, /\* \*\*Result:\*\* Passed ✅/);
+  assert.match(passBlock, /\* \*\*Exit Code:\*\* `0`/);
+  assert.match(passBlock, /\* \*\*Duration:\*\* `120ms`/);
+  assert.match(passBlock, /<details open>/);
+  assert.match(passBlock, /✔ 10 tests passed/);
+
+  // 2. Failing
+  const failResult = {
+    ok: false,
+    command: 'npm test',
+    exitCode: 1,
+    durationMs: 80,
+    output: '✖ 2 tests failed'
+  };
+  const failBlock = generateAttestationBlock(failResult);
+  assert.match(failBlock, /\* \*\*Result:\*\* FAILED ❌/);
+  assert.match(failBlock, /\* \*\*Exit Code:\*\* `1`/);
+  assert.match(failBlock, /<summary>Failure Output<\/summary>/);
+
+  // 3. Skipped
+  const skipResult = {
+    ok: true,
+    skipped: true,
+    reason: 'no-verification-configured'
+  };
+  const skipBlock = generateAttestationBlock(skipResult);
+  assert.match(skipBlock, /Skipped ⚠️ \(No verification test command configured/);
+
+  // 4. Null / empty
+  assert.strictEqual(generateAttestationBlock(null), '');
+});
+
+test('generateComplianceChecklist: generates correct checkbox states based on verification and guardrails', () => {
+  // Fully compliant
+  const compliantChecklist = generateComplianceChecklist({
+    verifyResult: { ok: true, command: 'npm test' },
+    bypassStats: { total: 0 },
+    session: { decisions: 'Adopted sqlite database' },
+    decisionsStats: { total: 1 }
+  });
+
+  assert.match(compliantChecklist, /## Reviewer Compliance Checklist/);
+  assert.match(compliantChecklist, /- \[x\] Automated verification test suite passing \(`npm test`\)/);
+  assert.match(compliantChecklist, /- \[x\] Architectural decisions documented/);
+  assert.match(compliantChecklist, /- \[x\] Guardrail policies satisfied \(zero bypasses\)/);
+  assert.match(compliantChecklist, /- \[x\] Session log recorded/);
+
+  // Non-compliant / with bypass
+  const bypassChecklist = generateComplianceChecklist({
+    verifyResult: { ok: false, command: 'npm test' },
+    bypassStats: { total: 2 },
+    session: { decisions: '' },
+    decisionsStats: { total: 0 }
+  });
+
+  assert.match(bypassChecklist, /- \[ \] Automated verification test suite passing/);
+  assert.match(bypassChecklist, /- \[ \] Architectural decisions documented/);
+  assert.match(bypassChecklist, /- \[ \] Guardrail policies satisfied \(2 auditable bypass\(es\) logged\)/);
+});
+
+test('generatePrDescription: handles both standard PR descriptions and verified/attested PR descriptions', () => {
+  const session = {
+    date: '2026-03-20',
+    agent: 'Claude Code',
+    classification: 'Feature',
+    goal: 'Add payments API',
+    filesTouched: '- Read: api.js',
+    actions: '1. Implemented stripe routes',
+    tests: 'Command: npm test',
+    decisions: 'Use Stripe webhooks',
+    outcome: 'Completed'
+  };
+
+  // Standard (no --verify)
+  const standardPr = generatePrDescription(session, 'session1.md', { verify: false });
+  assert.match(standardPr, /# Pull Request Description/);
+  assert.match(standardPr, /Add payments API/);
+  assert.strictEqual(standardPr.includes('Reviewer Compliance Checklist'), false);
+  assert.strictEqual(standardPr.includes('Guardrails Compliance Attestation'), false);
+
+  // With verify
+  const verifiedPr = generatePrDescription(session, 'session1.md', {
+    verify: true,
+    verifyResult: { ok: true, command: 'npm test', exitCode: 0, durationMs: 90, output: '10 passed' },
+    bypassStats: { total: 0, withReason: 0, withoutReason: 0 },
+    decisionsStats: { total: 1, recent: [{ date: '2026-03-20', title: 'Adopt Webhooks' }] }
+  });
+
+  assert.match(verifiedPr, /Verification Attestation Proof/);
+  assert.match(verifiedPr, /Recent Architectural Decisions/);
+  assert.match(verifiedPr, /Adopt Webhooks/);
+  assert.match(verifiedPr, /Guardrails Compliance Attestation/);
+  assert.match(verifiedPr, /Compliant ✅ \(Zero guardrail bypasses recorded\)/);
+  assert.match(verifiedPr, /Reviewer Compliance Checklist/);
+  assert.match(verifiedPr, /- \[x\] Automated verification test suite passing/);
+});
+
+test('runPrDesc: executes verification with --verify and attaches attestation and checklist', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-pr-verify-' + Date.now());
+  const sessionsDir = path.join(tmpDir, '.agent-room', 'sessions');
+  fs.mkdirSync(sessionsDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(tmpDir, '.agent-room.json'),
+    JSON.stringify({
+      verification: {
+        testCommand: 'node -e "console.log(\\"Tests PASSED!\\"); process.exit(0)"'
+      }
+    })
+  );
+
+  fs.writeFileSync(
+    path.join(sessionsDir, '2026-03-20-session.md'),
+    `# Session Log
+**Date:** 2026-03-20
+**Agent:** Cursor
+**Classification:** Feature
+## Goal
+Implement auth token refresh
+## Outcome
+Completed
+`
+  );
+
+  t.after(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  const originalLog = console.log;
+  let logOutput = '';
+  console.log = (msg) => {
+    logOutput += msg + '\n';
+  };
+
+  try {
+    const result = runPrDesc(tmpDir, { verify: true });
+
+    assert.ok(result.verifyResult);
+    assert.strictEqual(result.verifyResult.ok, true);
+    assert.match(logOutput, /Verification Attestation Proof/);
+    assert.match(logOutput, /Tests PASSED!/);
+    assert.match(logOutput, /Reviewer Compliance Checklist/);
+    assert.match(logOutput, /- \[x\] Automated verification test suite passing/);
+  } finally {
+    console.log = originalLog;
+  }
+});
+
+test('runPrDesc: writes output to custom path via --output', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-pr-output-' + Date.now());
+  const sessionsDir = path.join(tmpDir, '.agent-room', 'sessions');
+  fs.mkdirSync(sessionsDir, { recursive: true });
+
+  fs.writeFileSync(
+    path.join(sessionsDir, '2026-03-20-session.md'),
+    `# Session Log
+**Date:** 2026-03-20
+**Agent:** Windsurf
+**Classification:** Bug
+## Goal
+Fix null pointer
+## Outcome
+Completed
+`
+  );
+
+  t.after(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  const customOut = path.join(tmpDir, 'docs', 'pr-output.md');
+
+  const originalLog = console.log;
+  let logOutput = '';
+  console.log = (msg) => {
+    logOutput += msg + '\n';
+  };
+
+  try {
+    runPrDesc(tmpDir, { output: customOut });
+
+    assert.ok(fs.existsSync(customOut));
+    const saved = fs.readFileSync(customOut, 'utf8');
+    assert.match(saved, /Fix null pointer/);
+    assert.match(logOutput, /Success: PR description written to/);
+  } finally {
+    console.log = originalLog;
+  }
+});
+
+test('runPrDesc: sets process.exitCode = 1 when --verify --strict fails', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-pr-strict-' + Date.now());
+  const sessionsDir = path.join(tmpDir, '.agent-room', 'sessions');
+  fs.mkdirSync(sessionsDir, { recursive: true });
+
+  // No verification command configured, with strict mode
+  fs.writeFileSync(
+    path.join(sessionsDir, '2026-03-20-session.md'),
+    `# Session Log
+**Date:** 2026-03-20
+**Agent:** Windsurf
+**Classification:** Bug
+## Goal
+Fix memory leak
+## Outcome
+Completed
+`
+  );
+
+  t.after(() => {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+    process.exitCode = 0;
+  });
+
+  const originalLog = console.log;
+  console.log = () => {};
+
+  try {
+    process.exitCode = 0;
+    runPrDesc(tmpDir, { verify: true, strict: true });
+    assert.strictEqual(process.exitCode, 1);
+  } finally {
+    console.log = originalLog;
+    process.exitCode = 0;
   }
 });

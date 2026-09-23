@@ -147,6 +147,11 @@ test('parseArgs: parses --all flag', () => {
   assert.strictEqual(parseArgs(['--all']).all, true);
 });
 
+test('parseArgs: parses --verify and --with-verification flags', () => {
+  assert.strictEqual(parseArgs(['--verify']).verify, true);
+  assert.strictEqual(parseArgs(['--with-verification']).verify, true);
+});
+
 // End-to-end (spawns the real CLI) rather than just parseArgs, since the
 // actual contract is "prints the version and exits 0" - behavior that
 // lives in main(), not the argument parser.
