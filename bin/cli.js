@@ -116,7 +116,7 @@ function parseArgs(argv) {
       if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
         args.format = argv[++i];
       } else {
-        throw new Error('Error: --format option requires text, json, or csv.');
+        throw new Error('Error: --format option requires text, json, csv, or markdown.');
       }
     } else if (a === '--output') {
       if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {

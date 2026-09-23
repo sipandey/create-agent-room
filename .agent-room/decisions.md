@@ -16,6 +16,17 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-23 — session telemetry & governance metrics exporter (Story 3.1)
+
+**Decision:** Expand `create-agent-room metrics` from a simple terminal dashboard into a comprehensive multi-format telemetry and governance metrics engine (`lib/metrics.js` and `bin/cli.js`).
+- **Telemetry Aggregation:** Aggregates session execution data (`.agent-room/sessions/`), verification test pass/fail rates from `## Tests run` / `testsRun`, architectural decisions velocity from `.agent-room/decisions.md`, and auditable guardrail bypass records from `.agent-room/guardrails-bypass-log.md` (categorized into scope, protected path, forbidden pattern/secret, verification gate, and other).
+- **Multi-Format Export:** Supports `--format <text|json|csv|markdown>` (default: `text`). JSON and CSV allow automated ingestion into data warehouses, dashboards, and CI/CD pipelines; Markdown generates executive KPI reports suitable for pull requests and audits.
+- **Output Redirection:** Added `--output <file>` to export reports directly to disk without shell piping.
+- **Backward Compatibility:** Preserved legacy CLI output strings when no sessions are found in text mode.
+**Why:** Engineering leaders and platform teams managing autonomous agent workflows need quantifiable visibility into agent productivity, success rates, test verification coverage, decision velocity, and compliance friction. Without machine-readable metrics export, telemetry was trapped in local terminal outputs and unable to be tracked across teams or integrated into governance reporting dashboards.
+**Rejected:** Introducing external telemetry SDKs or remote network reporters (strictly maintaining zero external runtime dependencies); altering session log schemas (metrics extracts telemetry transparently from existing markdown/json logs).
+
+
 ### 2026-09-22 — unified multi-agent sync & github copilot adapter (Story 2.3)
 
 **Decision:** Add GitHub Copilot (`copilot`) adapter support generating `.github/copilot-instructions.md` with links to `AGENTS.md` and `.agent-room/skills/`, and enhance `create-agent-room sync` with `--all`, `--tools <list>`, workspace tool auto-detection, and user-customization preservation (`<!-- user-customizations-start -->` ... `<!-- user-customizations-end -->` or `<!-- user-customizations -->`).
