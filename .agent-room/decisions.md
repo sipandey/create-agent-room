@@ -16,6 +16,16 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-23 — automated session logging & handoff CLI (Story 4.2)
+
+**Decision:** Implement `create-agent-room session [name] [options]` to streamline session log creation and inter-agent handoffs while ensuring zero external dependencies and 100% compliance with `lint-sessions`.
+- **Intelligent Git State Ingestion:** In `--record` mode, CAR queries `git status --porcelain` to record created and modified files, extracts recent commit messages as session actions, links newest architectural decisions from `.agent-room/decisions.md`, and runs `verifyProject` to capture concrete test command results.
+- **Zero-Friction CLI Interface:** Accepts explicit metadata (`--goal`, `--classification`, `--status`, `--agent`, `--handoff`), supports custom destination paths (`--output`), and supports `--dry-run` and `--json` for scripting and CI automation.
+- **Guaranteed Out-of-the-Box Compliance:** Automatically derives compliant goals and default placeholders so scaffolded sessions pass `validateMarkdownSession` and `validateJSONSession` with 0 errors and 0 warnings.
+- **Tolerant Parsing & Formatting:** Updated `lib/lint-sessions.js` to accept standard markdown list syntax (`- Read:`, `- Created:`, `- Modified:`) with optional whitespace.
+**Why:** Prior to Story 4.2, engineers and agents had to manually write `.agent-room/sessions/YYYY-MM-DD-HHMM-topic.md` files or rely on memory. Context between consecutive turns was frequently lost, and manual logs often failed `lint-sessions` due to missing headers, formatting differences, or omitted decision references. Automating this eliminates friction and ensures high audit quality.
+**Rejected:** Requiring an external LLM call to summarize the session (CAR strictly maintains zero runtime dependencies and local deterministic execution); forcing interactive prompts when run in CI environments.
+
 ### 2026-09-23 — comprehensive guardrails rule-weakening & anti-tamper gate (Story 4.1)
 
 **Decision:** Eliminate the security limitation documented in `CAPABILITIES.md` by implementing mechanical rule-weakening and anti-tamper enforcement in `templates/adapters/git-hooks/guardrails-check.js` and `.agent-room/hooks/guardrails-check.js`.

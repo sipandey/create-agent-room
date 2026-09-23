@@ -12,6 +12,13 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ### Added
 
+- Automated Session Logging & Handoff CLI (`create-agent-room session`, Story 4.2): provides an end-to-end command to scaffold and auto-record compliant session logs in `.agent-room/sessions/`.
+  - Automatically captures session context: current branch, ISO timestamp, Git author (or `CAR_AGENT` / `AGENT_NAME`), and sanitized topic slug.
+  - `--record` flag for zero-effort capture: inspects `git status --porcelain` for modified/created/deleted files, pulls recent commit messages as actions, links latest architectural decision records from `.agent-room/decisions.md`, and runs configured test verification to record verification outcomes.
+  - Granular CLI flags: `--goal`, `--classification` (`Bug`, `Enhancement`, `Feature`, `Product`), `--status` (`Completed`, `Handed Off`, `In Progress`, `Blocked`), `--agent`, `--handoff`, and `--output <file>`.
+  - Structured output formats: generates markdown (default) or JSON (`--json`), with full `--dry-run` preview capability.
+  - 100% out-of-the-box compliance: every generated session log strictly conforms to `create-agent-room lint-sessions` requirements with zero errors and zero warnings.
+
 - Comprehensive Guardrails Rule-Weakening & Anti-Tamper Gate (Story 4.1): mechanically evaluates staged or deleted `guardrails.json` against `HEAD:.agent-room/guardrails.json` across all active rule categories, preventing silent rule degradation.
   - Detects and blocks dropping or narrowing any `protectedPaths` entry (including self-weakening).
   - Detects and blocks dropping secret/credential patterns from `forbiddenActions` or downgrading regex patterns to literals.
