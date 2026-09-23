@@ -12,6 +12,10 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ### Added
 
+- Session Telemetry & Governance Metrics Exporter (`create-agent-room metrics`, Story 3.1): enhanced metrics engine aggregating session outcomes, test verification pass rates (`## Tests run` / `testsRun`), architectural decisions velocity from `.agent-room/decisions.md`, and auditable guardrail bypass records from `.agent-room/guardrails-bypass-log.md` (categorized by scope, protected path, forbidden pattern/secret, verification gate, and other).
+- Multi-format metrics export: added `--format <text|json|csv|markdown>` to `create-agent-room metrics`, enabling JSON and CSV ingestion into observability pipelines and Markdown generation for executive governance reporting.
+- Added `--output <file>` option to `create-agent-room metrics` to write reports directly to disk.
+
 - Pre-Stop Test & Build Verification Gate in `close-the-loop-check.js` (Claude Code Stop & Cursor stop hooks): mechanically executes configured test command (`verification.testCommand` in `.agent-room.json` or `init --test-command`) when non-scaffold files change, capturing bounded failure output (~1,500 chars) and blocking turn completion if tests fail.
 - Automated workspace stack detection for verification commands in `create-agent-room init` (`detectTestCommand`), discovering test runners for Node.js (`package.json` scripts, filtering dummy placeholders), Rust (`Cargo.toml`), Go (`go.mod`), Python (`pytest.ini`, `pyproject.toml`, test directories), Java/Kotlin (`gradlew`/`pom.xml`), and Makefiles (`test:` target).
 - `--test-command <cmd>` and `--no-test-command` flags for `create-agent-room init`.

@@ -131,13 +131,14 @@ npm install -g create-agent-room
 | Command | Purpose |
 | ------- | ------- |
 | `init` | Scaffold agent-room structure, hooks, and tool adapters |
-| `sync` | Mirror `.agent-room/skills/` → Claude/Cursor/Windsurf/Cline/Codex |
+| `sync` | Mirror `.agent-room/skills/` → Claude/Cursor/Windsurf/Cline/Codex/Copilot |
 | `validate` | Structural + schema checks (exit `1` on failure) |
+| `verify` | Pre-commit/pre-stop test suite verification runner (exit `1` on failure) |
 | `lint-sessions` | Session log schema validation (exit `1` on failure) |
 | `eval` | Packaged compliance regression scenarios (exit `1` on failure) |
-| `metrics` | Session log observability dashboard |
+| `metrics` | Session telemetry, quality pass rates & governance metrics exporter |
 | `pr-desc` | Generate PR description from latest session log |
-| `doctor` | Read-only health check (never writes) |
+| `doctor` | Health check & auto-remediation (`--fix`) |
 
 ```bash
 # Initialize a new project with all tool adapters, git initialization, and specific skill packs:
@@ -171,8 +172,14 @@ create-agent-room lint-sessions .
 create-agent-room eval
 create-agent-room eval --format json --output compliance-report.json
 
+# Run pre-commit/pre-stop verification test suite:
+create-agent-room verify .
+create-agent-room verify . --strict --format json
+
 # Generate an observability report dashboard based on session logs:
 create-agent-room metrics .
+create-agent-room metrics . --format json
+create-agent-room metrics . --format markdown --output docs/governance-report.md
 
 # Generate a Pull Request description from the latest session log and save it:
 create-agent-room pr-desc . --write
@@ -318,7 +325,18 @@ below for when to use which.
 
 ### 5. `metrics [target-dir]`
 
-Aggregates all JSON and Markdown session logs inside `.agent-room/sessions/` and renders a clean CLI dashboard detailing outcome success rates, task type distributions, and overall file edit volumes.
+Aggregates all JSON and Markdown session logs inside `.agent-room/sessions/`, architectural decisions from `.agent-room/decisions.md`, and guardrail bypass logs from `.agent-room/guardrails-bypass-log.md`. Renders an interactive CLI dashboard or structured reports detailing outcomes, task classification distributions, verification test pass rates, decision velocity, and auditable bypasses.
+
+Options:
+- `--format <text|json|csv|markdown>`: Output format (default: `text`).
+- `--output <file>`: Write formatted metrics report directly to a file.
+
+```bash
+create-agent-room metrics .
+create-agent-room metrics . --format json
+create-agent-room metrics . --format csv --output metrics.csv
+create-agent-room metrics . --format markdown --output GOVERNANCE.md
+```
 
 **Example: Metrics Dashboard**
 
@@ -417,12 +435,13 @@ and examples: [docs/github-action.md](docs/github-action.md).
 | `--dry-run`                | Print exactly what `init` would create/skip; write nothing to disk                                                                                                                                                |
 | `--write, -w`              | Save generated PR description output to `.agent-room/pr-description.md`                                                                                                                                           |
 | `--all`                    | `sync` only — sync rules and skills across all supported tools (claude, cursor, windsurf, cline, codex, copilot)                                                                                                  |
-| `--check`                  | `sync` only — verify mirrors are up to date without rewriting; exit `1` if drift detected                                                                                                                       |
-| `--format <text\|json\|csv>` | `eval` only — output format (default: `text`)                                                                                                                                                                   |
-| `--output <file>`          | `eval` only — write report to file instead of stdout                                                                                                                                                              |
-| `--suite <name>`           | `eval` only — `close-the-loop`, `lint-sessions`, `validate`, or `all` (default: `all`)                                                                                                                            |
-| `--verbose`                | Print detailed stack traces on failure                                                                                                                                                                            |
-| `-y, --yes`                | Skip all prompts, use defaults                                                                                                                                                                                    |
+| `--format <text\|json\|csv\|markdown>` | `eval`, `verify`, `metrics` — output format (default: `text`)                                                                                                                    |
+| `--output <file>`          | `eval`, `verify`, `metrics` — write report to file instead of stdout                                                                                                              |
+| `--strict`                 | `verify` only — require an explicitly configured verification command (exit `1` if missing)                                                                                       |
+| `--fix`                    | `doctor` only — automatically remediate detected configuration issues, missing files, and template drift                                                                          |
+| `--suite <name>`           | `eval` only — `close-the-loop`, `lint-sessions`, `validate`, or `all` (default: `all`)                                                                                             |
+| `--verbose`                | Print detailed stack traces on failure                                                                                                                                            |
+| `-y, --yes`                | Skip all prompts, use defaults                                                                                                                                                    |                                |
 
 ### Profiles: `minimal` vs `full`
 

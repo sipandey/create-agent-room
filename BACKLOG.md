@@ -15,7 +15,7 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | **Epic 2: Friction-Free Adoption** | **2.1** | `create-agent-room doctor --fix` Auto-Remediation | ⏳ Queued |
 | | **2.2** | Zero-Friction Governance Profiles (`--preset minimal\|standard\|strict`) | ⏳ Queued |
 | | **2.3** | Unified Multi-Agent Sync (`create-agent-room sync --all`) | ⏳ Queued |
-| **Epic 3: Enterprise Governance** | **3.1** | Session Telemetry & Governance Metrics Exporter | ⏳ Queued |
+| **Epic 3: Enterprise Governance** | **3.1** | Session Telemetry & Governance Metrics Exporter | ✅ **DONE** |
 | | **3.2** | PR Attestation & Verification Evidence Generator (`pr-desc --verify`) | ⏳ Queued |
 | | **3.3** | Custom Adopter Compliance Eval Suites (`evals/custom/`) | ⏳ Queued |
 
@@ -169,7 +169,12 @@ Eliminate friction for developers adopting, upgrading, and maintaining `create-a
 Provide engineering leadership with transparency, metrics, and regression proof across all agent sessions.
 
 ### Story 3.1: Session Telemetry & Governance Metrics Exporter
-- **Status:** ⏳ Queued
+- **Status:** ✅ **DONE**
+- **Summary:**
+  - Expanded `create-agent-room metrics` (`lib/metrics.js`, `bin/cli.js`) to aggregate session outcomes, classifications, agent distribution, files touched, test verification pass rates (`## Tests run` / `testsRun`), architectural decisions count and velocity (`.agent-room/decisions.md`), and auditable guardrail bypass records (`.agent-room/guardrails-bypass-log.md`).
+  - Added `--format <text|json|csv|markdown>`: JSON and CSV for automated data ingestion, Markdown for executive KPI overview tables and governance audits.
+  - Added `--output <file>`: direct report file writing with automatic parent directory creation.
+  - Added comprehensive unit tests in `test/metrics.test.js` (9 tests pass; total repo tests: 247).
 - **Goal:**
   - Export session metrics, bypass counts, and test verification outcomes for team dashboards.
 - **Acceptance Criteria:**
