@@ -1,6 +1,6 @@
 {
   "name": "create-agent-room",
-  "version": "2.3.1",
+  "version": "2.4.0",
   "description": "Mechanical agent governance for Claude, Cursor, and CI: stop hooks, guardrails, session lint, and compliance evals — not just AGENTS.md.",
   "bin": {
     "create-agent-room": "bin/cli.js"

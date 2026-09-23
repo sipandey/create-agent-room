@@ -22,8 +22,8 @@ jobs:
       # (exit 127) even though the package installed. Explicit global
       # install + direct invocation sidesteps that machinery entirely. See
       # .agent-room/anti-patterns.md, 2026-07-14.
-      - name: Install create-agent-room@2.3.1
-        run: npm install -g create-agent-room@2.3.1
+      - name: Install create-agent-room@2.4.0
+        run: npm install -g create-agent-room@2.4.0
       - name: Validate create-agent-room agent-room structure
         run: create-agent-room validate .
       - name: Lint session logs

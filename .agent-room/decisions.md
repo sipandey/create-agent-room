@@ -16,6 +16,8 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+<!-- no-log: v2.4.0 release commit — routine release mechanics (version bump, lockfile re-sync, action.yml and CI pin bump, CHANGELOG [Unreleased]→[2.4.0]). The CHANGELOG is the record; nothing new to add here. -->
+
 ### 2026-09-23 — custom adopter compliance eval suites (Story 3.3)
 
 **Decision:** Expand `create-agent-room eval` (`lib/eval.js` and `bin/cli.js`) to discover and execute repo-specific compliance eval suites from `<target>/.agent-room/evals/`, `<target>/evals/custom/`, and custom directories specified via `--evals-dir <dir>` / `--custom-evals <dir>`.

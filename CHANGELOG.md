@@ -10,6 +10,8 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+## [2.4.0] - 2026-09-23
+
 ### Added
 
 - Custom Adopter Compliance Eval Suites (`create-agent-room eval`, Story 3.3): expanded compliance eval harness to automatically discover and run repository-specific compliance evals from `.agent-room/evals/`, `evals/custom/`, and `--evals-dir <dir>` / `--custom-evals <dir>`.
@@ -571,7 +573,8 @@ default (e.g. a script asserting `principles.md` exists after a bare
 - `package.json` now includes `repository`, `homepage`, `bugs`,
   `keywords`, and `author` metadata for npm.
 
-[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v2.3.1...HEAD
+[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v2.4.0...HEAD
+[2.4.0]: https://github.com/sipandey/create-agent-room/compare/v2.3.1...v2.4.0
 [2.3.1]: https://github.com/sipandey/create-agent-room/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/sipandey/create-agent-room/compare/v2.2.0...v2.3.0
 [2.2.0]: https://github.com/sipandey/create-agent-room/compare/v2.1.0...v2.2.0
