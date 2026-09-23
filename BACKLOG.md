@@ -21,6 +21,9 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | **Epic 4: Active Defense & Lifecycle** | **4.1** | Comprehensive Guardrails Rule-Weakening & Anti-Tamper Gate | ✅ **DONE** (`f6871c1`) |
 | | **4.2** | Automated Session Logging & Handoff CLI (`create-agent-room session`) | ✅ **DONE** (`89097a6`) |
 | | **4.3** | Dynamic Skill Pack Management (`create-agent-room skill [list\|add\|remove]`) | ✅ **DONE** (`6eb2fac`) |
+| **Epic 5: Enterprise CI/CD Governance** | **5.1** | `create-agent-room ci` Unified Headless CI Runner | 🟡 **IN PROGRESS** |
+| | **5.2** | Remote PR Anti-Tamper & Bypass Audit Gate (`ci --base`) | 📋 Ready |
+| | **5.3** | Automated PR Compliance Reporter & GitHub Action | 📋 Ready |
 
 ---
 
@@ -299,5 +302,61 @@ Eliminate silent governance bypasses and streamline agent session lifecycle mana
 
 > [!NOTE]
 > **Epic 4: Active Defense & Lifecycle Management is now 100% COMPLETE!** (Story 4.1 ✅, Story 4.2 ✅, Story 4.3 ✅)
+
+---
+
+## Epic 5: Enterprise CI/CD Governance & Pull Request Gate
+
+Close the "local-only" enforcement gap by transforming `create-agent-room` into a zero-friction, headless CI/CD policy gate for pull requests in GitHub Actions, GitLab CI, CircleCI, and automated agent pipelines.
+
+### Story 5.1: `create-agent-room ci` Unified Headless CI Runner
+- **Status:** 🟡 **IN PROGRESS** (Branch `feature/ci-headless-runner`)
+- **Summary:**
+  - Build `create-agent-room ci [target] [options]` in `lib/ci.js` and `bin/cli.js`.
+  - Orchestrates all 5 room governance dimensions in a single invocation:
+    1. `validate`: Repository structure and guardrails schema integrity (`collectFindings`).
+    2. `doctor`: Static hook sync and drift detection (`getFindings`).
+    3. `lint-sessions`: Session log compliance against `session-log-format.md` (`lintSessions`).
+    4. `verify`: Automated code verification test suite (`verifyProject`).
+    5. `eval`: Built-in and custom compliance eval suites (`runEval`).
+  - Flags and options:
+    - `--format <text|json|markdown>`: Formatted terminal tables (default), machine-readable JSON, or GitHub Flavored Markdown.
+    - `--output <file>`: Write report to disk.
+    - `--summary`: Write or append Markdown report to `$GITHUB_STEP_SUMMARY` in GitHub Actions.
+    - `--strict`: Enforce strict checks across all phases (e.g. failing if tests are not configured in `verify`).
+    - Selective execution: `--skip-verify`, `--skip-doctor`, `--skip-eval`, `--skip-sessions`, `--skip-validate`, or `--only-<check>`.
+  - Exit codes: `0` when all enabled checks pass; `1` when any enabled check fails.
+- **Goal:**
+  - Provide a single, deterministic command for CI pipelines that replaces disparate manual steps and delivers unified compliance reporting.
+- **Acceptance Criteria:**
+  1. `create-agent-room ci` executes enabled checks, reports per-stage durations, and returns `0` on clean rooms.
+  2. Any failure in `validate`, `doctor`, `lint-sessions`, `verify`, or `eval` sets exit code `1` and details failures clearly.
+  3. Supports `--format json`, `--format markdown`, `--output <path>`, and `--skip-*` options.
+
+---
+
+### Story 5.2: Remote PR Anti-Tamper & Bypass Audit Gate (`create-agent-room ci --base <ref>`)
+- **Status:** 📋 Ready
+- **Goal:**
+  - Mechanically evaluate the complete pull request diff against the target branch (`--base origin/main` or `GITHUB_BASE_REF`).
+  - Detect unauthorized rule weakening or guardrails deletion across the branch history.
+  - Enforce that any rule bypass is accompanied by an authorized bypass record with ticket reference.
+  - Verify that changes touching non-scaffold files contain a corresponding valid `.agent-room/sessions/` log.
+- **Acceptance Criteria:**
+  1. Detects rule loosening against the base branch across multiple commits.
+  2. Enforces presence of session log for feature/bugfix branches.
+  3. Fails CI if unapproved bypasses are present in the PR.
+
+---
+
+### Story 5.3: Automated PR Compliance Reporter & GitHub Action (`agent-room-action`)
+- **Status:** 📋 Ready
+- **Goal:**
+  - Create a reusable composite GitHub Action / workflow template (`uses: sipandey/agent-room-action@v1`).
+  - Automatically posts or updates an interactive PR compliance card with verification outcomes, guardrail status, and session audits.
+- **Acceptance Criteria:**
+  1. Reusable GitHub Action packaged and documented.
+  2. Automatic sticky PR comment updates with audit summary.
+
 
 

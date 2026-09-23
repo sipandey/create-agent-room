@@ -16,6 +16,16 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-23 — unified headless CI runner (Story 5.1)
+
+**Decision:** Implement `create-agent-room ci [target] [options]` in `lib/ci.js` as a unified, headless runner for CI/CD pipelines (GitHub Actions, GitLab CI, CircleCI, Bitbucket, pre-push scripts).
+- **Consolidated Health Dimensions:** Orchestrates all 5 governance dimensions in a single deterministic execution: `validate` (structure and guardrails schema), `doctor` (hook drift, permissions, CI pins), `lint-sessions` (session log format compliance), `verify` (codebase test suite), and `eval` (compliance evals).
+- **Flexible Check Control:** Allows granular skips (`--skip-verify`, `--skip-doctor`, `--skip-eval`, `--skip-sessions`, `--skip-validate`) and targeting (`--only <checks>`, `--only-<check>`).
+- **Multi-Format Output & CI Step Summary:** Generates ANSI terminal tables (`text`), serialized JSON (`json`), or GitHub Flavored Markdown (`markdown`) with collapsible failure diagnostics. Passing `--summary` or running in an environment with `$GITHUB_STEP_SUMMARY` automatically writes the Markdown scorecard directly to the GitHub Actions Job Summary.
+- **Pure Programmatic Linting:** Extracted pure `lintSessions(target)` in `lib/lint-sessions.js` that returns structured results without setting exit codes or printing side-effects, keeping subcommands decoupled.
+**Why:** Prior to `create-agent-room ci`, validating a repository in CI required writing 5 separate shell steps in workflow YAML, each with disparate error handling, different exit behaviors, and zero consolidated reporting for pull request reviewers. `create-agent-room ci` collapses this into a single zero-dependency command with rich failure diagnostics and an actionable exit code.
+**Rejected:** Chaining CLI subcommands via child processes (running in-process functions is 10x faster and allows structured failure aggregation); forcing verification tests unconditionally in environments where test suites run in separate job matrices.
+
 ### 2026-09-23 — dynamic skill pack management CLI (Story 4.3)
 
 **Decision:** Implement `create-agent-room skill [list|add|remove]` in `lib/skill.js` to manage the lifecycle of skill packs post-initialization while ensuring seamless cross-tool rule updates and preserving local custom rules.

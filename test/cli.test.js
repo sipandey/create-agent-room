@@ -220,6 +220,25 @@ test('parseArgs: parses --no-sync flag', () => {
   assert.strictEqual(result.noSync, true);
 });
 
+test('parseArgs: parses ci flags --skip-verify, --skip-doctor, --skip-eval, --skip-sessions, --skip-validate', () => {
+  const result = parseArgs(['ci', '--skip-verify', '--skip-doctor', '--skip-eval', '--skip-sessions', '--skip-validate']);
+  assert.strictEqual(result.skipVerify, true);
+  assert.strictEqual(result.skipDoctor, true);
+  assert.strictEqual(result.skipEval, true);
+  assert.strictEqual(result.skipSessions, true);
+  assert.strictEqual(result.skipValidate, true);
+});
+
+test('parseArgs: parses ci flags --only, --only-verify, --summary', () => {
+  const result1 = parseArgs(['ci', '--only', 'validate,verify', '--summary']);
+  assert.strictEqual(result1.only, 'validate,verify');
+  assert.strictEqual(result1.summary, true);
+
+  const result2 = parseArgs(['ci', '--only-verify', '--summary=out.md']);
+  assert.strictEqual(result2.onlyVerify, true);
+  assert.strictEqual(result2.summary, 'out.md');
+});
+
 // End-to-end (spawns the real CLI) rather than just parseArgs, since the
 // actual contract is "prints the version and exits 0" - behavior that
 // lives in main(), not the argument parser.

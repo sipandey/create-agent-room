@@ -213,6 +213,7 @@ create-agent-room init . --yes --preset <minimal|standard|strict>
 | `lint-sessions` | Validate session logs against required structure | `create-agent-room lint-sessions .` |
 | `session` | Scaffold or record an audit-compliant session log & handoff | `create-agent-room session --record` |
 | `skill` | Inspect, install, or remove skill packs post-init with auto-sync | `create-agent-room skill add database,security` |
+| `ci` | Run all room checks in headless CI with unified reporting | `create-agent-room ci --format markdown --summary` |
 
 ---
 
@@ -288,6 +289,34 @@ create-agent-room skill add https://github.com/org/ai-skills.git
 create-agent-room skill remove database
 ```
 
+### 6. Unified Headless CI Runner (`ci`)
+Stop chaining disparate steps in your CI workflows. `create-agent-room ci` runs all room governance checks in a single deterministic pass:
+1. **`validate`**: Verifies core files and guardrails schema.
+2. **`doctor`**: Ensures git hooks and stop hooks haven't drifted.
+3. **`lint-sessions`**: Ensures session logs conform to requirements.
+4. **`verify`**: Executes your codebase test suite.
+5. **`eval`**: Runs built-in and custom compliance eval suites.
+
+```yaml
+# .github/workflows/agent-room-ci.yml
+name: Agent Room CI
+on: [push, pull_request]
+
+jobs:
+  governance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm install -g create-agent-room
+      - name: Run Room Governance Checks
+        run: create-agent-room ci --summary
+```
+
+When running in GitHub Actions, passing `--summary` automatically writes an interactive Markdown scorecard directly to the **GitHub Actions Job Summary** (`$GITHUB_STEP_SUMMARY`)!
+
 ---
 
 ## ⚙️ Complete CLI Options Reference
@@ -302,12 +331,19 @@ create-agent-room skill remove database
 | `--no-test-command` | Skip pre-stop test verification even if a test suite is detected | `init` |
 | `--fix` | Automatically repair drifted hooks, missing stop hooks, and outdated CI pins | `doctor` |
 | `--verify`, `--with-verification` | Run verification test suite and embed attestation proof and reviewer checklist | `pr-desc` |
-| `--strict` | Require tests to pass (exit `1` on test failure or missing configuration) | `verify`, `pr-desc` |
-| `--evals-dir <path>` | Custom eval suites directory (default: `.agent-room/evals`, `evals/custom`) | `eval` |
-| `--custom-only` | Run only custom adopter compliance evals | `eval` |
-| `--builtin-only` | Run only packaged built-in compliance evals | `eval` |
-| `--format <type>` | Output format: `text`, `json`, `csv`, `markdown` | `eval`, `verify`, `metrics` |
-| `--output <file>` | Write report, session, or PR description directly to a file path | `session`, `eval`, `verify`, `metrics`, `pr-desc` |
+| `--strict` | Require tests to pass (exit `1` on test failure, warnings, or missing configuration) | `verify`, `pr-desc`, `ci` |
+| `--evals-dir <path>` | Custom eval suites directory (default: `.agent-room/evals`, `evals/custom`) | `eval`, `ci` |
+| `--custom-only` | Run only custom adopter compliance evals | `eval`, `ci` |
+| `--builtin-only` | Run only packaged built-in compliance evals | `eval`, `ci` |
+| `--skip-verify` | Skip code verification test execution in CI | `ci` |
+| `--skip-doctor` | Skip hook and template drift checks in CI | `ci` |
+| `--skip-eval` | Skip compliance eval suites in CI | `ci` |
+| `--skip-sessions` | Skip session log format linting in CI | `ci` |
+| `--skip-validate` | Skip room structure and schema checks in CI | `ci` |
+| `--only <checks>` | Run only specified checks (comma-separated: `validate,doctor,sessions,verify,eval`) | `ci` |
+| `--summary [file]` | Write or append Markdown scorecard to `$GITHUB_STEP_SUMMARY` or custom file | `ci` |
+| `--format <type>` | Output format: `text`, `json`, `csv`, `markdown` | `eval`, `verify`, `metrics`, `ci` |
+| `--output <file>` | Write report, session, or PR description directly to a file path | `session`, `eval`, `verify`, `metrics`, `pr-desc`, `ci` |
 | `--write`, `-w` | Save generated PR description output to `.agent-room/pr-description.md` | `pr-desc` |
 | `--record` | Auto-inspect git diff, recent commits, decisions.md, and run test suite | `session` |
 | `--goal <sentence>` | Goal statement for session log | `session` |
@@ -315,7 +351,7 @@ create-agent-room skill remove database
 | `--status <status>` | Session status (`Completed`, `Handed Off`, `In Progress`, `Blocked`) | `session` |
 | `--agent <name>` | Agent identity string (default: git user or CAR_AGENT) | `session` |
 | `--handoff <note>` | Handoff guidance for the next agent or human engineer | `session` |
-| `--json` | Output session or skill report in structured JSON format | `session`, `skill` |
+| `--json` | Output session or skill report in structured JSON format | `session`, `skill`, `ci` |
 | `--no-sync` | Skip auto-syncing skill files and tool rules after add/remove | `skill` |
 | `--git` | Run `git init` and create an initial commit in target directory | `init` |
 | `--force` | Overwrite existing files instead of skipping them | `init`, `sync`, `skill` |
@@ -334,10 +370,11 @@ create-agent-room skill remove database
 
 - **Strictly Zero Dependencies:** `create-agent-room` has exactly **0 external runtime dependencies**. It runs entirely on the Node.js standard library (`fs`, `path`, `child_process`). No supply-chain risk.
 - **100% Dogfooded:** This repository runs `create-agent-room` on itself. Every commit and turn is gated by the same stop hooks, pre-commit guardrails, and compliance evals described above.
-- **296 Automated Tests:** Verified across unit, integration, and CLI end-to-end tests on every release.
+- **311 Automated Tests:** Verified across unit, integration, and CLI end-to-end tests on every release.
 
 ---
 
 ## 📄 License
 
 MIT © [Siddharth Pandey](https://github.com/sipandey)
+

@@ -14,6 +14,7 @@ const { runEvalCli } = require('../lib/eval');
 const { runVerify } = require('../lib/verify');
 const { runSessionCli } = require('../lib/session');
 const { runSkillCli } = require('../lib/skill');
+const { runCiCli } = require('../lib/ci');
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -234,6 +235,52 @@ function parseArgs(argv) {
       args.record = true;
     } else if (a === '--json') {
       args.json = true;
+    } else if (a === '--skip-verify') {
+      args['skip-verify'] = true;
+      args.skipVerify = true;
+    } else if (a === '--skip-doctor') {
+      args['skip-doctor'] = true;
+      args.skipDoctor = true;
+    } else if (a === '--skip-eval') {
+      args['skip-eval'] = true;
+      args.skipEval = true;
+    } else if (a === '--skip-sessions' || a === '--skip-lint-sessions') {
+      args['skip-sessions'] = true;
+      args.skipSessions = true;
+    } else if (a === '--skip-validate') {
+      args['skip-validate'] = true;
+      args.skipValidate = true;
+    } else if (a === '--only-verify') {
+      args['only-verify'] = true;
+      args.onlyVerify = true;
+    } else if (a === '--only-doctor') {
+      args['only-doctor'] = true;
+      args.onlyDoctor = true;
+    } else if (a === '--only-eval') {
+      args['only-eval'] = true;
+      args.onlyEval = true;
+    } else if (a === '--only-sessions' || a === '--only-lint-sessions') {
+      args['only-sessions'] = true;
+      args.onlySessions = true;
+    } else if (a === '--only-validate') {
+      args['only-validate'] = true;
+      args.onlyValidate = true;
+    } else if (a === '--only') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.only = argv[++i];
+      } else {
+        throw new Error('Error: --only option requires check name(s).');
+      }
+    } else if (a.startsWith('--only=')) {
+      args.only = a.slice('--only='.length);
+    } else if (a === '--summary') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.summary = argv[++i];
+      } else {
+        args.summary = true;
+      }
+    } else if (a.startsWith('--summary=')) {
+      args.summary = a.slice('--summary='.length);
     } else if (a.startsWith('-')) {
       throw new Error(`Error: Unknown option: ${a}`);
     } else {
@@ -259,9 +306,17 @@ Usage:
   create-agent-room verify [target-dir] [options]
   create-agent-room session [target-dir] [name] [options]
   create-agent-room skill [list|add|remove] [packs...] [options]
+  create-agent-room ci [target-dir] [options]
 
 Options:
   --fix                     Automatically repair drifted hooks, missing stop hooks, and CI pins
+  --skip-verify             Skip code verification test runner in CI
+  --skip-doctor             Skip hook and template drift checks in CI
+  --skip-eval               Skip compliance eval suites in CI
+  --skip-sessions           Skip session log linting in CI
+  --skip-validate           Skip room structure and guardrails schema checks in CI
+  --only <checks>           Run only specified checks (comma-separated: validate,doctor,sessions,verify,eval)
+  --summary [file]          Write Markdown report to $GITHUB_STEP_SUMMARY or custom file
   --name <name>             Project name used in templates (default: target dir name)
   --new <name>              Session name/topic for session scaffolding
   --record                  Auto-record git changes, verification tests, decisions, and actions
@@ -337,6 +392,10 @@ Examples:
   create-agent-room skill list
   create-agent-room skill add database,observability
   create-agent-room skill remove database
+  create-agent-room ci
+  create-agent-room ci --format json
+  create-agent-room ci --format markdown --summary
+  create-agent-room ci --strict --skip-verify
   create-agent-room --version
 
 Sync mirrors .agent-room/skills/ into .claude/skills/ (claude) and
@@ -419,6 +478,11 @@ async function main() {
     }
     args.packs = packs;
     const exitCode = runSkillCli(skillTarget, sub, args);
+    if (exitCode) {
+      process.exitCode = exitCode;
+    }
+  } else if (command === 'ci') {
+    const exitCode = runCiCli(target, args);
     if (exitCode) {
       process.exitCode = exitCode;
     }
