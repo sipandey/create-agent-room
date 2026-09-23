@@ -41,8 +41,14 @@ test('resolveBaseRef: resolves candidate or environment ref', () => {
   const ref = resolveBaseRef(process.cwd(), { base: 'HEAD' });
   assert.strictEqual(ref, 'HEAD');
 
-  const noRef = resolveBaseRef(process.cwd(), {});
-  assert.strictEqual(noRef, null);
+  const origEnv = process.env.GITHUB_BASE_REF;
+  delete process.env.GITHUB_BASE_REF;
+  try {
+    const noRef = resolveBaseRef(process.cwd(), {});
+    assert.strictEqual(noRef, null);
+  } finally {
+    if (origEnv !== undefined) process.env.GITHUB_BASE_REF = origEnv;
+  }
 });
 
 test('detectRuleWeakening: returns empty array when rules are unchanged or strengthened', () => {
@@ -182,15 +188,28 @@ function commitAll(dir, message) {
   execFileSync('git', ['commit', '-m', message], { cwd: dir, stdio: 'ignore' });
 }
 
-test('auditPullRequest: returns skipped when no baseRef is found', (t) => {
+test('auditPullRequest: returns skipped when no baseRef is found or not a git repo', (t) => {
   const tmpDir = path.join(__dirname, 'tmp-pr-nobase-' + Date.now());
   fs.mkdirSync(tmpDir, { recursive: true });
   t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
 
-  const res = auditPullRequest(tmpDir);
-  assert.strictEqual(res.ok, true);
-  assert.strictEqual(res.skipped, true);
-  assert.strictEqual(res.reason, 'no-base-ref');
+  // Non-git directory skips
+  const resNonGit = auditPullRequest(tmpDir);
+  assert.strictEqual(resNonGit.ok, true);
+  assert.strictEqual(resNonGit.skipped, true);
+
+  // Git repo without baseRef skips
+  initGitRepo(tmpDir);
+  const origEnv = process.env.GITHUB_BASE_REF;
+  delete process.env.GITHUB_BASE_REF;
+  try {
+    const res = auditPullRequest(tmpDir);
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.skipped, true);
+    assert.strictEqual(res.reason, 'no-base-ref');
+  } finally {
+    if (origEnv !== undefined) process.env.GITHUB_BASE_REF = origEnv;
+  }
 });
 
 test('auditPullRequest: fails cleanly if merge-base calculation fails', (t) => {

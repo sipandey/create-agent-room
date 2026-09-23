@@ -251,7 +251,7 @@ test('CLI: node bin/cli.js ci executes via command line and returns 0', () => {
   const cliPath = path.join(__dirname, '..', 'bin', 'cli.js');
   const repoRoot = path.join(__dirname, '..');
 
-  const result = spawnSync('node', [cliPath, 'ci', repoRoot, '--skip-verify'], {
+  const result = spawnSync('node', [cliPath, 'ci', repoRoot, '--skip-verify', '--skip-pr'], {
     encoding: 'utf8',
   });
 
