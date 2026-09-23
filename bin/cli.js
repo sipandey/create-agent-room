@@ -13,6 +13,7 @@ const { runDoctor } = require('../lib/doctor');
 const { runEvalCli } = require('../lib/eval');
 const { runVerify } = require('../lib/verify');
 const { runSessionCli } = require('../lib/session');
+const { runSkillCli } = require('../lib/skill');
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -32,6 +33,9 @@ function parseArgs(argv) {
       args.verbose = true;
     } else if (a === '--write' || a === '-w') {
       args.write = true;
+    } else if (a === '--no-sync') {
+      args['no-sync'] = true;
+      args.noSync = true;
     } else if (a === '--tools') {
       if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
         args.tools = argv[++i];
@@ -254,6 +258,7 @@ Usage:
   create-agent-room eval [target-dir] [options]
   create-agent-room verify [target-dir] [options]
   create-agent-room session [target-dir] [name] [options]
+  create-agent-room skill [list|add|remove] [packs...] [options]
 
 Options:
   --fix                     Automatically repair drifted hooks, missing stop hooks, and CI pins
@@ -265,7 +270,8 @@ Options:
   --status <status>         Completed, Handed Off, In Progress, or Blocked (default: Completed)
   --agent <name>            Agent name (default: git author or AI Agent)
   --handoff <note>          Handoff note for subsequent agent sessions
-  --json                    Save session in JSON format instead of Markdown
+  --json                    Output session or skill report in JSON format
+  --no-sync                 Skip auto-syncing skill files and tool rules after add/remove
   --tools <list>            Comma-separated: claude,cursor,windsurf,cline,codex,copilot,git,all,none (default: prompt)
   --all                     Sync skills/rules across all supported tools (claude, cursor, windsurf, cline, codex, copilot)
   --template-source <path>  Custom template folder (default: search local/home/package)
@@ -289,13 +295,6 @@ Options:
   --custom-only             Execute only custom adopter eval suites
   --builtin-only            Execute only built-in compliance eval suites
   --suite <name>            eval suite filter: close-the-loop, lint-sessions, validate, all
-  --goal <goal>             Explicit goal statement for session logging
-  --classification <type>   Session classification (Bug, Enhancement, Feature, Product)
-  --status <status>         Session outcome status (Completed, Handed Off, In Progress, Blocked)
-  --agent <name>            Agent name for session log (default: git user or CAR_AGENT)
-  --handoff <note>          Handoff notes for subsequent agent or human maintainer
-  --record                  Auto-record modified files, commit actions, ADRs, and run test verification
-  --json                    Output session log in structured JSON format
   --verbose                 Print detailed stack traces on failure
   --write, -w               Save generated PR description to .agent-room/pr-description.md
   --yes, -y                 Don't prompt; use defaults for anything unspecified
@@ -335,6 +334,9 @@ Examples:
   create-agent-room session my-feature --record
   create-agent-room session --goal "Fix login timeout" --classification Bug --record
   create-agent-room session . my-feature --dry-run
+  create-agent-room skill list
+  create-agent-room skill add database,observability
+  create-agent-room skill remove database
   create-agent-room --version
 
 Sync mirrors .agent-room/skills/ into .claude/skills/ (claude) and
@@ -396,6 +398,30 @@ async function main() {
     }
     args.name = sessionName;
     runSessionCli(sessionTarget, args);
+  } else if (command === 'skill') {
+    const sub = args._[0] || 'list';
+    let skillTarget = process.cwd();
+    let packs = [];
+    const restArgs = args._.slice(1);
+    if (restArgs.length > 0) {
+      const last = restArgs[restArgs.length - 1];
+      if (
+        last === '.' ||
+        (fs.existsSync(last) &&
+          fs.statSync(last).isDirectory() &&
+          (last.startsWith('.') || last.startsWith('/') || last.includes(path.sep)))
+      ) {
+        skillTarget = path.resolve(last);
+        packs = restArgs.slice(0, -1);
+      } else {
+        packs = restArgs;
+      }
+    }
+    args.packs = packs;
+    const exitCode = runSkillCli(skillTarget, sub, args);
+    if (exitCode) {
+      process.exitCode = exitCode;
+    }
   } else {
     console.error(`Unknown command: ${command}`);
     printHelp();

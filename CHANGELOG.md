@@ -12,6 +12,13 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ### Added
 
+- Dynamic Skill Pack Management CLI (`create-agent-room skill [list|add|remove]`, Story 4.3): enables managing built-in, remote Git, and local skill packs post-init with automatic multi-agent tool adapter synchronization.
+  - `create-agent-room skill list` (or `ls`, `status`): inspects `.agent-room.json` and `.agent-room/skills/` to display installed skill packs, available built-in packs, and custom workspace skills, with `--json` / `--format json` support.
+  - `create-agent-room skill add <pack...>` (or `install`): installs built-in packs (`testing`, `security`, `release`, `code-review`, `api-design`, `database`, `performance`, `observability`, `documentation`), remote Git repositories (`git+...`, `https://...`), or local directory packs, updates `.agent-room.json`, and triggers automatic synchronization across all configured tool adapters.
+  - `create-agent-room skill remove <pack...>` (or `rm`, `uninstall`): removes skill files, updates `.agent-room.json`, and cleans up orphaned mirrored skills across Claude, Cursor, Windsurf, Cline, Codex, and GitHub Copilot.
+  - Added `--no-sync` option to add/remove subcommands to skip automatic tool rule synchronization.
+  - Updated `lib/sync.js` to automatically detect and purge orphaned mirrored skill directories in `.claude/skills/` when source skills are removed.
+
 - Automated Session Logging & Handoff CLI (`create-agent-room session`, Story 4.2): provides an end-to-end command to scaffold and auto-record compliant session logs in `.agent-room/sessions/`.
   - Automatically captures session context: current branch, ISO timestamp, Git author (or `CAR_AGENT` / `AGENT_NAME`), and sanitized topic slug.
   - `--record` flag for zero-effort capture: inspects `git status --porcelain` for modified/created/deleted files, pulls recent commit messages as actions, links latest architectural decision records from `.agent-room/decisions.md`, and runs configured test verification to record verification outcomes.

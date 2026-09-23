@@ -18,9 +18,9 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | **Epic 3: Enterprise Governance** | **3.1** | Session Telemetry & Governance Metrics Exporter | ✅ **DONE** (`0d8149c`) |
 | | **3.2** | PR Attestation & Verification Evidence Generator (`pr-desc --verify`) | ✅ **DONE** (`fbca05d`) |
 | | **3.3** | Custom Adopter Compliance Eval Suites (`evals/custom/`) | ✅ **DONE** (`7bda42e`) |
-| **Epic 4: Active Defense & Lifecycle** | **4.1** | Comprehensive Guardrails Rule-Weakening & Anti-Tamper Gate | ✅ **DONE** |
-| | **4.2** | Automated Session Logging & Handoff CLI (`create-agent-room session`) | ⏳ Queued |
-| | **4.3** | Dynamic Skill Pack Management (`create-agent-room skill [list\|add\|remove]`) | ⏳ Queued |
+| **Epic 4: Active Defense & Lifecycle** | **4.1** | Comprehensive Guardrails Rule-Weakening & Anti-Tamper Gate | ✅ **DONE** (`f6871c1`) |
+| | **4.2** | Automated Session Logging & Handoff CLI (`create-agent-room session`) | ✅ **DONE** (`89097a6`) |
+| | **4.3** | Dynamic Skill Pack Management (`create-agent-room skill [list\|add\|remove]`) | ✅ **DONE** |
 
 ---
 
@@ -277,11 +277,27 @@ Eliminate silent governance bypasses and streamline agent session lifecycle mana
 ---
 
 ### Story 4.3: Dynamic Skill Pack Management (`create-agent-room skill [list|add|remove]`)
-- **Status:** ⏳ Queued
+- **Status:** ✅ **DONE** (Branch `feature/dynamic-skill-pack-management`)
+- **Summary:**
+  - Implemented `lib/skill.js` with `listSkillPacks`, `addSkillPacks`, `removeSkillPacks`, and `runSkillCli`.
+  - Added support for 9 built-in packs (`testing`, `security`, `release`, `code-review`, `api-design`, `database`, `performance`, `observability`, `documentation`), remote Git repositories (`git+...`, `https://...`), and local directory paths.
+  - Subcommands:
+    - `skill list` / `ls` / `status`: displays installed, available built-in, and custom workspace skills, with `--format json` / `--json` support.
+    - `skill add` / `install`: copies skill templates into `.agent-room/skills/`, updates `skillPacks` in `.agent-room.json`, and triggers automatic `sync --all` across all tool adapters.
+    - `skill remove` / `rm` / `uninstall`: deletes skill files, updates `.agent-room.json`, cleans up orphaned Claude skills in `.claude/skills/`, and re-syncs all tool adapters.
+  - Added `--no-sync` flag to skip auto-syncing during batch workflows or offline execution.
+  - Updated `lib/sync.js` to automatically detect and purge orphaned mirrored skills from `.claude/skills/`.
+  - Added 11 unit/integration tests in `test/skill.test.js` and updated `test/cli.test.js` (all 295 repo tests pass).
 - **Goal:**
   - Manage built-in and remote/local skill packs post-init, automatically syncing to Claude, Cursor, Windsurf, Cline, Codex, and GitHub Copilot.
 - **Acceptance Criteria:**
   1. `create-agent-room skill list` shows installed and available skill packs.
   2. `create-agent-room skill add <pack>` installs and automatically runs `sync --all`.
   3. Preserves user customizations during skill additions.
+
+---
+
+> [!NOTE]
+> **Epic 4: Active Defense & Lifecycle Management is now 100% COMPLETE!** (Story 4.1 ✅, Story 4.2 ✅, Story 4.3 ✅)
+
 
