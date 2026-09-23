@@ -22,7 +22,7 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | | **4.2** | Automated Session Logging & Handoff CLI (`create-agent-room session`) | ✅ **DONE** (`89097a6`) |
 | | **4.3** | Dynamic Skill Pack Management (`create-agent-room skill [list\|add\|remove]`) | ✅ **DONE** (`6eb2fac`) |
 | **Epic 5: Enterprise CI/CD Governance** | **5.1** | `create-agent-room ci` Unified Headless CI Runner | ✅ **DONE** (`7181329`) |
-| | **5.2** | Remote PR Anti-Tamper & Bypass Audit Gate (`ci --base`) | 📋 Ready |
+| | **5.2** | Remote PR Anti-Tamper & Bypass Audit Gate (`ci --base`) | 🟡 **IN PROGRESS** |
 | | **5.3** | Automated PR Compliance Reporter & GitHub Action | 📋 Ready |
 
 ---
@@ -336,7 +336,7 @@ Close the "local-only" enforcement gap by transforming `create-agent-room` into 
 ---
 
 ### Story 5.2: Remote PR Anti-Tamper & Bypass Audit Gate (`create-agent-room ci --base <ref>`)
-- **Status:** 📋 Ready
+- **Status:** 🟡 **IN PROGRESS** (Branch `feature/pr-anti-tamper-audit-gate`)
 - **Goal:**
   - Mechanically evaluate the complete pull request diff against the target branch (`--base origin/main` or `GITHUB_BASE_REF`).
   - Detect unauthorized rule weakening or guardrails deletion across the branch history.

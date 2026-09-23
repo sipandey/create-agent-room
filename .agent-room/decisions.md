@@ -916,3 +916,10 @@ before v1.3.0.
 <!-- no-log: regenerated demo.gif + README caption; routine media refresh, no design decision. -->
 
 <!-- no-log: launch playbooks + Marketplace marked done on ROADMAP; routine docs. -->
+
+### 2026-09-23 — remote PR anti-tamper and rule weakening audit gate in CI
+
+**Decision:** integrated `auditPullRequest` as the 6th check stage in `create-agent-room ci` (`pr`), evaluating git PR diffs relative to `--base <ref>` (or auto-detected `GITHUB_BASE_REF` / `CI_MERGE_REQUEST_TARGET_BRANCH_NAME`). The gate detects deletion of `.agent-room/guardrails.json`, rule weakening across `protectedPaths`, `forbiddenActions`, `scopeGuidance`, `importBoundaries`, `scopeBoundaries`, `verifyOnCommit`, and `strictWaivers`, and blocks merge unless authorized via an auditable bypass entry in `.agent-room/guardrails-bypass-log.md` added directly in the PR diff. It also verifies presence of a session log when non-scaffold code files are touched.
+**Why:** autonomous coding agents running in branches or PRs can alter guardrails configuration, lower file/line thresholds, or delete protected paths to bypass pre-commit hooks. Local hooks are ineffective once code is pushed; CI is the authoritative gatekeeper. Enforcing anti-tamper and rule weakening checks in CI ensures all governance loosening is auditable and tracked in Git history with explicit reasons and ticket references.
+**Rejected:** (a) blocking any modification to `guardrails.json` entirely — would prevent legitimate architectural evolution and repo administration; (b) requiring external API checks or third-party webhooks — violates CAR's zero external runtime dependencies constraint; (c) separate standalone command requiring separate CI step — unifying inside `create-agent-room ci` maintains zero friction and consolidated Markdown reporting.
+

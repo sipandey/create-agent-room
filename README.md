@@ -296,6 +296,7 @@ Stop chaining disparate steps in your CI workflows. `create-agent-room ci` runs 
 3. **`lint-sessions`**: Ensures session logs conform to requirements.
 4. **`verify`**: Executes your codebase test suite.
 5. **`eval`**: Runs built-in and custom compliance eval suites.
+6. **`pr`**: Enforces remote PR anti-tamper, detects rule weakening, audits bypass authorizations, and verifies session log presence.
 
 ```yaml
 # .github/workflows/agent-room-ci.yml
@@ -330,6 +331,7 @@ When running in GitHub Actions, passing `--summary` automatically writes an inte
 | `--test-command <cmd>` | Command executed to verify code changes before completing turns (e.g. `"npm test"`) | `init` |
 | `--no-test-command` | Skip pre-stop test verification even if a test suite is detected | `init` |
 | `--fix` | Automatically repair drifted hooks, missing stop hooks, and outdated CI pins | `doctor` |
+| `--base <ref>` | Target base ref (`main`, `origin/main`) for PR anti-tamper and rule weakening audit | `ci` |
 | `--verify`, `--with-verification` | Run verification test suite and embed attestation proof and reviewer checklist | `pr-desc` |
 | `--strict` | Require tests to pass (exit `1` on test failure, warnings, or missing configuration) | `verify`, `pr-desc`, `ci` |
 | `--evals-dir <path>` | Custom eval suites directory (default: `.agent-room/evals`, `evals/custom`) | `eval`, `ci` |
@@ -340,7 +342,9 @@ When running in GitHub Actions, passing `--summary` automatically writes an inte
 | `--skip-eval` | Skip compliance eval suites in CI | `ci` |
 | `--skip-sessions` | Skip session log format linting in CI | `ci` |
 | `--skip-validate` | Skip room structure and schema checks in CI | `ci` |
-| `--only <checks>` | Run only specified checks (comma-separated: `validate,doctor,sessions,verify,eval`) | `ci` |
+| `--skip-pr` | Skip PR anti-tamper, rule weakening, and bypass audit gate in CI | `ci` |
+| `--skip-pr-sessions` | Skip requiring session log for non-scaffold code changes in PR audit | `ci` |
+| `--only <checks>` | Run only specified checks (comma-separated: `validate,doctor,sessions,verify,eval,pr`) | `ci` |
 | `--summary [file]` | Write or append Markdown scorecard to `$GITHUB_STEP_SUMMARY` or custom file | `ci` |
 | `--format <type>` | Output format: `text`, `json`, `csv`, `markdown` | `eval`, `verify`, `metrics`, `ci` |
 | `--output <file>` | Write report, session, or PR description directly to a file path | `session`, `eval`, `verify`, `metrics`, `pr-desc`, `ci` |
@@ -370,7 +374,7 @@ When running in GitHub Actions, passing `--summary` automatically writes an inte
 
 - **Strictly Zero Dependencies:** `create-agent-room` has exactly **0 external runtime dependencies**. It runs entirely on the Node.js standard library (`fs`, `path`, `child_process`). No supply-chain risk.
 - **100% Dogfooded:** This repository runs `create-agent-room` on itself. Every commit and turn is gated by the same stop hooks, pre-commit guardrails, and compliance evals described above.
-- **311 Automated Tests:** Verified across unit, integration, and CLI end-to-end tests on every release.
+- **329 Automated Tests:** Verified across unit, integration, and CLI end-to-end tests on every release.
 
 ---
 

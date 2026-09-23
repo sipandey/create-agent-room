@@ -250,6 +250,12 @@ function parseArgs(argv) {
     } else if (a === '--skip-validate') {
       args['skip-validate'] = true;
       args.skipValidate = true;
+    } else if (a === '--skip-pr' || a === '--skip-pr-audit') {
+      args['skip-pr'] = true;
+      args.skipPr = true;
+    } else if (a === '--skip-pr-sessions') {
+      args['skip-pr-sessions'] = true;
+      args.skipPrSessions = true;
     } else if (a === '--only-verify') {
       args['only-verify'] = true;
       args.onlyVerify = true;
@@ -265,6 +271,19 @@ function parseArgs(argv) {
     } else if (a === '--only-validate') {
       args['only-validate'] = true;
       args.onlyValidate = true;
+    } else if (a === '--only-pr' || a === '--only-pr-audit') {
+      args['only-pr'] = true;
+      args.onlyPr = true;
+    } else if (a === '--base' || a === '--base-ref') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.base = argv[++i];
+      } else {
+        throw new Error('Error: --base option requires a target git ref (e.g. main, origin/main).');
+      }
+    } else if (a.startsWith('--base=')) {
+      args.base = a.slice('--base='.length);
+    } else if (a.startsWith('--base-ref=')) {
+      args.base = a.slice('--base-ref='.length);
     } else if (a === '--only') {
       if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
         args.only = argv[++i];
@@ -310,12 +329,15 @@ Usage:
 
 Options:
   --fix                     Automatically repair drifted hooks, missing stop hooks, and CI pins
+  --base <ref>              PR target base ref (e.g. main, origin/main) for anti-tamper and bypass audit
   --skip-verify             Skip code verification test runner in CI
   --skip-doctor             Skip hook and template drift checks in CI
   --skip-eval               Skip compliance eval suites in CI
   --skip-sessions           Skip session log linting in CI
   --skip-validate           Skip room structure and guardrails schema checks in CI
-  --only <checks>           Run only specified checks (comma-separated: validate,doctor,sessions,verify,eval)
+  --skip-pr                 Skip PR anti-tamper and bypass audit checks in CI
+  --skip-pr-sessions        Skip requiring a session log for code modifications in PR audit
+  --only <checks>           Run only specified checks (comma-separated: validate,doctor,sessions,verify,eval,pr)
   --summary [file]          Write Markdown report to $GITHUB_STEP_SUMMARY or custom file
   --name <name>             Project name used in templates (default: target dir name)
   --new <name>              Session name/topic for session scaffolding
