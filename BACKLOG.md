@@ -9,15 +9,15 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | Epic | Story | Title | Status |
 | :--- | :--- | :--- | :--- |
 | **Epic 1: Shift-Left Certainty** | **1.1** | Pre-Stop Test & Build Verification Gate | ✅ **DONE** (`21f883e`) |
-| | **1.2** | Workspace Stack Auto-Detection for Verification Commands | ✅ **DONE** |
-| | **1.3** | `create-agent-room verify` Subcommand & Pre-Commit Verification Gate | ⏳ Queued |
-| | **1.4** | Blast Radius & Scope Guardrails in `guardrails-check.js` | ⏳ Queued |
-| **Epic 2: Friction-Free Adoption** | **2.1** | `create-agent-room doctor --fix` Auto-Remediation | ⏳ Queued |
-| | **2.2** | Zero-Friction Governance Profiles (`--preset minimal\|standard\|strict`) | ⏳ Queued |
-| | **2.3** | Unified Multi-Agent Sync (`create-agent-room sync --all`) | ⏳ Queued |
-| **Epic 3: Enterprise Governance** | **3.1** | Session Telemetry & Governance Metrics Exporter | ✅ **DONE** |
-| | **3.2** | PR Attestation & Verification Evidence Generator (`pr-desc --verify`) | ✅ **DONE** |
-| | **3.3** | Custom Adopter Compliance Eval Suites (`evals/custom/`) | ⏳ Queued |
+| | **1.2** | Workspace Stack Auto-Detection for Verification Commands | ✅ **DONE** (`9cb6f0f`) |
+| | **1.3** | `create-agent-room verify` Subcommand & Pre-Commit Verification Gate | ✅ **DONE** (`71711cf`) |
+| | **1.4** | Blast Radius & Scope Guardrails in `guardrails-check.js` | ✅ **DONE** (`537708d`) |
+| **Epic 2: Friction-Free Adoption** | **2.1** | `create-agent-room doctor --fix` Auto-Remediation | ✅ **DONE** (`b1ef503`) |
+| | **2.2** | Zero-Friction Governance Profiles (`--preset minimal\|standard\|strict`) | ✅ **DONE** (`d102189`) |
+| | **2.3** | Unified Multi-Agent Sync (`create-agent-room sync --all`) | ✅ **DONE** (`dd82354`) |
+| **Epic 3: Enterprise Governance** | **3.1** | Session Telemetry & Governance Metrics Exporter | ✅ **DONE** (`0d8149c`) |
+| | **3.2** | PR Attestation & Verification Evidence Generator (`pr-desc --verify`) | ✅ **DONE** (`fbca05d`) |
+| | **3.3** | Custom Adopter Compliance Eval Suites (`evals/custom/`) | ✅ **DONE** |
 
 ---
 
@@ -201,9 +201,20 @@ Provide engineering leadership with transparency, metrics, and regression proof 
 ---
 
 ### Story 3.3: Custom Adopter Compliance Eval Suites (`evals/custom/`)
-- **Status:** ⏳ Queued
+- **Status:** ✅ **DONE** (Branch `feature/custom-compliance-eval-suites`)
+- **Summary:**
+  - Expanded `create-agent-room eval` (`lib/eval.js`, `bin/cli.js`) to discover and execute repo-specific custom compliance eval suites from `<target>/.agent-room/evals/`, `<target>/evals/custom/`, and `--evals-dir <dir>` / `--custom-evals <dir>`.
+  - Supports both standalone `*.eval.json` files and fixture subdirectories containing `eval.json`.
+  - Extended evaluation with new case types: `verify` (executing project test suite via `verifyProject`) and `command` (running arbitrary shell assertions with exit code inspection).
+  - Added granular execution controls: `--custom-only` to run only custom adopter suites, `--builtin-only` to run only built-in compliance evals, and default combined execution.
+  - Multi-format compliance reports (`text`, `json`, `csv`) report unified pass/fail totals alongside a distinct `summary.builtin` and `summary.custom` breakdown.
+  - Added 7 new unit tests in `test/eval.test.js` and 2 in `test/cli.test.js` (total repo tests: 255 passing).
 - **Goal:**
   - Allow organizations to write repo-specific compliance evals executed by `create-agent-room eval`.
 - **Acceptance Criteria:**
   1. Discovers and runs tests in `<repo>/.agent-room/evals/`.
   2. Reports combined compliance scores in CI.
+
+> [!NOTE]
+> **Epic 3: Enterprise Governance, Telemetry & Compliance is now 100% COMPLETE!** (Story 3.1 ✅, Story 3.2 ✅, Story 3.3 ✅)
+

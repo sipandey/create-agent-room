@@ -152,6 +152,21 @@ test('parseArgs: parses --verify and --with-verification flags', () => {
   assert.strictEqual(parseArgs(['--with-verification']).verify, true);
 });
 
+test('parseArgs: parses custom eval options', () => {
+  const res1 = parseArgs(['--evals-dir', 'custom-dir', '--custom-only']);
+  assert.strictEqual(res1['evals-dir'], 'custom-dir');
+  assert.strictEqual(res1['custom-only'], true);
+
+  const res2 = parseArgs(['--custom-evals=/path/to/evals', '--builtin-only']);
+  assert.strictEqual(res2['evals-dir'], '/path/to/evals');
+  assert.strictEqual(res2['builtin-only'], true);
+});
+
+test('parseArgs: throws on missing evals-dir argument', () => {
+  assert.throws(() => parseArgs(['--evals-dir']), /Error: --evals-dir option requires a directory path/);
+  assert.throws(() => parseArgs(['--custom-evals']), /Error: --custom-evals option requires a directory path/);
+});
+
 // End-to-end (spawns the real CLI) rather than just parseArgs, since the
 // actual contract is "prints the version and exits 0" - behavior that
 // lives in main(), not the argument parser.

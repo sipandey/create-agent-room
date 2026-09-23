@@ -389,20 +389,32 @@ when you just want to know what's wrong before deciding whether to fix it.
 
 ### 8. `eval`
 
-Runs the **packaged compliance regression pack** shipped with the CLI —
-deterministic scenarios for close-the-loop, `lint-sessions`, and `validate`
-(no LLM, no API keys). Useful in CI to confirm governance checks still
-behave as intended after upgrades.
+Runs the **compliance regression harness** — combining built-in deterministic scenarios for close-the-loop, `lint-sessions`, and `validate` with **custom adopter eval suites** discovered from `<target>/.agent-room/evals/`, `<target>/evals/custom/`, or an explicit `--evals-dir <dir>`. Supports standalone `*.eval.json` files and fixture subdirectories with `eval.json`. In addition to built-in checks, custom evals can execute `command` (arbitrary shell commands) and `verify` (project verification test runner) case types.
 
 ```bash
+# Run all compliance evals (builtin + custom)
 create-agent-room eval
-create-agent-room eval --format json --output compliance-report.json
+
+# Run only custom adopter evals
+create-agent-room eval . --custom-only
+
+# Run evals from a custom directory
+create-agent-room eval . --evals-dir ./custom-evals
+
+# Filter by suite name
 create-agent-room eval --suite close-the-loop
+
+# Machine-readable reports for CI/CD dashboards
+create-agent-room eval --format json --output compliance-report.json
+create-agent-room eval --format csv --output compliance-report.csv
 ```
 
 - Exit code `1` if any case fails
 - `--format text|json|csv` (default: `text`)
-- `--suite close-the-loop|lint-sessions|validate|all` (default: `all`)
+- `--evals-dir <path>` or `--custom-evals <path>`: custom eval suites directory (default: `.agent-room/evals`, `evals/custom`)
+- `--custom-only`: execute only custom adopter eval suites
+- `--builtin-only`: execute only built-in compliance eval suites
+- `--suite <name>`: eval suite filter (e.g. `close-the-loop`, `lint-sessions`, `validate`, or custom suite name)
 
 ---
 
@@ -455,6 +467,9 @@ and examples: [docs/github-action.md](docs/github-action.md).
 | `--verify, --with-verification` | `pr-desc` only — run verification test suite and embed attestation proof and reviewer checklist                                                                                  |
 | `--strict`                 | `verify`, `pr-desc` — require tests to pass (exit `1` on test failure or missing configuration)                                                                                    |
 | `--fix`                    | `doctor` only — automatically remediate detected configuration issues, missing files, and template drift                                                                          |
+| `--evals-dir <path>`       | `eval` only — custom eval suites directory (default: `.agent-room/evals`, `evals/custom`)                                                                                        |
+| `--custom-only`            | `eval` only — run only custom adopter compliance evals                                                                                                                            |
+| `--builtin-only`           | `eval` only — run only packaged built-in compliance evals                                                                                                                         |
 | `--suite <name>`           | `eval` only — `close-the-loop`, `lint-sessions`, `validate`, or `all` (default: `all`)                                                                                             |
 | `--verbose`                | Print detailed stack traces on failure                                                                                                                                            |
 | `-y, --yes`                | Skip all prompts, use defaults                                                                                                                                                    |                                |
