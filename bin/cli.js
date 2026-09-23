@@ -144,6 +144,8 @@ function parseArgs(argv) {
       args.profile = args.preset;
     } else if (a === '--strict') {
       args.strict = true;
+    } else if (a === '--verify' || a === '--with-verification') {
+      args.verify = true;
     } else if (a === '--all') {
       args.all = true;
     } else if (a === '--fix') {
@@ -203,8 +205,9 @@ Options:
   --force                   Overwrite existing files instead of skipping them
   --dry-run                 Print what init would create/skip; write nothing to disk
   --check, -c               Check if mirrored files are out of sync without writing changes
-  --format <text|json|csv>  eval output format (default: text)
-  --output <file>           Write eval report to a file (eval command)
+  --format <text|json|csv|markdown> Output format (eval, verify, metrics)
+  --output <file>           Write report or PR description to a file (eval, verify, metrics, pr-desc)
+  --verify, --with-verification Execute verification test suite and embed attestation in PR description
   --suite <name>            eval suite filter: close-the-loop, lint-sessions, validate, all
   --verbose                 Print detailed stack traces on failure
   --write, -w               Save generated PR description to .agent-room/pr-description.md
@@ -229,9 +232,13 @@ Examples:
   create-agent-room sync . --tools cursor,copilot
   create-agent-room sync . --check
   create-agent-room metrics .
+  create-agent-room metrics . --format json
   create-agent-room validate .
   create-agent-room lint-sessions .
+  create-agent-room verify .
   create-agent-room pr-desc . --write
+  create-agent-room pr-desc . --verify --write
+  create-agent-room pr-desc . --verify --output pr.md
   create-agent-room doctor .
   create-agent-room doctor . --fix
   create-agent-room eval

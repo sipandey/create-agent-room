@@ -16,7 +16,7 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | | **2.2** | Zero-Friction Governance Profiles (`--preset minimal\|standard\|strict`) | ⏳ Queued |
 | | **2.3** | Unified Multi-Agent Sync (`create-agent-room sync --all`) | ⏳ Queued |
 | **Epic 3: Enterprise Governance** | **3.1** | Session Telemetry & Governance Metrics Exporter | ✅ **DONE** |
-| | **3.2** | PR Attestation & Verification Evidence Generator (`pr-desc --verify`) | ⏳ Queued |
+| | **3.2** | PR Attestation & Verification Evidence Generator (`pr-desc --verify`) | ✅ **DONE** |
 | | **3.3** | Custom Adopter Compliance Eval Suites (`evals/custom/`) | ⏳ Queued |
 
 ---
@@ -184,7 +184,14 @@ Provide engineering leadership with transparency, metrics, and regression proof 
 ---
 
 ### Story 3.2: PR Attestation & Verification Evidence Generator (`pr-desc --verify`)
-- **Status:** ⏳ Queued
+- **Status:** ✅ **DONE**
+- **Summary:**
+  - Added `--verify` (alias `--with-verification`) to `create-agent-room pr-desc` (`lib/pr.js`, `bin/cli.js`), automatically executing `verifyProject` and embedding verification attestation proofs with execution status, exit code, duration, ISO timestamp, and collapsible test output.
+  - Implemented `generateComplianceChecklist` pre-populating an interactive markdown checklist verifying automated test results, architectural documentation, scope containment, and session log recording.
+  - Implemented guardrail compliance attestation checking `.agent-room/guardrails-bypass-log.md` and decisions linking from `.agent-room/decisions.md`.
+  - Added `--output <file>` option to write generated PR descriptions to custom destination paths.
+  - Added `--strict` exit code 1 handling on test failure under `--verify`.
+  - Added 6 new unit tests in `test/pr.test.js` and 1 in `test/cli.test.js` (total repo tests: 253).
 - **Goal:**
   - Automatically incorporate test verification output and decision logs into PR descriptions.
 - **Acceptance Criteria:**
