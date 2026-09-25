@@ -66,6 +66,7 @@ Before formulating commits:
 2. **Verify active branch**:
    - Check `git branch --show-current`.
    - Ensure changes are on a dedicated feature or fix branch (`feature/...`, `fix/...`), never directly on `main` or `master`.
+   - Ensure the branch was cut from an up-to-date `main` (`git checkout main && git pull origin main && git checkout -b feature/<name>`), never branched off an unmerged or pre-squashed local feature branch.
 3. **Verify author identity**:
    - Run `git config user.name && git config user.email`.
    - Ensure commits will be recorded under the repository's authorized user identity (per `AGENTS.md`).

@@ -23,6 +23,7 @@ Never claim a phase is complete without executing the phase's automated verifica
 When given an implementation plan path:
 1. **Verify active branch**:
    - Check `git branch --show-current`. Ensure you are on a dedicated feature or fix branch (`feature/...`, `fix/...`), never directly on `main` or `master`.
+   - Ensure the branch was cut from an up-to-date `main` (`git checkout main && git pull origin main && git checkout -b feature/<name>`). Never branch off an unmerged or pre-squashed local feature branch.
 2. **Read the plan completely**:
    - Inspect all phases and check for existing checkmarks (`- [x]`).
    - Read all files mentioned in the plan FULLY into context.
