@@ -34,6 +34,12 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | **Epic 8: Centralized Policy Distribution & Monorepo Governance** | **8.1** | Remote Policy Distribution & Corporate Governance Presets (`init --preset https://...`) | 📋 Ready |
 | | **8.2** | Monorepo Multi-Package Boundary Enforcement (nested `.agent-room` scopes) | 📋 Ready |
 | | **8.3** | Centralized Compliance Drift & Remote Policy Synchronizer (`doctor --upstream`) | 📋 Ready |
+| **Epic 9: Research → Plan → Implement (RPI) Streamlined Execution** | **9.1** | Core RPI Skills Suite (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`) | 📋 Ready |
+| | **9.2** | Standardized Artifact Lifecycle (`docs/research/`, `docs/plans/`, frontmatter schemas) | 📋 Ready |
+| | **9.3** | RPI Routing in Workflow Classifier & Universal `AGENTS.md` | 📋 Ready |
+| | **9.4** | Multi-Agent Adapters & Goose Recipe Integration (`--tools goose`, Claude commands, Cursor rules) | 📋 Ready |
+| | **9.5** | Mechanical Seatbelts for RPI Execution (Phased checkbox tracking, Stop-Hook gate, Pre-Commit blast radius) | 📋 Ready |
+| | **9.6** | Retire Redundant Legacy Skills (`brainstorming`, `verification-before-completion`) & Orphan Purging | 📋 Ready |
 
 ---
 
@@ -548,6 +554,117 @@ Empower engineering organizations to distribute, synchronize, and enforce standa
      - Updates shared skill packs and security rules while preserving workspace-specific custom rules.
   3. CI drift gate:
      - Remote CI can flag outdated corporate policies or unaligned security baselines.
+
+---
+
+## Epic 9: Research → Plan → Implement (RPI) Streamlined Execution Framework
+
+Bring structured, disciplined execution to AI coding agents across all CAR-supported tools (Claude Code, Cursor, Windsurf, Cline, Codex, Copilot, and Goose) by instituting the Research → Plan → Implement (RPI) paradigm. Prevent cognitive drift, hallucinated architectural assumptions, monolithic session collapse, and unverified implementation passes through isolated phases, standardized on-disk artifacts, and mechanical seatbelts.
+
+### Story 9.1: Core RPI Guidance & Skill Suite (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`)
+- **Status:** 📋 Ready
+- **Goal:**
+  - Author and standardize the four core RPI procedure skills in `.agent-room/skills/` with clear operational gates, step-by-step instructions, and actionable templates.
+- **Acceptance Criteria:**
+  1. `research-codebase.md` (Phase 1):
+     - Strict read-only gate: Prohibits editing code, proposing new architectures, or offering subjective critique.
+     - Mandates query decomposition into 3 focused subroutines: `find_files` (codebase locator), `analyze_code` (codebase analyzer), and `find_patterns` (pattern finder).
+     - Instructs agents to capture git metadata (`date -Iseconds`, `git rev-parse HEAD`, `git branch --show-current`, repo name) and write a structured technical map to `docs/research/YYYY-MM-DD-HHmm-<topic>.md`.
+  2. `writing-plans.md` (Phase 2 - Updated):
+     - Ingests the `docs/research/` document as the single source of truth before planning.
+     - Prompts the agent to ask clarifying questions (one at a time, multiple-choice preferred) and propose 2-3 architectural approaches with trade-offs.
+     - Enforces phased plan structure with strict dependency ordering, file:line references, exact code additions/removals, "What We're NOT Doing", rollback plan, and dual success criteria: Automated Verification (`npm test`, `npm run lint`) and Manual Verification.
+     - Outputs to `docs/plans/YYYY-MM-DD-HHmm-<topic>.md`.
+  3. `iterate-plan.md` (Phase 2b):
+     - Provides a surgical protocol to update existing plans based on human feedback without re-running full research from scratch.
+     - Researches only what changed, confirms understanding before modifying, and preserves undisturbed phases.
+  4. `implement-plan.md` (Phase 3):
+     - Enforces mechanical, "intentionally boring" execution phase-by-phase.
+     - Reads the plan file from `docs/plans/`, executes the active phase, runs the automated verification command, and updates checkboxes (`- [ ]` -> `- [x]`) directly on disk in the plan file.
+     - Provides context window compaction recovery: agents pick up from the first unchecked item (`- [ ]`) without re-searching what is already documented.
+
+---
+
+### Story 9.2: Standardized Artifact Lifecycle (`docs/research/`, `docs/plans/`, frontmatter schemas)
+- **Status:** 📋 Ready
+- **Goal:**
+  - Establish predictable on-disk artifact directories, standard frontmatter schemas, and validation for research documents and implementation plans.
+- **Acceptance Criteria:**
+  1. Scaffolding in `init`:
+     - Creates `docs/research/` alongside `docs/plans/` during repository initialization.
+     - Adds starter `.gitkeep` or minimal README explaining artifact lifecycle.
+  2. Frontmatter Schemas:
+     - Research docs: YAML frontmatter with `date`, `git_commit`, `branch`, `repository`, `topic`, `tags`, and `status`.
+     - Plan docs: YAML frontmatter with `date`, `research_doc`, `branch`, `status`, `phases_total`, and `phases_completed`.
+  3. Linting & Validation:
+     - `create-agent-room validate` checks that `docs/research/` and `docs/plans/` follow standard naming conventions and contain valid YAML frontmatter headers.
+
+---
+
+### Story 9.3: RPI Routing in Workflow Classifier & Universal `AGENTS.md`
+- **Status:** 📋 Ready
+- **Goal:**
+  - Formally wire RPI into the CAR workflow taxonomy and universal agent entrance instructions so agents automatically know when and how to invoke RPI.
+- **Acceptance Criteria:**
+  1. Update `workflow-classifier.md`:
+     - Formally route `Feature`, `Product`, and complex multi-file `Enhancement` or `Refactor` tasks into the RPI pipeline.
+     - Explicitly define that simple bug fixes follow the lightweight Bug Flow (reproduce -> diagnose -> test -> fix), skipping full RPI.
+  2. Update `AGENTS.md.tmpl` and `AGENTS.md`:
+     - Update "The default workflow" and "The First 5 Minutes" to mandate RPI for non-trivial work: Research first (`docs/research/`) -> Plan & Iterate (`docs/plans/`) -> Implement with live checkbox tracking (`- [x]`) -> Close the loop.
+  3. Profile awareness:
+     - Minimal profile preserves lean token footprint while standard and strict profiles supply full procedural RPI guidance.
+
+---
+
+### Story 9.4: Multi-Agent Adapters & Goose Recipe Integration (`--tools goose`, Claude commands, Cursor rules)
+- **Status:** 📋 Ready
+- **Goal:**
+  - Provide native ergonomic access to RPI across all supported AI coding tools, including Claude Code, Cursor, Windsurf, Cline, Codex, Copilot, and add first-class Goose recipe support.
+- **Acceptance Criteria:**
+  1. Claude Code Adapter:
+     - Mirrors RPI skills to `.claude/skills/` (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`).
+     - Provides custom slash command shortcuts (`/research`, `/plan`, `/implement`, `/iterate`).
+  2. Cursor Adapter:
+     - Injects RPI guidelines into `.cursor/rules/agent-room.mdc` so Cursor's agent mode follows the phased research-plan-implement sequence.
+  3. Goose Tool Adapter (`create-agent-room init --tools goose` or `sync`):
+     - Introduces Goose as a supported tool adapter in `lib/init.js` and `lib/sync.js`.
+     - Generates Goose recipes in `.config/goose/recipes/` or local `recipes/`: `rpi-research.yaml`, `rpi-plan.yaml`, `rpi-implement.yaml`, `rpi-iterate.yaml` alongside subrecipes (`rpi-codebase-locator.yaml`, `rpi-codebase-analyzer.yaml`, `rpi-pattern-finder.yaml`).
+     - Ensures Goose recipes point to CAR's `docs/research/` and `docs/plans/` paths and respect repository guardrails.
+
+---
+
+### Story 9.5: Mechanical Seatbelts for RPI Execution (Phased checkbox tracking, Stop-Hook gate, Pre-Commit blast radius)
+- **Status:** 📋 Ready
+- **Goal:**
+  - Back the RPI methodology with CAR's signature runtime mechanical enforcement so agents cannot quietly abandon the process mid-stream.
+- **Acceptance Criteria:**
+  1. Stop Hook Phase Verification (`close-the-loop-check.js`):
+     - When an active plan file exists in `docs/plans/` and files are modified, verify that the automated verification command for the completed phase passed before allowing the agent to end its turn.
+  2. Pre-Commit Blast Radius & Plan Gate (`guardrails-check.js`):
+     - If staged changes touch >5 non-scaffold files across multiple directories, verify that a corresponding implementation plan exists under `docs/plans/` or require an explicit waiver log.
+  3. State Checkpoint Resiliency:
+     - Plan parsing utility verifying disk-backed checkbox updates (`- [x]`) so agents surviving context compaction or fresh session spawns pick up exactly where execution left off without state loss.
+
+---
+
+### Story 9.6: Retire Redundant Legacy Skills (`brainstorming`, `verification-before-completion`) & Orphan Purging
+- **Status:** 📋 Ready
+- **Goal:**
+  - Cleanly deprecate and unregister legacy procedural skills that are now superseded by the RPI pipeline, minimizing token bloat in LLM context windows and preventing cognitive ambiguity across tool adapters.
+- **Acceptance Criteria:**
+  1. Unregister Superseded Skills in `lib/skill.js`:
+     - Update `CORE_SKILL_FILES` to replace `brainstorming.md` and `verification-before-completion.md` with `research-codebase.md`, `writing-plans.md`, `implement-plan.md`, and `iterate-plan.md`.
+     - `brainstorming.md` is retired because its exploratory and design goals are now strictly partitioned between `research-codebase.md` (read-only factual discovery) and `writing-plans.md` (structured Q&A and trade-off exploration).
+     - `verification-before-completion.md` is retired because per-phase automated test execution is baked directly into `implement-plan.md` as mandatory checkboxes, and verified at turn boundaries by `close-the-loop-check.js`.
+  2. Template & Core Skill Clean-Up:
+     - Remove `brainstorming.md` and `verification-before-completion.md` from `templates/base/.agent-room/skills/`.
+     - Ensure `init` does not scaffold deprecated skills into new repositories.
+  3. Orphan Detection & Automated Cleanup in `sync` and `doctor`:
+     - `create-agent-room sync --all` and `doctor --fix` detect deprecated core skills lingering in `.agent-room/skills/` or mirrored in `.claude/skills/brainstorming/` and cleanly remove or archive them.
+  4. Documentation & Pointers Update:
+     - Update references in `AGENTS.md`, `templates/base/AGENTS.md.tmpl`, `workflow-classifier.md`, and `CAPABILITIES.md` to reference the modern RPI skill suite instead of deprecated skills.
+
+
 
 
 
