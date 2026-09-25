@@ -6,7 +6,7 @@ Read [`AGENTS.md`](../AGENTS.md) and everything under
 - `.agent-room/principles.md` — how to get reliable output from the model.
 - `.agent-room/workflow-classifier.md` — size the process to the work
   (Bug / Enhancement / Feature / Product).
-- `.agent-room/skills/` — brainstorming, closing-the-loop, code-review, implement-plan, integration-testing, iterate-plan, release-management, research-codebase, systematic-debugging, test-driven-development, verification-before-completion, writing-plans. Follow these as procedures,
+- `.agent-room/skills/` — brainstorming, closing-the-loop, code-review, commit-changes, implement-plan, integration-testing, iterate-plan, release-management, research-codebase, systematic-debugging, test-driven-development, verification-before-completion, writing-plans. Follow these as procedures,
   not suggestions.
 - `.agent-room/anti-patterns.md` and `.agent-room/decisions.md` — check
   before repeating a past mistake; append after a new one or a notable
