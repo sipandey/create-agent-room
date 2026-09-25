@@ -15,6 +15,7 @@ const { runVerify } = require('../lib/verify');
 const { runSessionCli } = require('../lib/session');
 const { runSkillCli } = require('../lib/skill');
 const { runCiCli } = require('../lib/ci');
+const { runHookCli } = require('../lib/hook');
 
 function parseArgs(argv) {
   const args = { _: [] };
@@ -335,6 +336,16 @@ function parseArgs(argv) {
     } else if (a.startsWith('--pr-number=')) {
       args.pr = parseInt(a.slice('--pr-number='.length), 10);
       args.prNumber = args.pr;
+    } else if (a === '--hooks' || a === '--hook') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.hooks = argv[++i];
+      } else {
+        throw new Error('Error: --hooks option requires a comma-separated list of hook names.');
+      }
+    } else if (a.startsWith('--hooks=')) {
+      args.hooks = a.slice('--hooks='.length);
+    } else if (a.startsWith('--hook=')) {
+      args.hooks = a.slice('--hook='.length);
     } else if (a.startsWith('-')) {
       throw new Error(`Error: Unknown option: ${a}`);
     } else {
@@ -361,8 +372,10 @@ Usage:
   create-agent-room session [target-dir] [name] [options]
   create-agent-room skill [list|add|remove] [packs...] [options]
   create-agent-room ci [target-dir] [options]
+  create-agent-room hook [install|status|uninstall] [target-dir] [options]
 
 Options:
+  --hooks <list>            Target git hooks (pre-commit, pre-push, post-commit, post-checkout, post-merge)
   --fix                     Automatically repair drifted hooks, missing stop hooks, and CI pins
   --base <ref>              PR target base ref (e.g. main, origin/main) for anti-tamper and bypass audit
   --skip-verify             Skip code verification test runner in CI
@@ -543,6 +556,21 @@ async function main() {
     }
   } else if (command === 'ci') {
     const exitCode = await runCiCli(target, args);
+    if (exitCode) {
+      process.exitCode = exitCode;
+    }
+  } else if (command === 'hook') {
+    const action = args._[0] || 'status';
+    let hookTarget = process.cwd();
+    let restArgs = args._.slice(1);
+    if (restArgs.length > 0) {
+      const candidate = restArgs[0];
+      if (candidate === '.' || (fs.existsSync(candidate) && fs.statSync(candidate).isDirectory())) {
+        hookTarget = path.resolve(candidate);
+        restArgs = restArgs.slice(1);
+      }
+    }
+    const exitCode = runHookCli(hookTarget, action, restArgs, args);
     if (exitCode) {
       process.exitCode = exitCode;
     }

@@ -332,6 +332,25 @@ See [docs/github-action.md](docs/github-action.md) for full action documentation
 
 ---
 
+### 7. Ambient Git Lifecycle & Hook Manager (`hook`)
+Never worry about remembering CAR commands. `create-agent-room hook` seamlessly embeds CAR governance into standard `git` lifecycle hooks without clobbering existing developer hooks (Husky, Lefthook, or custom shell scripts):
+
+```bash
+# Inspect all git hooks, executable permissions, and drift
+create-agent-room hook status
+
+# Install pre-commit, pre-push, post-commit, post-checkout, and post-merge hooks
+create-agent-room hook install --all
+
+# Non-destructively remove CAR hooks while preserving all user scripts
+create-agent-room hook uninstall --all
+```
+
+- **Non-Destructive Chaining:** Existing user scripts and tools like Husky are safely preserved; CAR embeds an isolated delimited block (`# --- create-agent-room hook: <name> ---`).
+- **Supports Custom Hooks Directory:** Automatically detects and respects `git config core.hooksPath` (e.g. `.husky/`, `.agent-room/hooks/git/`).
+
+---
+
 ## ⚙️ Complete CLI Options Reference
 
 | Flag | Description | Applicable Commands |
@@ -339,7 +358,8 @@ See [docs/github-action.md](docs/github-action.md) for full action documentation
 | `--preset <name>` | Governance strictness profile: `minimal`, `standard`, `strict` (default: `minimal`) | `init` |
 | `--profile <name>` | Interchangeable alias for `--preset` | `init` |
 | `--tools <list>` | Comma-separated tools: `claude,cursor,windsurf,cline,codex,copilot,git,all,none` | `init`, `sync` |
-| `--all` | Sync rules and skills across all supported tools simultaneously | `sync` |
+| `--all` | Sync rules across all tools simultaneously, or manage all git hooks | `sync`, `hook` |
+| `--hooks <list>` | Comma-separated git hooks (`pre-commit,pre-push,post-commit,post-checkout,post-merge`) | `hook` |
 | `--test-command <cmd>` | Command executed to verify code changes before completing turns (e.g. `"npm test"`) | `init` |
 | `--no-test-command` | Skip pre-stop test verification even if a test suite is detected | `init` |
 | `--fix` | Automatically repair drifted hooks, missing stop hooks, and outdated CI pins | `doctor` |
@@ -373,7 +393,7 @@ See [docs/github-action.md](docs/github-action.md) for full action documentation
 | `--json` | Output session or skill report in structured JSON format | `session`, `skill`, `ci` |
 | `--no-sync` | Skip auto-syncing skill files and tool rules after add/remove | `skill` |
 | `--git` | Run `git init` and create an initial commit in target directory | `init` |
-| `--force` | Overwrite existing files instead of skipping them | `init`, `sync`, `skill` |
+| `--force` | Overwrite existing files instead of skipping them, or force hook installation | `init`, `sync`, `skill`, `hook` |
 | `--dry-run` | Preview what would be created or outputted without writing to disk | `init`, `session`, `skill` |
 | `--check`, `-c` | Check if mirrored files are out of sync without writing changes (CI-friendly) | `sync` |
 | `--skill-packs <list>` | Add built-in (`testing`, `security`, `release`, etc.) or remote Git skill packs | `init` |

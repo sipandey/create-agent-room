@@ -274,6 +274,19 @@ test('parseArgs: throws on missing --github-token and --pr values', () => {
   assert.throws(() => parseArgs(['ci', '--pr']), /Error: --pr option requires a pull request number/);
 });
 
+test('parseArgs: parses hook flags --hooks, --hook, --all', () => {
+  const result1 = parseArgs(['hook', 'install', '--hooks', 'pre-commit,pre-push']);
+  assert.strictEqual(result1.hooks, 'pre-commit,pre-push');
+
+  const result2 = parseArgs(['hook', 'install', '--hook=post-commit', '--all']);
+  assert.strictEqual(result2.hooks, 'post-commit');
+  assert.strictEqual(result2.all, true);
+});
+
+test('parseArgs: throws on missing --hooks value', () => {
+  assert.throws(() => parseArgs(['hook', 'install', '--hooks']), /Error: --hooks option requires a comma-separated list of hook names/);
+});
+
 // End-to-end (spawns the real CLI) rather than just parseArgs, since the
 // actual contract is "prints the version and exits 0" - behavior that
 // lives in main(), not the argument parser.
