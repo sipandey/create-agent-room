@@ -22,8 +22,8 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | | **4.2** | Automated Session Logging & Handoff CLI (`create-agent-room session`) | ✅ **DONE** (`89097a6`) |
 | | **4.3** | Dynamic Skill Pack Management (`create-agent-room skill [list\|add\|remove]`) | ✅ **DONE** (`6eb2fac`) |
 | **Epic 5: Enterprise CI/CD Governance** | **5.1** | `create-agent-room ci` Unified Headless CI Runner | ✅ **DONE** (`7181329`) |
-| | **5.2** | Remote PR Anti-Tamper & Bypass Audit Gate (`ci --base`) | 🟡 **IN PROGRESS** |
-| | **5.3** | Automated PR Compliance Reporter & GitHub Action | 📋 Ready |
+| | **5.2** | Remote PR Anti-Tamper & Bypass Audit Gate (`ci --base`) | ✅ **DONE** (`5427172`) |
+| | **5.3** | Automated PR Compliance Reporter & GitHub Action | ✅ **DONE** (`13cae8f`) |
 
 ---
 
@@ -347,12 +347,18 @@ Close the "local-only" enforcement gap by transforming `create-agent-room` into 
   2. Enforces presence of session log for feature/bugfix branches.
   3. Fails CI if unapproved bypasses are present in the PR.
 
----
-
 ### Story 5.3: Automated PR Compliance Reporter & GitHub Action (`agent-room-action`)
-- **Status:** 🟡 **IN PROGRESS** (Branch `feature/pr-compliance-action-reporter`)
+- **Status:** ✅ **DONE** (Merged into `main` via PR #18, Commit `13cae8f`)
+- **Summary:**
+  - Implemented zero-dependency `lib/pr-comment.js` using Node.js 18+ standard library global `fetch`.
+  - Automatically posts and updates sticky PR compliance scorecards in-place via marker `<!-- agent-room-pr-comment -->`, preventing comment notification churn.
+  - Automatically resolves PR context from CLI flags (`--github-token`, `--pr`), GitHub Actions event files (`GITHUB_EVENT_PATH`, `GITHUB_REPOSITORY`), GitLab CI (`CI_MERGE_REQUEST_IID`), or git remote URL.
+  - Integrated into `create-agent-room ci` with flags `--comment` / `--pr-comment`, `--github-token`, and `--pr`.
+  - Modernized official composite GitHub Action in `action.yml` supporting modern inputs (`target-dir`, `base`, `strict`, `comment`, `summary`, `github-token`, `skip`, `only`, `version`, `node-version`) while preserving 100% backward-compatibility for legacy `checks`.
+  - Fully documented in `docs/github-action.md` and `README.md`.
+  - 100% test coverage with 341 tests passing across Node 22.x & 24.x CI matrix.
 - **Goal:**
-  - Create a reusable composite GitHub Action / workflow template (`uses: sipandey/agent-room-action@v1`).
+  - Create a reusable composite GitHub Action / workflow template (`uses: sipandey/create-agent-room@v2`).
   - Automatically posts or updates an interactive PR compliance card with verification outcomes, guardrail status, and session audits.
 - **Acceptance Criteria:**
   1. Reusable GitHub Action packaged and documented.
