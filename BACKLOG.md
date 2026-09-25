@@ -24,6 +24,16 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | **Epic 5: Enterprise CI/CD Governance** | **5.1** | `create-agent-room ci` Unified Headless CI Runner | ✅ **DONE** (`7181329`) |
 | | **5.2** | Remote PR Anti-Tamper & Bypass Audit Gate (`ci --base`) | ✅ **DONE** (`5427172`) |
 | | **5.3** | Automated PR Compliance Reporter & GitHub Action | ✅ **DONE** (`13cae8f`) |
+| **Epic 6: Ambient Git & Invisible Governance** | **6.1** | Git Hook Manager CLI (`create-agent-room hook [install\|status\|uninstall]`) | 📋 Ready |
+| | **6.2** | Pre-Push Local CI Gate (`pre-push` -> `create-agent-room ci`) | 📋 Ready |
+| | **6.3** | Ambient Session Tracking & Auto-Handoff (`post-commit` -> auto session) | 📋 Ready |
+| | **6.4** | Cross-Branch Auto-Sync & Drift Healing (`post-checkout` & `post-merge`) | 📋 Ready |
+| **Epic 7: Lightweight Terminal UI & Observability Dashboard** | **7.1** | Interactive Room Dashboard (`create-agent-room ui` / `dashboard`) | 📋 Ready |
+| | **7.2** | Live Session & Handoff Inspector (`create-agent-room session --watch`) | 📋 Ready |
+| | **7.3** | Interactive Governance Switcher & Skill Explorer (`create-agent-room configure`) | 📋 Ready |
+| **Epic 8: Centralized Policy Distribution & Monorepo Governance** | **8.1** | Remote Policy Distribution & Corporate Governance Presets (`init --preset https://...`) | 📋 Ready |
+| | **8.2** | Monorepo Multi-Package Boundary Enforcement (nested `.agent-room` scopes) | 📋 Ready |
+| | **8.3** | Centralized Compliance Drift & Remote Policy Synchronizer (`doctor --upstream`) | 📋 Ready |
 
 ---
 
@@ -363,6 +373,167 @@ Close the "local-only" enforcement gap by transforming `create-agent-room` into 
 - **Acceptance Criteria:**
   1. Reusable GitHub Action packaged and documented.
   2. Automatic sticky PR comment updates with audit summary.
+
+---
+
+## Epic 6: Ambient Git & Invisible Lifecycle Governance
+
+Eliminate cognitive friction by embedding `create-agent-room` commands directly into standard `git` lifecycle hooks. AI agents and engineers just use native git commands (`commit`, `push`, `checkout`, `pull`), while governance, session recording, rule synchronization, and CI pre-flight checks run invisibly in the background.
+
+### Story 6.1: Git Hook Manager CLI (`create-agent-room hook [install|status|uninstall]`)
+- **Status:** 📋 Ready
+- **Goal:**
+  - Provide a first-class CLI command and programmatic API to install, inspect, and remove CAR git lifecycle hooks without clobbering existing developer hooks.
+- **Acceptance Criteria:**
+  1. `create-agent-room hook install [target] [options]`:
+     - Installs or updates git hooks in `.git/hooks/` (or configured `core.hooksPath`).
+     - Detects existing hooks (including Husky, Lefthook, or custom shell scripts); chains execution non-destructively by prepending/appending without overwriting user scripts.
+     - Ensures proper executable permissions (`chmod +x` or `0o755`).
+     - Supports `--hooks <list>` (e.g. `pre-commit,pre-push,post-commit,post-checkout,post-merge`) and `--all`.
+  2. `create-agent-room hook status [target]`:
+     - Inspects all supported git hooks in the target repository.
+     - Reports whether CAR hooks are active, executable, drifted from templates, or missing.
+     - Supports `--json` for automated CI/environment audits.
+  3. `create-agent-room hook uninstall [target]`:
+     - Safely removes CAR hook snippets or files while leaving user-defined hooks intact.
+  4. Integration with existing tooling:
+     - `create-agent-room init --tools git` invokes `hook install` automatically.
+     - `create-agent-room doctor` checks hook status and `doctor --fix` repairs drifted or missing hooks.
+  5. Zero external dependencies: pure Node.js standard library implementation.
+
+---
+
+### Story 6.2: Pre-Push Local CI Gate (`pre-push` -> `create-agent-room ci`)
+- **Status:** 📋 Ready
+- **Goal:**
+  - Run the unified headless CI runner locally before `git push` transmits code to remote remotes, guaranteeing that PR anti-tamper, missing session logs, and test regressions are caught in milliseconds rather than waiting for remote CI runners.
+- **Acceptance Criteria:**
+  1. Installs `.git/hooks/pre-push` executing `create-agent-room ci --base <upstream>`.
+  2. Automatically detects upstream tracking branch or defaults to `origin/main` / `origin/master`.
+  3. If tests fail, rule weakening is unapproved, or session logs are missing, intercepts the push and outputs actionable terminal remediation steps.
+  4. Supports fast bypass mechanisms: `git push --no-verify` or `CAR_SKIP_HOOK=1` / `CAR_SKIP_PRE_PUSH=1`.
+  5. Configurable in `.agent-room.json` (`hooks.prePush: { "enabled": true, "strict": false, "skip": ["eval"] }`).
+
+---
+
+### Story 6.3: Ambient Session Tracking & Auto-Handoff (`post-commit` -> auto session)
+- **Status:** 📋 Ready
+- **Goal:**
+  - Automatically record commits, diffs, and decision references to the active session log on `git commit`, eliminating the need for agents or developers to manually scaffold session files.
+- **Acceptance Criteria:**
+  1. Installs `.git/hooks/post-commit` running ambient session tracking.
+  2. If an active session log exists for the current branch/date, appends the new commit hash, message, and touched files automatically.
+  3. If no session log exists and non-scaffold code was committed, auto-scaffolds a compliant session log in `.agent-room/sessions/` using branch name and commit context.
+  4. Runs swiftly (<100ms) and asynchronously/non-blocking so developer commit workflows remain snappy.
+  5. Fully compliant with `create-agent-room lint-sessions`.
+
+---
+
+### Story 6.4: Cross-Branch Auto-Sync & Drift Healing (`post-checkout` & `post-merge`)
+- **Status:** 📋 Ready
+- **Goal:**
+  - Keep AI agent tool configurations (Claude Code, Cursor, Windsurf, Cline) synchronized automatically whenever switching branches or pulling upstream changes.
+- **Acceptance Criteria:**
+  1. Installs `.git/hooks/post-checkout` and `.git/hooks/post-merge`.
+  2. Detects if `.agent-room.json` or `.agent-room/skills/` changed between `HEAD@{1}` and `HEAD` (or on branch change).
+  3. Automatically runs `create-agent-room sync --all` to sync skills and rules across all configured tool adapters.
+  4. Warns the developer/agent if the newly checked-out branch has drifted hooks, unapproved guardrail weakening, or missing dependencies.
+
+---
+
+## Epic 7: Lightweight Terminal UI & Observability Dashboard
+
+Provide a dependency-free, interactive terminal dashboard (TUI) for human tech leads, developers, and autonomous agents to visually monitor repository governance, browse skills, inspect session handoffs, and manage room configurations without reading raw markdown or JSON files.
+
+### Story 7.1: Interactive Room Dashboard (`create-agent-room ui` / `dashboard`)
+- **Status:** 📋 Ready
+- **Goal:**
+  - Provide a standalone, zero-dependency ANSI/terminal interactive dashboard visualizing overall agent room health, guardrails status, and recent activity.
+- **Acceptance Criteria:**
+  1. `create-agent-room ui` (or `dashboard`):
+     - Renders an interactive, responsive terminal dashboard using Node.js `process.stdout` and ANSI escape sequences (zero external npm dependencies).
+     - Displays Governance Scorecard (validate, doctor, sessions, test verification, evals).
+     - Displays Active Guardrails & Blast Radius Limits (`maxFilesPerChange`, `protectedPaths`, boundaries).
+     - Displays Tool Adapters Status (synced tools: Claude, Cursor, Windsurf, Cline, Git).
+  2. Keyboard navigation: `q` to quit, `r` to refresh, `d` for doctor auto-fix, `s` to sync.
+  3. Non-interactive fallback: if stdout is not a TTY or `--format` is specified, outputs formatted summary text or JSON.
+
+---
+
+### Story 7.2: Live Session & Handoff Inspector (`create-agent-room session --watch` / timeline view)
+- **Status:** 📋 Ready
+- **Goal:**
+  - Provide an interactive or streaming timeline inspector of agent sessions, decisions, and inter-agent handoff notes.
+- **Acceptance Criteria:**
+  1. `create-agent-room session log` / `session list`:
+     - Renders a chronological timeline table of all session logs in `.agent-room/sessions/`.
+     - Displays date, author/agent identity, classification, status, and goal.
+  2. `create-agent-room session view [id]`:
+     - Formats and displays a specific session log with decision links, actions taken, and handoff notes in readable terminal typography.
+  3. `--watch` mode: monitors `.agent-room/sessions/` for changes and live-updates as agents complete turns.
+
+---
+
+### Story 7.3: Interactive Governance Switcher & Skill Explorer (`create-agent-room configure`)
+- **Status:** 📋 Ready
+- **Goal:**
+  - Provide a terminal-driven interactive configurator to inspect installed vs. available skill packs, toggle governance profiles (`minimal`, `standard`, `strict`), and manage tool adapters.
+- **Acceptance Criteria:**
+  1. `create-agent-room configure`:
+     - Interactive terminal menu to switch governance profiles (`minimal` <-> `standard` <-> `strict`).
+     - Browse built-in skill pack catalog (testing, security, release, code-review, etc.) with description and install/remove toggles.
+     - Enable or disable individual tool adapters on the fly with automatic re-sync.
+  2. Non-interactive CLI support: `--preset <name>`, `--add-skill <name>`, `--enable-tool <name>`.
+
+---
+
+## Epic 8: Centralized Policy Distribution & Enterprise Monorepo Governance
+
+Empower engineering organizations to distribute, synchronize, and enforce standardized guardrail policies, custom skill packs, and cross-package architectural boundaries across dozens of repositories and large monorepos.
+
+### Story 8.1: Remote Policy Distribution & Corporate Governance Presets
+- **Status:** 📋 Ready
+- **Goal:**
+  - Enable organizations to publish centralized governance presets (e.g. corporate security rules, required skill packs, standard evals) and inherit them across repos.
+- **Acceptance Criteria:**
+  1. `create-agent-room init --preset <git-url|https-url|npm-pkg>`:
+     - Fetches and inherits remote `guardrails.json`, skills, and eval suites from a centralized repository or registry.
+  2. Policy inheritance model in `.agent-room.json`:
+     - Supports `"extends": "https://github.com/my-org/car-policies@v1.0.0"`.
+     - Merges corporate baseline rules with repo-specific local additions without overwriting corporate non-negotiables.
+  3. Integrity & security verification:
+     - Locks remote policy revision/checksum to prevent unauthorized remote tampering.
+
+---
+
+### Story 8.2: Monorepo Multi-Package Boundary Enforcement
+- **Status:** 📋 Ready
+- **Goal:**
+  - Support monorepo architectures where multiple packages/workspaces require independent scope boundaries, package-level skills, and strict cross-package import restrictions.
+- **Acceptance Criteria:**
+  1. Multi-package workspace discovery:
+     - Auto-detects npm/pnpm/yarn workspaces, Lerna, Turborepo, or Nx subpackages.
+  2. Nested boundary enforcement:
+     - Enforces package-level `scopeBoundaries` so agents working in `packages/auth` cannot arbitrarily touch `packages/billing` without explicit cross-package authorization.
+  3. Package-specific verification:
+     - `create-agent-room verify --package <pkg>` executes targeted package test suites.
+  4. Monorepo CI pass:
+     - `create-agent-room ci` runs per-package validation and reports consolidated monorepo scorecard.
+
+---
+
+### Story 8.3: Centralized Compliance Drift & Remote Policy Synchronizer
+- **Status:** 📋 Ready
+- **Goal:**
+  - Automatically detect and reconcile drift between local repository policies and upstream corporate governance policies.
+- **Acceptance Criteria:**
+  1. `create-agent-room doctor --upstream` (or `sync --remote`):
+     - Checks if the remote policy defined in `"extends"` has a new release or if local rules conflict with upstream baseline.
+  2. Automatic reconciliation:
+     - Updates shared skill packs and security rules while preserving workspace-specific custom rules.
+  3. CI drift gate:
+     - Remote CI can flag outdated corporate policies or unaligned security baselines.
+
 
 
 
