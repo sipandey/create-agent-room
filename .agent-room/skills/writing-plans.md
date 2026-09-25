@@ -1,87 +1,153 @@
 ---
 name: writing-plans
-description: "Use when you have an approved design or requirements for a multi-step task, before touching code."
+description: "Create detailed implementation plans through an interactive, phased process based on factual research before touching code."
 ---
 
-# Writing Plans
+# RPI Create Plan
 
 ## Overview
 
-Turn an approved design into an implementation plan, written as if the
-executor (a fresh agent session, a teammate, or future-you) has zero context
-on this codebase. Document exactly which files to touch, the code, the
-tests, and how to verify each step. DRY. YAGNI. TDD. Frequent commits.
+Create detailed, phased implementation plans through an interactive, collaborative process based on factual codebase research. This is **Phase 2** of the Research → Plan → Implement (RPI) pattern.
 
-**Save plans to:** `docs/plans/YYYY-MM-DD-<feature-name>.md`
-
-## Bite-sized task granularity
-
-Each step is one action, roughly 2-5 minutes:
-- "Write the failing test" — step
-- "Run it, confirm it fails for the right reason" — step
-- "Write the minimal code to pass" — step
-- "Run it, confirm it passes" — step
-- "Commit" — step
-
-## Plan document header
-
-Every plan starts with:
-
-```markdown
-# [Feature Name] Implementation Plan
-
-**Goal:** [one sentence describing what this builds]
-**Architecture:** [2-3 sentences about the approach]
-**Tech stack:** [key technologies/libraries]
+<HARD-GATE>
+YOUR ONLY JOB: PLAN THE IMPLEMENTATION.
+DO NOT WRITE PRODUCTION CODE, MODIFY SOURCE FILES, OR SCAFFOLD CODE DURING THIS PHASE.
+Implementation happens in a fresh session using the `implement-plan` skill after this plan is reviewed and approved.
+</HARD-GATE>
 
 ---
-```
 
-## Task structure
+## Mandatory Process
+
+### Step 1: Context Gathering & Initial Analysis
+
+1. **Read all mentioned files immediately and FULLY**:
+   - Ticket files, user prompts, related design docs, and especially the research document from `docs/research/`.
+   - Never rely on partial context.
+2. **Analyze and verify understanding**:
+   - Cross-reference requirements with codebase reality discovered during the research phase.
+   - Identify discrepancies, constraints, or hidden dependencies.
+   - **Anti-Sycophancy Gate:** If the user corrects any technical assumption, do NOT blindly accept it. Inspect the specific code files mentioned to verify reality before adopting the correction.
+3. **Present informed understanding and focused questions**:
+   - Summarize what needs to be accomplished based on the research.
+   - Only ask questions you genuinely cannot answer through code investigation.
+   - Multiple-choice questions are strongly preferred over open-ended ones.
+
+### Step 2: Design Options & Alignment
+
+Before writing the full plan:
+1. **Present 2–3 architectural approaches** with trade-offs:
+   ```
+   Design Options:
+   1. Option A (Recommended): [Pros / Cons / Rationale]
+   2. Option B: [Pros / Cons / Rationale]
+   ```
+2. **Confirm user alignment** on the chosen approach.
+
+### Step 3: Plan Outline Alignment
+
+Propose the phase outline in dependency order (e.g., Core Models → Integration Logic → CLI/API Routes → Documentation & Tests):
+```
+Proposed Implementation Phases:
+1. Phase 1: [Descriptive Name] - [What it accomplishes]
+2. Phase 2: [Descriptive Name] - [What it accomplishes]
+3. Phase 3: [Descriptive Name] - [What it accomplishes]
+```
+Confirm the ordering and granularity before writing the complete plan.
+
+### Step 4: Write the Implementation Plan
+
+<HARD-GATE>
+ZERO OPEN QUESTIONS OR PLACEHOLDERS IN FINAL PLAN:
+If you encounter technical uncertainties during planning, STOP. Resolve them immediately through code inspection or user dialogue. Never output a plan containing "TBD", "TODO: figure out schema", or unresolved architectural questions. The implementation plan must be 100% complete, unambiguous, and mechanically executable.
+</HARD-GATE>
+
+Save the complete plan to `docs/plans/YYYY-MM-DD-[TICKET-]description.md` (e.g., `2026-09-26-ENG-123-auth.md` or `2026-09-26-auth.md`) using this exact template:
 
 ````markdown
-### Task N: [Component Name]
+# [Feature / Task Name] Implementation Plan
 
-**Files:**
-- Create: `exact/path/to/file.ext`
-- Modify: `exact/path/to/existing.ext:123-145`
-- Test: `tests/exact/path/to/test.ext`
+**Goal:** [One-sentence summary of what this builds or refactors]
+**Architecture:** [2-3 sentences explaining the technical strategy]
+**Tech Stack:** [Key languages, runtimes, test frameworks, libraries]
 
-**Step 1: Write the failing test**
-[complete test code, not "add validation"]
+---
 
-**Step 2: Run test to verify it fails**
-Run: `<exact command>`
-Expected: FAIL with "<exact message>"
+## Current State Analysis
+[Summary of existing implementation based on docs/research/ with file:line references]
 
-**Step 3: Write minimal implementation**
-[complete code]
+### Key Discoveries:
+- [Finding with exact file:line reference]
+- [Pattern or idiom to follow]
+- [Constraint to respect]
 
-**Step 4: Run test to verify it passes**
-Run: `<exact command>`
-Expected: PASS
+## Desired End State
+[Specification of the completed feature/refactor and how it will be verified]
 
-**Step 5: Commit**
-```bash
-git add <files>
-git commit -m "<message>"
+## What We're NOT Doing
+[Explicitly list out-of-scope items to prevent scope creep]
+
+## Implementation Approach
+[High-level strategy and dependency sequencing]
+
+---
+
+## Phase 1: [Descriptive Name]
+
+### Overview
+[What this phase accomplishes]
+
+### Changes Required:
+
+#### 1. [Component / File Group]
+**Files**:
+- Create: `exact/path/to/new-file.ext`
+- Modify: `exact/path/to/existing-file.ext:10-50`
+- Delete: `exact/path/to/deprecated-file.ext`
+
+**Changes**: [Summary of changes]
+
+```[language]
+// Specific code to add, modify, or remove
 ```
+
+### Success Criteria:
+
+#### Automated Verification:
+- [ ] Tests pass: `<exact test command>` (e.g., `npm test`, `cargo test`)
+- [ ] Linting passes: `<exact lint command>` (e.g., `npm run lint`)
+- [ ] Type check passes: `<exact typecheck command>` (if applicable)
+
+#### Manual Verification:
+- [ ] [Specific observable behavior in UI/CLI]
+- [ ] [No regression in related flow]
+
+**Implementation Note**: Pause for manual confirmation if manual verification is required before proceeding.
+
+---
+
+## Phase 2: [Descriptive Name]
+[Repeat the Phase structure above...]
+
+---
+
+## Testing Strategy
+
+### Unit Tests:
+- [Target files and edge cases]
+
+### Integration / Regression Tests:
+- [End-to-end flows and boundary conditions]
+
+---
+
+## Rollback Plan
+[Step-by-step instructions to revert changes safely if critical issues occur]
 ````
 
-## Remember
+### Step 5: Present Plan & Await Approval
 
-- Exact file paths always.
-- Complete code in the plan, never "add validation" as a placeholder.
-- Exact commands with expected output, not "run the tests."
-- DRY, YAGNI, TDD, frequent commits.
+Show the user the summary of the plan and the path `docs/plans/YYYY-MM-DD-HHmm-<description>.md`.
 
-## Execution
-
-Once the plan is saved, either:
-1. **Work through it task-by-task in this session**, verifying each step
-   before moving to the next (see `.agent-room/skills/test-driven-development.md`
-   and `.agent-room/skills/verification-before-completion.md`), or
-2. **Hand the plan file to a fresh agent session** to execute, if you want a
-   clean context with no accumulated assumptions from the design discussion.
-
-Either way: one task at a time, verify before moving on, commit frequently.
+- If the user has adjustments, use the `iterate-plan` skill to update the plan surgically.
+- Once approved, proceed to **Phase 3** (`implement-plan`) in a fresh session.
