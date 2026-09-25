@@ -12,6 +12,14 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ### Added
 
+- Pre-Push Local CI Gate & Upstream Detection (`pre-push`, Story 6.2): runs the unified headless CI runner locally before `git push` transmits code to remote remotes, catching test regressions, unapproved rule weakening, and missing session logs in milliseconds.
+  - Upstream tracking branch auto-detection: checks `@{upstream}`, falls back to remote targets (`${REMOTE}/main`, `${REMOTE}/master`, `origin/main`, `origin/master`), and respects `CAR_BASE_REF` or `.agent-room.json` overrides. Safely verifies ref existence in git so fresh local repositories without remotes don't fail.
+  - Smart branch deletion handling: checks standard input for all-zero commit SHAs (`0000000000000000000000000000000000000000`), automatically skipping checks when deleting remote branches.
+  - Declarative configuration in `.agent-room.json`: supports `hooks.prePush: { enabled, strict, skip, only, base }`.
+  - Added CLI `--skip <checks>` flag support to `create-agent-room ci` for comma-separated or array check exclusions.
+  - Fast bypass mechanisms: supports native `git push --no-verify` and `CAR_SKIP_PRE_PUSH=1` / `CAR_SKIP_HOOK=1` environment variables.
+  - Actionable terminal remediation: emits clear failure summaries with exact commands to run checks manually or bypass for emergency pushes.
+
 - Git Hook Manager CLI (`create-agent-room hook [install|status|uninstall]`, Story 6.1): provides first-class management of git lifecycle hooks with non-destructive chaining and custom `core.hooksPath` support.
   - Implemented `lib/hook.js` supporting 5 lifecycle hooks: `pre-commit`, `pre-push`, `post-commit`, `post-checkout`, and `post-merge`.
   - Non-destructive chaining: embeds delimited CAR blocks (`# --- create-agent-room hook: <name> ---`), preserving existing user scripts, Husky, and Lefthook integrations without clobbering.

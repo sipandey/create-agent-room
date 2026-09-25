@@ -36,3 +36,4 @@ instead of scrolling off a terminal and being forgotten.
 - 2026-09-23T09:24:54.903Z | author: Siddharth Pandey <siddharth.pandey06@gmail.com> | reason: Add remote PR anti-tamper and bypass audit gate (Story 5.2) | bypassed: Change scope exceeds guidance: 1167 lines changed (limit 500)
 - 2026-09-25T05:39:30.882Z | author: Siddharth Pandey <siddharth.pandey06@gmail.com> | reason: Add PR compliance reporter and modern GitHub Action (Story 5.3) | bypassed: Change scope exceeds guidance: 882 lines changed (limit 500)
 - 2026-09-25T08:31:25.973Z | author: Siddharth Pandey <siddharth.pandey06@gmail.com> | reason: Add Git Hook Manager CLI and templates (Story 6.1) | bypassed: Change scope exceeds guidance: 1142 lines changed (limit 500)
+- 2026-09-25T17:38:15.920Z | author: Siddharth Pandey <siddharth.pandey06@gmail.com> | reason: Implement pre-push local CI gate and upstream detection (Story 6.2) | bypassed: Change scope exceeds guidance: 826 lines changed (limit 500)

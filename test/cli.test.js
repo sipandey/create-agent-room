@@ -312,3 +312,15 @@ test('CLI: --version short-circuits even after a subcommand and its flags', () =
   const output = execFileSync('node', [CLI_PATH, 'init', '--yes', '--version'], { encoding: 'utf8' });
   assert.strictEqual(output.trim(), PKG_VERSION);
 });
+
+test('parseArgs: parses --skip and --skip= options for CI', () => {
+  const res1 = parseArgs(['--skip', 'eval,doctor']);
+  assert.strictEqual(res1.skip, 'eval,doctor');
+
+  const res2 = parseArgs(['--skip=verify,pr']);
+  assert.strictEqual(res2.skip, 'verify,pr');
+});
+
+test('parseArgs: throws on missing --skip argument', () => {
+  assert.throws(() => parseArgs(['--skip']), /Error: --skip option requires check name\(s\)\./);
+});

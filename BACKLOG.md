@@ -413,7 +413,7 @@ Eliminate cognitive friction by embedding `create-agent-room` commands directly 
 ---
 
 ### Story 6.2: Pre-Push Local CI Gate (`pre-push` -> `create-agent-room ci`)
-- **Status:** 📋 Ready
+- **Status:** 🟡 **IN PROGRESS** (Branch `feature/pre-push-local-ci-gate`)
 - **Goal:**
   - Run the unified headless CI runner locally before `git push` transmits code to remote remotes, guaranteeing that PR anti-tamper, missing session logs, and test regressions are caught in milliseconds rather than waiting for remote CI runners.
 - **Acceptance Criteria:**

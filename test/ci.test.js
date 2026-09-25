@@ -259,3 +259,40 @@ test('CLI: node bin/cli.js ci executes via command line and returns 0', () => {
   assert(result.stdout.includes('create-agent-room CI Runner'), 'Should show CI runner banner');
   assert(result.stdout.includes('Result: PASSED'), 'Should report PASSED');
 });
+
+test('runCi: respects options.skip array and comma-separated string', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-ci-skip-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, {
+    yes: true,
+    tools: 'none',
+    name: 'CiSkipRoom',
+    force: true,
+    noTestCommand: true,
+  });
+
+  // 1. Array of skips
+  const report1 = runCi(tmpDir, { skip: ['verify', 'eval'] });
+  assert.strictEqual(report1.checks.verify.skipped, true);
+  assert.strictEqual(report1.checks.eval.skipped, true);
+  assert.strictEqual(report1.checks.validate.skipped, false);
+
+  // 2. Comma-separated string
+  const report2 = runCi(tmpDir, { skip: 'doctor,sessions' });
+  assert.strictEqual(report2.checks.doctor.skipped, true);
+  assert.strictEqual(report2.checks.sessions.skipped, true);
+});
+
+test('CLI: node bin/cli.js ci accepts --skip <list>', () => {
+  const cliPath = path.join(__dirname, '..', 'bin', 'cli.js');
+  const repoRoot = path.join(__dirname, '..');
+
+  const result = spawnSync('node', [cliPath, 'ci', repoRoot, '--skip', 'verify,pr'], {
+    encoding: 'utf8',
+  });
+
+  assert.strictEqual(result.status, 0, `Expected 0 exit, stderr: ${result.stderr}`);
+  assert(result.stdout.includes('Result: PASSED'), 'Should report PASSED');
+});

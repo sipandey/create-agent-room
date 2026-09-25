@@ -287,3 +287,29 @@ test('runValidate: passes on a cleanly scaffolded strict-preset room', async (t)
   }
 });
 
+test('runValidate: fails when hooks.prePush in .agent-room.json has invalid types', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-validate-hooks-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'HooksInvalidRoom', force: true });
+  const configPath = path.join(tmpDir, '.agent-room.json');
+  const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+  config.hooks = {
+    prePush: {
+      enabled: 'not-a-boolean',
+      strict: 123,
+    },
+  };
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+
+  const originalExitCode = process.exitCode;
+  process.exitCode = undefined;
+  try {
+    runValidate(tmpDir);
+    assert.strictEqual(process.exitCode, 1, 'invalid hooks.prePush types should fail validate');
+  } finally {
+    process.exitCode = originalExitCode;
+  }
+});
+
