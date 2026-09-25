@@ -16,6 +16,17 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-25 — pre-push local CI gate and upstream detection (Story 6.2)
+
+**Decision:** Implement the pre-push local CI gate in `templates/adapters/git-hooks/pre-push.tmpl` and `lib/hook.js` (`runPrePush`, `detectUpstreamBranch`, `resolvePrePushConfig`), integrating with `create-agent-room ci --base <upstream>`.
+- **Automatic Upstream Branch Resolution:** Detects the branch's tracking branch (`git rev-parse --abbrev-ref @{upstream}`), falls back to remote targets (`${REMOTE}/main`, `${REMOTE}/master`, `origin/main`, `origin/master`), and respects `CAR_BASE_REF` or `.agent-room.json` overrides. Safely verifies ref existence in git so fresh local repositories without remotes don't fail unexpectedly.
+- **Smart Branch Deletion Bypass:** Inspects standard input for all-zero commit SHAs (`0000000000000000000000000000000000000000`), automatically skipping checks when deleting remote branches.
+- **Declarative Configuration in `.agent-room.json`:** Supports `hooks.prePush: { enabled, strict, skip, only, base }`. Allows teams to toggle pre-push verification, skip heavy checks (e.g. `skip: ["eval"]`), or enforce strict mode (`strict: true`).
+- **Emergency Bypass Support:** Fully supports native `git push --no-verify` and `CAR_SKIP_PRE_PUSH=1` / `CAR_SKIP_HOOK=1` environment variables.
+- **Actionable Remediation Guidance:** Emits clear, structured failure summaries in terminal stderr with exact commands to run tests manually or bypass for emergency pushes.
+**Why:** Remote CI feedback loops can take minutes, slowing down engineers and agents. Catching unapproved rule weakening, test regressions, and missing session logs on `git push` catches issues locally in milliseconds before code transmits upstream.
+**Rejected:** Running pre-push checks synchronously on every commit (pre-commit should remain lightweight for code review; pre-push is the proper boundary for full CI pre-flight).
+
 ### 2026-09-25 — first-class git hook manager CLI (Story 6.1)
 
 **Decision:** Implement `create-agent-room hook [install|status|uninstall]` in `lib/hook.js` to manage git lifecycle hooks with non-destructive chaining and custom `core.hooksPath` support.

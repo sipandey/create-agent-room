@@ -349,6 +349,26 @@ create-agent-room hook uninstall --all
 - **Non-Destructive Chaining:** Existing user scripts and tools like Husky are safely preserved; CAR embeds an isolated delimited block (`# --- create-agent-room hook: <name> ---`).
 - **Supports Custom Hooks Directory:** Automatically detects and respects `git config core.hooksPath` (e.g. `.husky/`, `.agent-room/hooks/git/`).
 
+#### Pre-Push Local CI Gate (`pre-push`)
+Catch PR anti-tamper, unapproved rule weakening, test regressions, and missing session logs in milliseconds before code transmits to remotes:
+- **Upstream Auto-Detection:** Automatically detects tracking branch (`@{upstream}`), remote defaults (`origin/main`, `origin/master`), or custom `base` ref.
+- **Smart Branch Deletion Handling:** Safely bypasses execution when deleting remote branches.
+- **Configurable in `.agent-room.json`:**
+  ```json
+  {
+    "hooks": {
+      "prePush": {
+        "enabled": true,
+        "strict": false,
+        "skip": ["eval"]
+      }
+    }
+  }
+  ```
+- **Fast Bypass Options:**
+  - Standard git bypass: `git push --no-verify`
+  - Environment variable: `CAR_SKIP_PRE_PUSH=1 git push`
+
 ---
 
 ## ⚙️ Complete CLI Options Reference
@@ -369,6 +389,7 @@ create-agent-room hook uninstall --all
 | `--evals-dir <path>` | Custom eval suites directory (default: `.agent-room/evals`, `evals/custom`) | `eval`, `ci` |
 | `--custom-only` | Run only custom adopter compliance evals | `eval`, `ci` |
 | `--builtin-only` | Run only packaged built-in compliance evals | `eval`, `ci` |
+| `--skip <checks>` | Comma-separated list of CI checks to skip (e.g. `eval,verify`) | `ci` |
 | `--skip-verify` | Skip code verification test execution in CI | `ci` |
 | `--skip-doctor` | Skip hook and template drift checks in CI | `ci` |
 | `--skip-eval` | Skip compliance eval suites in CI | `ci` |

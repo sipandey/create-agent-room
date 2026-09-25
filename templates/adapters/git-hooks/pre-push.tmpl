@@ -10,19 +10,128 @@ if [ "${CAR_SKIP_HOOK:-0}" = "1" ] || [ "${CAR_SKIP_PRE_PUSH:-0}" = "1" ]; then
   exit 0
 fi
 
-BASE_REF="${CAR_BASE_REF:-origin/main}"
+REMOTE="${1:-origin}"
+REMOTE_URL="$2"
 
+# Read stdin to detect if push contains only branch deletions
+z40="0000000000000000000000000000000000000000"
+has_commits=false
+STDIN_DATA=""
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  if [ -n "$local_sha" ]; then
+    STDIN_DATA="${STDIN_DATA}${local_ref} ${local_sha} ${remote_ref} ${remote_sha}
+"
+    if [ "$local_sha" != "$z40" ]; then
+      has_commits=true
+    fi
+  fi
+done
+
+# If stdin was empty (e.g. interactive terminal execution), allow checks to run
+if [ -z "$STDIN_DATA" ]; then
+  has_commits=true
+fi
+
+if [ "$has_commits" = "false" ]; then
+  exit 0
+fi
+
+# Detect upstream tracking branch or default to origin/main / origin/master
+BASE_REF="${CAR_BASE_REF:-}"
+if [ -z "$BASE_REF" ]; then
+  UPSTREAM=$(git rev-parse --abbrev-ref '@{upstream}' 2>/dev/null)
+  if [ -n "$UPSTREAM" ] && [ "$UPSTREAM" != "@{upstream}" ]; then
+    BASE_REF="$UPSTREAM"
+  elif git rev-parse --verify "${REMOTE}/main" >/dev/null 2>&1; then
+    BASE_REF="${REMOTE}/main"
+  elif git rev-parse --verify "${REMOTE}/master" >/dev/null 2>&1; then
+    BASE_REF="${REMOTE}/master"
+  elif git rev-parse --verify "origin/main" >/dev/null 2>&1; then
+    BASE_REF="origin/main"
+  elif git rev-parse --verify "origin/master" >/dev/null 2>&1; then
+    BASE_REF="origin/master"
+  else
+    BASE_REF="origin/main"
+  fi
+fi
+
+# Read hooks.prePush configuration from .agent-room.json if available
+EXTRA_ARGS=""
+if [ -f ".agent-room.json" ]; then
+  CONFIG_RESULT=$(node -e '
+    try {
+      const fs = require("fs");
+      const cfg = JSON.parse(fs.readFileSync(".agent-room.json", "utf8"));
+      const pp = cfg.hooks && cfg.hooks.prePush;
+      if (pp) {
+        if (pp.enabled === false) {
+          process.stdout.write("DISABLED");
+          process.exit(0);
+        }
+        const args = [];
+        if (pp.strict) args.push("--strict");
+        if (Array.isArray(pp.skip) && pp.skip.length > 0) args.push("--skip=" + pp.skip.join(","));
+        else if (typeof pp.skip === "string" && pp.skip) args.push("--skip=" + pp.skip);
+        if (Array.isArray(pp.only) && pp.only.length > 0) args.push("--only=" + pp.only.join(","));
+        else if (typeof pp.only === "string" && pp.only) args.push("--only=" + pp.only);
+        if (pp.base) process.stdout.write("BASE:" + pp.base + " ");
+        process.stdout.write(args.join(" "));
+      }
+    } catch (e) {}
+  ' 2>/dev/null)
+
+  if [ "$CONFIG_RESULT" = "DISABLED" ]; then
+    exit 0
+  fi
+
+  case "$CONFIG_RESULT" in
+    BASE:*)
+      CONFIG_BASE=$(echo "$CONFIG_RESULT" | sed -n 's/^BASE:\([^ ]*\).*/\1/p')
+      if [ -n "$CONFIG_BASE" ] && [ -z "${CAR_BASE_REF:-}" ]; then
+        BASE_REF="$CONFIG_BASE"
+      fi
+      EXTRA_ARGS=$(echo "$CONFIG_RESULT" | sed 's/^BASE:[^ ]* *//')
+      ;;
+    *)
+      EXTRA_ARGS="$CONFIG_RESULT"
+      ;;
+  esac
+fi
+
+# Verify base ref exists in git before passing --base
+BASE_ARG=""
+if [ -n "$BASE_REF" ] && git rev-parse --verify "$BASE_REF" >/dev/null 2>&1; then
+  BASE_ARG="--base $BASE_REF"
+fi
+
+# Execute create-agent-room ci --base <upstream>
+STATUS=0
 if command -v create-agent-room >/dev/null 2>&1; then
-  create-agent-room ci --base "$BASE_REF"
+  create-agent-room ci $BASE_ARG $EXTRA_ARGS
   STATUS=$?
 elif [ -f "bin/cli.js" ]; then
-  node "bin/cli.js" ci --base "$BASE_REF"
+  node "bin/cli.js" ci $BASE_ARG $EXTRA_ARGS
+  STATUS=$?
+elif command -v npx >/dev/null 2>&1; then
+  npx --no-install create-agent-room ci $BASE_ARG $EXTRA_ARGS
   STATUS=$?
 else
+  echo "⚠️  create-agent-room not found in PATH; skipping pre-push checks." >&2
   STATUS=0
 fi
 
 if [ $STATUS -ne 0 ]; then
-  echo "❌ create-agent-room: Pre-push compliance checks failed. Fix findings or bypass with git push --no-verify." >&2
+  echo "" >&2
+  echo "❌ create-agent-room: Pre-push compliance checks failed." >&2
+  echo "" >&2
+  echo "Remediation:" >&2
+  echo "  - Fix failing tests, unapproved rule weakening, or missing session logs shown above." >&2
+  echo "  - To run checks manually: create-agent-room ci --base $BASE_REF" >&2
+  echo "  - To bypass for emergency pushes:" >&2
+  echo "      git push --no-verify" >&2
+  echo "    or:" >&2
+  echo "      CAR_SKIP_PRE_PUSH=1 git push" >&2
+  echo "" >&2
   exit 1
 fi

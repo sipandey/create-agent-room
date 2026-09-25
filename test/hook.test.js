@@ -15,6 +15,9 @@ const {
   installHooks,
   getHookStatus,
   uninstallHooks,
+  detectUpstreamBranch,
+  resolvePrePushConfig,
+  runPrePush,
   runHookCli,
 } = require('../lib/hook');
 
@@ -369,4 +372,246 @@ test('runHookCli: status, install, and uninstall commands work and support --jso
   } finally {
     console.log = origLog;
   }
+});
+
+test('detectUpstreamBranch: detects upstream tracking branch or defaults to origin/main', (t) => {
+  const repo = createTempGitRepo('upstream-detect');
+  t.after(() => cleanupTempDir(repo));
+
+  // Default when no tracking branch or remote
+  const base = detectUpstreamBranch(repo);
+  assert.strictEqual(base, 'origin/main');
+
+  // When remote is named 'upstream'
+  const upstreamBase = detectUpstreamBranch(repo, 'upstream');
+  assert.strictEqual(upstreamBase, 'upstream/main');
+});
+
+test('detectUpstreamBranch: respects CAR_BASE_REF and .agent-room.json prePush.base', (t) => {
+  const repo = createTempGitRepo('upstream-env-cfg');
+  t.after(() => cleanupTempDir(repo));
+
+  // 1. .agent-room.json base
+  const configPath = path.join(repo, '.agent-room.json');
+  fs.writeFileSync(
+    configPath,
+    JSON.stringify({
+      hooks: {
+        prePush: {
+          base: 'upstream/staging',
+        },
+      },
+    })
+  );
+
+  const baseFromCfg = detectUpstreamBranch(repo);
+  assert.strictEqual(baseFromCfg, 'upstream/staging');
+
+  // 2. CAR_BASE_REF environment variable takes highest precedence
+  const origEnv = process.env.CAR_BASE_REF;
+  process.env.CAR_BASE_REF = 'origin/production';
+  try {
+    const baseFromEnv = detectUpstreamBranch(repo);
+    assert.strictEqual(baseFromEnv, 'origin/production');
+  } finally {
+    if (origEnv !== undefined) {
+      process.env.CAR_BASE_REF = origEnv;
+    } else {
+      delete process.env.CAR_BASE_REF;
+    }
+  }
+});
+
+test('resolvePrePushConfig: extracts enabled, strict, skip, only, and base from .agent-room.json', (t) => {
+  const repo = createTempGitRepo('cfg-extract');
+  t.after(() => cleanupTempDir(repo));
+
+  // Default without config
+  const def = resolvePrePushConfig(repo);
+  assert.strictEqual(def.enabled, true);
+  assert.strictEqual(def.strict, false);
+  assert.deepStrictEqual(def.skip, []);
+  assert.deepStrictEqual(def.only, []);
+  assert.strictEqual(def.base, 'origin/main');
+
+  // Configured prePush
+  const configPath = path.join(repo, '.agent-room.json');
+  fs.writeFileSync(
+    configPath,
+    JSON.stringify({
+      hooks: {
+        prePush: {
+          enabled: false,
+          strict: true,
+          skip: ['eval'],
+          only: ['verify'],
+          base: 'origin/master',
+        },
+      },
+    })
+  );
+
+  const cfg = resolvePrePushConfig(repo);
+  assert.strictEqual(cfg.enabled, false);
+  assert.strictEqual(cfg.strict, true);
+  assert.deepStrictEqual(cfg.skip, ['eval']);
+  assert.deepStrictEqual(cfg.only, ['verify']);
+  assert.strictEqual(cfg.base, 'origin/master');
+});
+
+test('runPrePush: fast bypass via CAR_SKIP_PRE_PUSH or CAR_SKIP_HOOK', (t) => {
+  const repo = createTempGitRepo('pre-push-bypass');
+  t.after(() => cleanupTempDir(repo));
+
+  const origSkip = process.env.CAR_SKIP_PRE_PUSH;
+  process.env.CAR_SKIP_PRE_PUSH = '1';
+  try {
+    const res = runPrePush(repo);
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.skipped, true);
+    assert.strictEqual(res.reason, 'bypassed via environment variable');
+  } finally {
+    if (origSkip !== undefined) {
+      process.env.CAR_SKIP_PRE_PUSH = origSkip;
+    } else {
+      delete process.env.CAR_SKIP_PRE_PUSH;
+    }
+  }
+
+  const res2 = runPrePush(repo, { skipHook: true });
+  assert.strictEqual(res2.ok, true);
+  assert.strictEqual(res2.skipped, true);
+});
+
+test('runPrePush: bypasses when push contains only branch deletions (all zeros)', (t) => {
+  const repo = createTempGitRepo('pre-push-del');
+  t.after(() => cleanupTempDir(repo));
+
+  const z40 = '0000000000000000000000000000000000000000';
+  const stdin = `refs/heads/feature-old ${z40} refs/heads/feature-old ${z40}\n`;
+
+  const res = runPrePush(repo, { stdin });
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.skipped, true);
+  assert.strictEqual(res.reason, 'branch-deletion');
+});
+
+test('runPrePush: respects hooks.prePush.enabled: false in .agent-room.json', (t) => {
+  const repo = createTempGitRepo('pre-push-disabled');
+  t.after(() => cleanupTempDir(repo));
+
+  const configPath = path.join(repo, '.agent-room.json');
+  fs.writeFileSync(
+    configPath,
+    JSON.stringify({
+      hooks: {
+        prePush: {
+          enabled: false,
+        },
+      },
+    })
+  );
+
+  const res = runPrePush(repo);
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.skipped, true);
+  assert.strictEqual(res.reason, 'prePush hook disabled in .agent-room.json');
+});
+
+test('runPrePush: executes CI and returns ok on a clean room', async (t) => {
+  const repo = createTempGitRepo('pre-push-clean');
+  t.after(() => cleanupTempDir(repo));
+
+  const { runInit } = require('../lib/init');
+  await runInit(repo, {
+    yes: true,
+    tools: 'git',
+    name: 'PrePushCleanRoom',
+    force: true,
+    noTestCommand: true,
+  });
+
+  const res = runPrePush(repo, { skip: ['verify'] });
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.skipped, false);
+  assert(res.report);
+  assert.strictEqual(res.report.ok, true);
+});
+
+test('runPrePush: reports failure when guardrails are broken', async (t) => {
+  const repo = createTempGitRepo('pre-push-fail');
+  t.after(() => cleanupTempDir(repo));
+
+  const { runInit } = require('../lib/init');
+  await runInit(repo, {
+    yes: true,
+    tools: 'git',
+    name: 'PrePushFailRoom',
+    force: true,
+    noTestCommand: true,
+  });
+
+  // Corrupt guardrails.json
+  const guardrailsPath = path.join(repo, '.agent-room', 'guardrails.json');
+  fs.writeFileSync(guardrailsPath, '{"protectedPaths": "not-an-array"}');
+
+  const res = runPrePush(repo, { skip: ['verify'] });
+  assert.strictEqual(res.ok, false);
+  assert.strictEqual(res.skipped, false);
+  assert(res.report);
+  assert.strictEqual(res.report.ok, false);
+});
+
+test('runHookCli: pre-push action dispatches cleanly in json mode', (t) => {
+  const repo = createTempGitRepo('cli-prepush-dispatch');
+  t.after(() => cleanupTempDir(repo));
+
+  let logged = '';
+  const origLog = console.log;
+  console.log = (msg) => {
+    logged += msg + '\n';
+  };
+
+  try {
+    const code = runHookCli(repo, 'pre-push', [], {
+      skipPrePush: true,
+      json: true,
+    });
+    assert.strictEqual(code, 0);
+    const parsed = JSON.parse(logged);
+    assert.strictEqual(parsed.ok, true);
+    assert.strictEqual(parsed.skipped, true);
+  } finally {
+    console.log = origLog;
+  }
+});
+
+test('pre-push template script: executes cleanly from git hook and respects bypasses', (t) => {
+  const repo = createTempGitRepo('pre-push-script-exec');
+  t.after(() => cleanupTempDir(repo));
+
+  // Install pre-push hook
+  installHooks(repo, { hooks: ['pre-push'] });
+  const hookFile = path.join(repo, '.git', 'hooks', 'pre-push');
+  assert(fs.existsSync(hookFile));
+
+  // 1. CAR_SKIP_PRE_PUSH=1 exits 0
+  const outputBypass = execFileSync('/bin/sh', [hookFile, 'origin', 'git@github.com:foo/bar.git'], {
+    cwd: repo,
+    env: Object.assign({}, process.env, { CAR_SKIP_PRE_PUSH: '1' }),
+    stdio: 'pipe',
+    encoding: 'utf8',
+  });
+  assert.strictEqual(outputBypass, '');
+
+  // 2. Branch deletion on stdin exits 0
+  const z40 = '0000000000000000000000000000000000000000';
+  const deletionStdin = `refs/heads/delete-me ${z40} refs/heads/delete-me ${z40}\n`;
+  const outputDel = execFileSync('/bin/sh', [hookFile, 'origin', 'git@github.com:foo/bar.git'], {
+    cwd: repo,
+    input: deletionStdin,
+    stdio: 'pipe',
+    encoding: 'utf8',
+  });
+  assert.strictEqual(outputDel, '');
 });

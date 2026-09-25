@@ -293,6 +293,14 @@ function parseArgs(argv) {
       }
     } else if (a.startsWith('--only=')) {
       args.only = a.slice('--only='.length);
+    } else if (a === '--skip') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.skip = argv[++i];
+      } else {
+        throw new Error('Error: --skip option requires check name(s).');
+      }
+    } else if (a.startsWith('--skip=')) {
+      args.skip = a.slice('--skip='.length);
     } else if (a === '--summary') {
       if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
         args.summary = argv[++i];
@@ -386,6 +394,7 @@ Options:
   --skip-pr                 Skip PR anti-tamper and bypass audit checks in CI
   --skip-pr-sessions        Skip requiring a session log for code modifications in PR audit
   --only <checks>           Run only specified checks (comma-separated: validate,doctor,sessions,verify,eval,pr)
+  --skip <checks>           Skip specified checks in CI (comma-separated: validate,doctor,sessions,verify,eval,pr)
   --comment, --pr-comment   Post or update sticky PR compliance scorecard comment
   --github-token <token>    GitHub token for posting PR comments (or GITHUB_TOKEN env var)
   --pr <number>             Target pull request number for sticky PR comment
