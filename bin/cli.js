@@ -300,6 +300,41 @@ function parseArgs(argv) {
       }
     } else if (a.startsWith('--summary=')) {
       args.summary = a.slice('--summary='.length);
+    } else if (a === '--comment' || a === '--pr-comment') {
+      args.comment = true;
+      args['pr-comment'] = true;
+    } else if (a.startsWith('--comment=')) {
+      args.comment = a.slice('--comment='.length) !== 'false';
+      args['pr-comment'] = args.comment;
+    } else if (a.startsWith('--pr-comment=')) {
+      args['pr-comment'] = a.slice('--pr-comment='.length) !== 'false';
+      args.comment = args['pr-comment'];
+    } else if (a === '--github-token' || a === '--token') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args['github-token'] = argv[++i];
+        args.githubToken = args['github-token'];
+      } else {
+        throw new Error('Error: --github-token option requires a token string.');
+      }
+    } else if (a.startsWith('--github-token=')) {
+      args['github-token'] = a.slice('--github-token='.length);
+      args.githubToken = args['github-token'];
+    } else if (a.startsWith('--token=')) {
+      args['github-token'] = a.slice('--token='.length);
+      args.githubToken = args['github-token'];
+    } else if (a === '--pr' || a === '--pr-number') {
+      if (i + 1 < argv.length && !argv[i + 1].startsWith('-')) {
+        args.pr = parseInt(argv[++i], 10);
+        args.prNumber = args.pr;
+      } else {
+        throw new Error('Error: --pr option requires a pull request number.');
+      }
+    } else if (a.startsWith('--pr=')) {
+      args.pr = parseInt(a.slice('--pr='.length), 10);
+      args.prNumber = args.pr;
+    } else if (a.startsWith('--pr-number=')) {
+      args.pr = parseInt(a.slice('--pr-number='.length), 10);
+      args.prNumber = args.pr;
     } else if (a.startsWith('-')) {
       throw new Error(`Error: Unknown option: ${a}`);
     } else {
@@ -338,6 +373,9 @@ Options:
   --skip-pr                 Skip PR anti-tamper and bypass audit checks in CI
   --skip-pr-sessions        Skip requiring a session log for code modifications in PR audit
   --only <checks>           Run only specified checks (comma-separated: validate,doctor,sessions,verify,eval,pr)
+  --comment, --pr-comment   Post or update sticky PR compliance scorecard comment
+  --github-token <token>    GitHub token for posting PR comments (or GITHUB_TOKEN env var)
+  --pr <number>             Target pull request number for sticky PR comment
   --summary [file]          Write Markdown report to $GITHUB_STEP_SUMMARY or custom file
   --name <name>             Project name used in templates (default: target dir name)
   --new <name>              Session name/topic for session scaffolding
@@ -504,7 +542,7 @@ async function main() {
       process.exitCode = exitCode;
     }
   } else if (command === 'ci') {
-    const exitCode = runCiCli(target, args);
+    const exitCode = await runCiCli(target, args);
     if (exitCode) {
       process.exitCode = exitCode;
     }

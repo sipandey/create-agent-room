@@ -229,7 +229,7 @@ test('runCiCli: writes output to file and step summary when requested', async (t
   const outputFile = path.join(tmpDir, 'ci-report.json');
   const summaryFile = path.join(tmpDir, 'step-summary.md');
 
-  const exitCode = runCiCli(tmpDir, {
+  const exitCode = await runCiCli(tmpDir, {
     format: 'json',
     output: outputFile,
     summary: summaryFile,

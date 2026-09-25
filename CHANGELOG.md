@@ -12,6 +12,13 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ### Added
 
+- Automated PR Compliance Scorecard Reporter & Modernized GitHub Action (`create-agent-room ci --comment`, Story 5.3): automatically posts and updates sticky compliance scorecards on GitHub pull requests.
+  - Implemented `lib/pr-comment.js` using Node.js 18+ standard library global `fetch` with zero external runtime dependencies.
+  - Generates sticky PR comments with invisible marker `<!-- agent-room-pr-comment -->`, updating existing comments in-place (`PATCH`) to prevent notification spam across iterations.
+  - Resolves PR context automatically from CLI flags (`--github-token`, `--token`, `--pr`, `--pr-number`), GitHub Actions event payloads (`GITHUB_EVENT_PATH`, `GITHUB_REPOSITORY`), GitLab CI (`CI_MERGE_REQUEST_IID`), or `git remote get-url origin`.
+  - Modernized composite GitHub Action in `action.yml` to orchestrate `create-agent-room ci`, supporting modern inputs (`target-dir`, `base`, `strict`, `comment`, `summary`, `github-token`, `skip`, `only`, `version`, `node-version`) while preserving 100% backward-compatibility with legacy `checks` input.
+  - Documented sticky PR comment workflows, required permissions (`pull-requests: write`), and monorepo usage in `docs/github-action.md` and `README.md`.
+
 - Remote PR Anti-Tamper & Bypass Audit Gate (`create-agent-room ci --base <ref>`, Story 5.2): audits pull request diffs against the target base ref to prevent unauthorized guardrails tampering and rule degradation.
   - Automatically calculates git `merge-base` against `--base <ref>` or CI environment variables (`GITHUB_BASE_REF`, `CI_MERGE_REQUEST_TARGET_BRANCH_NAME`).
   - Detects deletion of `.agent-room/guardrails.json` across the PR diff.

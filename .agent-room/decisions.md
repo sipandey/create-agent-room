@@ -16,6 +16,26 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-23 — automated PR compliance reporter & modern GitHub Action (Story 5.3)
+
+**Decision:** Implement automated sticky PR scorecard reporting in `lib/pr-comment.js` and modernize the official composite GitHub Action in `action.yml` to orchestrate `create-agent-room ci`.
+- **Zero External Runtime Dependencies:** The PR comment reporter uses Node.js 18+ standard library global `fetch` with zero npm dependencies (`@actions/*`, `octokit`, or external HTTP clients), keeping the package lightweight and fast.
+- **Sticky In-Place PR Comments:** Embeds an invisible marker `<!-- agent-room-pr-comment -->` in scorecard reports. On pull request runs, searches existing comments for the marker via GitHub REST API (`GET /repos/{owner}/{repo}/issues/{pr}/comments`); if found, updates the comment in-place (`PATCH`), and if absent, creates a new comment (`POST`). This eliminates notification spam across iterative commits.
+- **Context Auto-Resolution:** Automatically detects repository full name and PR number from CLI flags (`--github-token`, `--pr`), GitHub Actions environment (`GITHUB_EVENT_PATH`, `GITHUB_REPOSITORY`), GitLab CI (`CI_MERGE_REQUEST_IID`), or `git remote get-url origin`. Gracefully skips if run outside a PR context or without write credentials.
+- **Modernized Composite GitHub Action:** Updated `action.yml` to run `create-agent-room ci` with support for all modern options (`target-dir`, `base`, `strict`, `comment`, `summary`, `github-token`, `skip`, `only`, `version`, `node-version`) while preserving 100% backward-compatibility for legacy `checks` input (`both`, `validate`, `lint-sessions`).
+**Why:** Continuous integration feedback is most valuable when visible directly where engineers and agents review code. Running separate steps or cluttering PR timelines with redundant comments degrades reviewer experience. In-place sticky comments combined with GitHub Actions job summaries make compliance visible and unobtrusive.
+**Rejected:** Introducing `@actions/github` or `octokit` runtime dependencies (violates the project's zero-external-runtime-dependency invariant); posting new comments on every push (creates noisy comment churn).
+
+### 2026-09-23 — remote PR anti-tamper and bypass audit gate (Story 5.2)
+
+**Decision:** Implement remote PR diff auditing in `lib/pr-audit.js` and integrate it into `create-agent-room ci --base <ref>` to prevent unauthorized guardrails tampering and rule degradation across pull requests.
+- **Merge-Base Diff Calculation:** Inspects git diff between `HEAD` and `merge-base` with `--base <ref>` (or `GITHUB_BASE_REF`).
+- **Comprehensive Rule-Weakening Detection:** Audits `guardrails.json` changes against base across 7 governance dimensions (`protectedPaths`, `forbiddenActions`, `scopeGuidance`, `importBoundaries`, `scopeBoundaries`, `verifyOnCommit`, and `strictWaivers`).
+- **Mandatory Structured Bypass Log:** Requires any rule weakening to be explicitly documented with a structured entry in `.agent-room/guardrails-bypass-log.md` within the PR diff, enforcing author, timestamp, and minimum 20-character rationale (and ticket reference in `--strict` mode).
+- **Session Log Requirement:** Requires at least one valid session log in `.agent-room/sessions/` whenever non-scaffold code files are touched, with `--skip-pr-sessions` override.
+**Why:** Local pre-commit hooks can be bypassed or skipped with `--no-verify`. Enforcing rule preservation and bypass accountability as a remote CI gate ensures repository governance cannot be bypassed silently before merging.
+**Rejected:** Requiring manual approval webhooks or external service checks (all checks must be self-contained and run locally in standard CI pipelines).
+
 ### 2026-09-23 — unified headless CI runner (Story 5.1)
 
 **Decision:** Implement `create-agent-room ci [target] [options]` in `lib/ci.js` as a unified, headless runner for CI/CD pipelines (GitHub Actions, GitLab CI, CircleCI, Bitbucket, pre-push scripts).

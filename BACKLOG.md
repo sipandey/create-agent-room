@@ -350,7 +350,7 @@ Close the "local-only" enforcement gap by transforming `create-agent-room` into 
 ---
 
 ### Story 5.3: Automated PR Compliance Reporter & GitHub Action (`agent-room-action`)
-- **Status:** 📋 Ready
+- **Status:** 🟡 **IN PROGRESS** (Branch `feature/pr-compliance-action-reporter`)
 - **Goal:**
   - Create a reusable composite GitHub Action / workflow template (`uses: sipandey/agent-room-action@v1`).
   - Automatically posts or updates an interactive PR compliance card with verification outcomes, guardrail status, and session audits.
