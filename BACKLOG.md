@@ -381,7 +381,16 @@ Close the "local-only" enforcement gap by transforming `create-agent-room` into 
 Eliminate cognitive friction by embedding `create-agent-room` commands directly into standard `git` lifecycle hooks. AI agents and engineers just use native git commands (`commit`, `push`, `checkout`, `pull`), while governance, session recording, rule synchronization, and CI pre-flight checks run invisibly in the background.
 
 ### Story 6.1: Git Hook Manager CLI (`create-agent-room hook [install|status|uninstall]`)
-- **Status:** 🟡 **IN PROGRESS** (Branch `feature/git-hook-manager-cli`)
+- **Status:** ✅ **DONE** (Merged into `main` via PR #19, Commit `b24cbf8`)
+- **Summary:**
+  - Implemented `lib/hook.js` with `installHooks`, `getHookStatus`, `uninstallHooks`, and `runHookCli`, adding `hook` subcommand to `bin/cli.js`.
+  - Added support for 5 standard git lifecycle hooks: `pre-commit`, `pre-push`, `post-commit`, `post-checkout`, and `post-merge`.
+  - Non-destructive chaining: wraps CAR hooks inside delimited comment blocks (`# --- create-agent-room hook: <name> ---`), preserving existing developer scripts and hooks (Husky, Lefthook, custom shell scripts).
+  - Dynamic hooks path resolution: checks `git config core.hooksPath` (e.g. `.husky/`, `.agent-room/hooks/git/`), git worktrees, and submodules before `.git/hooks/`.
+  - Safe uninstallation: strips CAR blocks cleanly and only deletes hook files if no user logic remains.
+  - Enhanced `lib/doctor.js`: recognizes delimited CAR hook blocks without false drift warnings, and repairs hooks under `--fix` using `installHooks`.
+  - Created hook templates in `templates/adapters/git-hooks/` (`pre-push.tmpl`, `post-commit.tmpl`, `post-checkout.tmpl`, `post-merge.tmpl`).
+  - Added comprehensive unit tests in `test/hook.test.js` and CLI integration tests in `test/cli.test.js` (all 361 repo tests pass, 0 lint warnings).
 - **Goal:**
   - Provide a first-class CLI command and programmatic API to install, inspect, and remove CAR git lifecycle hooks without clobbering existing developer hooks.
 - **Acceptance Criteria:**
