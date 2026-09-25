@@ -21,6 +21,12 @@ Append a new entry every time:
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-26 — Child process EPIPE in hook test due to un-initialized room and early process exit
+
+**What happened:** CI on Node 22 Linux failed with `spawnSync /bin/sh EPIPE` at `test/hook.test.js` when testing the pre-push script with branch-deletion stdin.
+**Root cause:** The test created a bare git repository with `createTempGitRepo()` without creating an `.agent-room` directory. The pre-push hook checked `if ! [ -d ".agent-room" ]; then exit 0; fi` and exited immediately before reading stdin. On Linux, writing stdin via `execFileSync` to a child process that has already terminated and closed its stdin file descriptor triggers an unhandled `EPIPE` error in Node's `spawnSync`.
+**Avoid:** When testing hook scripts with simulated stdin, ensure prerequisite directories (such as `.agent-room`) exist so the script actually reads stdin, and prefer `spawnSync` over `execFileSync` to assert `res.status === 0` without throwing on closed pipe edges.
+
 ### 2026-09-25 — Passive git branch inspection instead of enforcing feature branch creation
 
 **What happened:** Began story implementation and modified codebase files while directly on the `main` branch rather than cutting a dedicated `feature/` branch.
