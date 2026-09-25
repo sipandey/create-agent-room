@@ -21,6 +21,13 @@ Append a new entry every time:
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-25 — Passive git branch inspection instead of enforcing feature branch creation
+
+**What happened:** Began story implementation and modified codebase files while directly on the `main` branch rather than cutting a dedicated `feature/` branch.
+**Root cause:** The initial RPI prompt and `research-codebase.md` skill treated `git branch --show-current` as passive metadata to record in the research frontmatter, rather than an active pre-condition gate that halts execution and requires cutting a feature branch if on `main` or `master`.
+**Avoid:** In `research-codebase.md` and `implement-plan.md`, enforce an explicit Branch Gate: if `git branch --show-current` is `main` or `master`, pause and cut a dedicated `feature/<topic>` or `fix/<topic>` branch before planning or modifying code.
+
+
 ### 2026-08-03 — agent-room-validate fails ETARGET right after a version-bump push
 
 **What happened:** `agent-room-validate` failed on the v2.3.1 release commit

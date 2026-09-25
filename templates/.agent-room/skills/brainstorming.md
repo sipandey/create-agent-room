@@ -5,6 +5,10 @@ description: "Use before any creative work - creating features, building compone
 
 # Brainstorming Ideas Into Designs
 
+> [!NOTE]
+> **Deprecated:** Brainstorming is superseded by the Research → Plan → Implement (RPI) pipeline.
+> Use `research-codebase` for factual discovery and `writing-plans` for phased architectural planning.
+
 ## Overview
 
 Turn an idea into a fully formed design through collaborative dialogue

@@ -71,9 +71,9 @@ Create the read-only factual discovery skill in `templates/.agent-room/skills/re
 
 ### Success Criteria:
 #### Automated Verification:
-- [ ] File exists: `templates/.agent-room/skills/research-codebase.md`
-- [ ] File exists: `.agent-room/skills/research-codebase.md`
-- [ ] Has valid YAML frontmatter header
+- [x] File exists: `templates/.agent-room/skills/research-codebase.md`
+- [x] File exists: `.agent-room/skills/research-codebase.md`
+- [x] Has valid YAML frontmatter header
 
 ---
 
@@ -101,9 +101,9 @@ Upgrade `writing-plans.md` in `templates/.agent-room/skills/writing-plans.md` an
 
 ### Success Criteria:
 #### Automated Verification:
-- [ ] File updated: `templates/.agent-room/skills/writing-plans.md`
-- [ ] File updated: `.agent-room/skills/writing-plans.md`
-- [ ] Contains phased plan template with automated verification checkboxes
+- [x] File updated: `templates/.agent-room/skills/writing-plans.md`
+- [x] File updated: `.agent-room/skills/writing-plans.md`
+- [x] Contains phased plan template with automated verification checkboxes
 
 ---
 
@@ -123,9 +123,9 @@ Create the surgical plan iteration skill in `templates/.agent-room/skills/iterat
 
 ### Success Criteria:
 #### Automated Verification:
-- [ ] File exists: `templates/.agent-room/skills/iterate-plan.md`
-- [ ] File exists: `.agent-room/skills/iterate-plan.md`
-- [ ] Has valid YAML frontmatter header
+- [x] File exists: `templates/.agent-room/skills/iterate-plan.md`
+- [x] File exists: `.agent-room/skills/iterate-plan.md`
+- [x] Has valid YAML frontmatter header
 
 ---
 
@@ -149,9 +149,9 @@ Create the mechanical execution skill in `templates/.agent-room/skills/implement
 
 ### Success Criteria:
 #### Automated Verification:
-- [ ] File exists: `templates/.agent-room/skills/implement-plan.md`
-- [ ] File exists: `.agent-room/skills/implement-plan.md`
-- [ ] Has valid YAML frontmatter header
+- [x] File exists: `templates/.agent-room/skills/implement-plan.md`
+- [x] File exists: `.agent-room/skills/implement-plan.md`
+- [x] Has valid YAML frontmatter header
 
 ---
 
@@ -185,8 +185,8 @@ Register the new skills in `CORE_SKILL_FILES` in `lib/skill.js` and add a deprec
 
 ### Success Criteria:
 #### Automated Verification:
-- [ ] `node --test test/skill.test.js` passes
-- [ ] `npm run lint` passes
+- [x] `node --test test/skill.test.js` passes
+- [x] `npm run lint` passes
 
 ---
 
@@ -205,9 +205,9 @@ Sync skills to `.claude/skills/` and run the repository's full test suite and li
 
 ### Success Criteria:
 #### Automated Verification:
-- [ ] All unit tests pass (`npm test`)
-- [ ] Linter passes (`npm run lint`)
-- [ ] No regression in skill pack management tests
+- [x] All unit tests pass (`npm test`)
+- [x] Linter passes (`npm run lint`)
+- [x] No regression in skill pack management tests
 
 ---
 

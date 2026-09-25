@@ -34,7 +34,7 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | **Epic 8: Centralized Policy Distribution & Monorepo Governance** | **8.1** | Remote Policy Distribution & Corporate Governance Presets (`init --preset https://...`) | 📋 Ready |
 | | **8.2** | Monorepo Multi-Package Boundary Enforcement (nested `.agent-room` scopes) | 📋 Ready |
 | | **8.3** | Centralized Compliance Drift & Remote Policy Synchronizer (`doctor --upstream`) | 📋 Ready |
-| **Epic 9: Research → Plan → Implement (RPI) Streamlined Execution** | **9.1** | Core RPI Skills Suite (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`) | 📋 Ready |
+| **Epic 9: Research → Plan → Implement (RPI) Streamlined Execution** | **9.1** | Core RPI Skills Suite (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`) | ✅ **DONE** |
 | | **9.2** | Standardized Artifact Lifecycle (`docs/research/`, `docs/plans/`, frontmatter schemas) | 📋 Ready |
 | | **9.3** | RPI Routing in Workflow Classifier & Universal `AGENTS.md` | 📋 Ready |
 | | **9.4** | Multi-Agent Adapters & Goose Recipe Integration (`--tools goose`, Claude commands, Cursor rules) | 📋 Ready |
@@ -562,7 +562,14 @@ Empower engineering organizations to distribute, synchronize, and enforce standa
 Bring structured, disciplined execution to AI coding agents across all CAR-supported tools (Claude Code, Cursor, Windsurf, Cline, Codex, Copilot, and Goose) by instituting the Research → Plan → Implement (RPI) paradigm. Prevent cognitive drift, hallucinated architectural assumptions, monolithic session collapse, and unverified implementation passes through isolated phases, standardized on-disk artifacts, and mechanical seatbelts.
 
 ### Story 9.1: Core RPI Guidance & Skill Suite (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`)
-- **Status:** 📋 Ready
+- **Status:** ✅ **DONE** (Branch `feature/story-9.1-rpi-core-skills`)
+- **Summary:**
+  - Implemented the 4 core RPI procedure skills in `templates/.agent-room/skills/` and dogfooded in `.agent-room/skills/`: `research-codebase.md`, `writing-plans.md`, `implement-plan.md`, and `iterate-plan.md`.
+  - Updated `CORE_SKILL_FILES` in `lib/skill.js` to register the new skills as built-in core framework skills.
+  - Added deprecation notice to `brainstorming.md` directing models to the RPI pipeline.
+  - Mirrored skills to `.claude/skills/` and synced tool adapters (`.cursor/rules/`, `.windsurfrules`, `.clinerules`, `.codexrules`, `.github/copilot-instructions.md`).
+  - Executed dogfooding research in `docs/research/2026-09-25-rpi-core-skills.md` and implementation plan in `docs/plans/2026-09-25-rpi-core-skills.md`.
+  - All 376 repository tests pass cleanly.
 - **Goal:**
   - Author and standardize the four core RPI procedure skills in `.agent-room/skills/` with clear operational gates, step-by-step instructions, and actionable templates.
 - **Acceptance Criteria:**
@@ -663,6 +670,65 @@ Bring structured, disciplined execution to AI coding agents across all CAR-suppo
      - `create-agent-room sync --all` and `doctor --fix` detect deprecated core skills lingering in `.agent-room/skills/` or mirrored in `.claude/skills/brainstorming/` and cleanly remove or archive them.
   4. Documentation & Pointers Update:
      - Update references in `AGENTS.md`, `templates/base/AGENTS.md.tmpl`, `workflow-classifier.md`, and `CAPABILITIES.md` to reference the modern RPI skill suite instead of deprecated skills.
+
+---
+
+### Story 9.7: Atomic Commit Workflow Skill (`commit-changes.md` / `/commit`)
+- **Status:** 📋 Ready
+- **Goal:**
+  - Standardize atomic commit formulation, imperative commit messages, pre-commit guardrail checks, and interactive user approval gates without AI attribution.
+- **Acceptance Criteria:**
+  1. Pre-Commit Analysis:
+     - Runs `git status` and `git diff` to understand why modifications occurred.
+  2. Logical Grouping:
+     - Groups related files into distinct atomic commits; strictly forbids `git add -A` and `git add .`.
+  3. User Approval Gate:
+     - Presents the commit plan (files list + imperative commit message) and prompts user for explicit confirmation before staging.
+  4. Guardrails & Identity Integration:
+     - Runs `create-agent-room guardrails-check` and verifies `git config user.name && git config user.email` prior to staging.
+  5. Clean Attribution:
+     - Strictly forbids `Co-Authored-By` or AI attribution trailers. Commits authored solely by user identity.
+  6. Multi-Tool Scaffolding:
+     - Scaffolded as `.agent-room/skills/commit-changes.md` and mirrored to `.claude/skills/commit-changes/` with slash command shortcut `/commit`.
+
+---
+
+### Story 9.8: Plan Validation Auditor Skill (`validate-plan.md` / `/validate_plan`)
+- **Status:** 📋 Ready
+- **Goal:**
+  - Provide an independent post-implementation validation gate to ensure implementation faithfully realized every phase of the approved plan.
+- **Acceptance Criteria:**
+  1. Context Discovery:
+     - Inspects active plan in `docs/plans/` and reviews git commits and diffs (`git log -n 20`, `git diff HEAD~N..HEAD`).
+  2. 3-Vector Audit:
+     - Evaluates database/schema migrations, code modifications against specifications, and automated test coverage.
+  3. Triage Classification:
+     - Categorizes results into Matches Plan, Deviations from Plan, Potential Issues, and Manual Testing Required.
+  4. Validation Report Artifact:
+     - Emits a structured markdown report (`docs/reviews/YYYY-MM-DD-<ticket>-validation.md` or session summary) with clear pass/fail status.
+  5. Multi-Tool Scaffolding:
+     - Scaffolded as `.agent-room/skills/validate-plan.md` and mirrored to `.claude/skills/validate-plan/` with slash command shortcut `/validate_plan`.
+
+---
+
+### Story 9.9: Attested PR Description Skill (`describe-pr.md` / `/describe_pr`)
+- **Status:** 📋 Ready
+- **Goal:**
+  - Synthesize PR descriptions by combining deep architectural diff analysis with CAR's verified execution proofs (`create-agent-room pr-desc --verify`) and GitHub CLI synchronization.
+- **Acceptance Criteria:**
+  1. PR Context Discovery:
+     - Queries `gh pr view` and `gh pr diff` or locates PR description template.
+  2. Architectural Diff Analysis:
+     - Evaluates user-facing vs. internal changes, breaking changes, and migration requirements.
+  3. Test Attestation Integration:
+     - Invokes `create-agent-room pr-desc --verify` to automatically run tests and embed the execution attestation proof and compliance checklist.
+  4. Verification Checklist Handling:
+     - Executes any repository verification commands from the template and marks `- [x]` or `- [ ]`.
+  5. GitHub PR Sync:
+     - Updates the pull request description directly via `gh pr edit {number} --body-file <path>`.
+  6. Multi-Tool Scaffolding:
+     - Scaffolded as `.agent-room/skills/describe-pr.md` and mirrored to `.claude/skills/describe-pr/` with slash command shortcut `/describe_pr`.
+
 
 
 

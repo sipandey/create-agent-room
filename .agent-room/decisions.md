@@ -16,6 +16,18 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-25 — Core RPI Guidance & Skill Suite (Story 9.1)
+
+**Decision:** Author and package the four core procedural skills for the Research → Plan → Implement (RPI) framework: `research-codebase.md`, `writing-plans.md`, `implement-plan.md`, and `iterate-plan.md`.
+- **Factual, Read-Only Research Phase (`research-codebase.md`):** Mandates zero opinions, zero proposals, and strictly read-only codebase discovery using 3 subroutines (`find_files`, `analyze_code`, `find_patterns`), saving output to `docs/research/YYYY-MM-DD-HHmm-<topic>.md`.
+- **Phased Implementation Planning (`writing-plans.md`):** Ingests research docs, conducts structured clarifying Q&A, presents 2–3 architectural approaches with trade-offs, and outputs phased implementation plans to `docs/plans/YYYY-MM-DD-HHmm-<description>.md` with automated verification commands and state checkboxes (`- [ ]`).
+- **Targeted Plan Iteration (`iterate-plan.md`):** Performs surgical plan updates based on user feedback without re-running full research from scratch.
+- **Mechanical, Boring Implementation (`implement-plan.md`):** Executes plans phase-by-phase in a fresh session, runs automated verification commands, and updates checkboxes on disk (`- [ ]` -> `- [x]`) for context-compaction resilience.
+- **Skill Registry Integration:** Updated `CORE_SKILL_FILES` in `lib/skill.js` to recognize `research-codebase.md`, `implement-plan.md`, and `iterate-plan.md` as built-in core skills. Added a deprecation notice to `brainstorming.md` directing agents to the RPI pipeline.
+**Why:** Unconstrained agents jump directly into code execution, causing assumption drift, hallucinated architectural patterns, and context window blowups. Structuring work into isolated phases with explicit on-disk artifacts and checkpoint checkboxes provides predictability, correctness, and context resilience across all supported tools.
+**Rejected:** Pure YAML prompt recipes as the primary format (pure YAML violates CAR's zero-dependency invariant and cannot be natively consumed by Claude Code, Cursor, or Copilot; Markdown with YAML frontmatter serves as the universal source of truth, with Goose YAML adapters generated for Goose).
+
+
 <!-- no-log: v2.5.0 release commit — routine release mechanics (version bump, lockfile re-sync, action.yml and CI pin bump, CHANGELOG [Unreleased]→[2.5.0]). The CHANGELOG is the record; nothing new to add here. -->
 
 ### 2026-09-25 — pre-push local CI gate and upstream detection (Story 6.2)
