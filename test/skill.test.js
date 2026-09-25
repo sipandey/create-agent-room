@@ -241,3 +241,13 @@ test('CORE_SKILL_FILES: registers commit-changes.md with valid metadata', () => 
   assert.ok(content.includes('name: commit-changes'));
   assert.ok(content.includes('description:'));
 });
+
+test('CORE_SKILL_FILES: registers validate-plan.md with valid metadata', () => {
+  assert.ok(CORE_SKILL_FILES.includes('validate-plan.md'));
+  const templatePath = path.join(__dirname, '..', 'templates', '.agent-room', 'skills', 'validate-plan.md');
+  assert.ok(fs.existsSync(templatePath));
+  const content = fs.readFileSync(templatePath, 'utf8');
+  assert.ok(content.startsWith('---\n'));
+  assert.ok(content.includes('name: validate-plan'));
+  assert.ok(content.includes('description:'));
+});
