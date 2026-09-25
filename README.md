@@ -313,10 +313,22 @@ jobs:
           node-version: 20
       - run: npm install -g create-agent-room
       - name: Run Room Governance Checks
-        run: create-agent-room ci --summary
+        run: create-agent-room ci --summary --comment
 ```
 
-When running in GitHub Actions, passing `--summary` automatically writes an interactive Markdown scorecard directly to the **GitHub Actions Job Summary** (`$GITHUB_STEP_SUMMARY`)!
+When running in GitHub Actions, passing `--summary` automatically writes an interactive Markdown scorecard directly to the **GitHub Actions Job Summary** (`$GITHUB_STEP_SUMMARY`)! Passing `--comment` automatically posts and updates a sticky compliance scorecard comment on pull requests without comment churn.
+
+You can also use the official composite GitHub Action directly:
+```yaml
+- uses: actions/checkout@v4
+  with:
+    fetch-depth: 0
+- uses: sipandey/create-agent-room@v2
+  with:
+    comment: true
+    strict: true
+```
+See [docs/github-action.md](docs/github-action.md) for full action documentation.
 
 ---
 
@@ -345,6 +357,9 @@ When running in GitHub Actions, passing `--summary` automatically writes an inte
 | `--skip-pr` | Skip PR anti-tamper, rule weakening, and bypass audit gate in CI | `ci` |
 | `--skip-pr-sessions` | Skip requiring session log for non-scaffold code changes in PR audit | `ci` |
 | `--only <checks>` | Run only specified checks (comma-separated: `validate,doctor,sessions,verify,eval,pr`) | `ci` |
+| `--comment`, `--pr-comment` | Post or update sticky compliance scorecard comment on pull requests | `ci` |
+| `--github-token <token>` | GitHub token for posting PR comments (or `GITHUB_TOKEN` env var) | `ci` |
+| `--pr <number>` | Pull request number for posting scorecard comments | `ci` |
 | `--summary [file]` | Write or append Markdown scorecard to `$GITHUB_STEP_SUMMARY` or custom file | `ci` |
 | `--format <type>` | Output format: `text`, `json`, `csv`, `markdown` | `eval`, `verify`, `metrics`, `ci` |
 | `--output <file>` | Write report, session, or PR description directly to a file path | `session`, `eval`, `verify`, `metrics`, `pr-desc`, `ci` |

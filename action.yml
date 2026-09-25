@@ -1,10 +1,10 @@
-name: 'create-agent-room Validate'
+name: 'create-agent-room CI & Governance'
 # GitHub Marketplace enforces a 125-character limit on this field (the
 # Marketplace listing form rejects longer text) - keep it terse. The fuller
 # explanation, including when to prefer the init --tools git-scaffolded
 # workflow instead of this action, lives in docs/github-action.md and
 # README.md's "GitHub Action" section.
-description: "Validates an agent-room scaffold's guardrails.json schema, skill frontmatter, and session logs — no init required."
+description: "Validates agent-room guardrails, session logs, diff compliance, and reports PR scorecards in GitHub Actions."
 author: 'Siddharth Pandey'
 
 branding:
@@ -18,16 +18,52 @@ inputs:
       .agent-room/ directory). Relative to the job's working directory.
     required: false
     default: '.'
+  base:
+    description: >-
+      Target base branch or ref (e.g. "main" or "origin/main") for PR diff,
+      anti-tamper, rule-weakening, and session log presence checks.
+    required: false
+    default: ''
+  strict:
+    description: >-
+      Treat warnings as failures and enforce strict test passing (exit code 1).
+    required: false
+    default: 'false'
+  comment:
+    description: >-
+      Post or update a sticky PR compliance scorecard comment on the pull request.
+      Requires pull-requests: write permission.
+    required: false
+    default: 'false'
+  summary:
+    description: >-
+      Write interactive Markdown scorecard to GitHub Actions Job Summary ($GITHUB_STEP_SUMMARY).
+    required: false
+    default: 'true'
+  github-token:
+    description: >-
+      GitHub token for posting PR comments. Defaults to env.GITHUB_TOKEN or github.token.
+    required: false
+    default: ''
+  skip:
+    description: >-
+      Comma-separated list of check IDs to skip (e.g. "verify,eval").
+    required: false
+    default: ''
+  only:
+    description: >-
+      Comma-separated list of check IDs to run exclusively (e.g. "validate,doctor").
+    required: false
+    default: ''
   checks:
     description: >-
-      Which checks to run: "both" (default), "validate" (guardrails
-      schema + skill frontmatter only), or "lint-sessions" (session log
-      format only).
+      [Legacy] Which checks to run: "both", "validate", or "lint-sessions".
+      Preserved for backward-compatibility. Prefer using "only" or "skip".
     required: false
-    default: 'both'
+    default: ''
   version:
     description: >-
-      create-agent-room version to install and run, e.g. "2.0.1" or
+      create-agent-room version to install and run, e.g. "2.4.0" or
       "latest". Pinned by default so CI results stay reproducible across
       runs instead of silently changing behavior when a new version ships —
       see the version-pinning rationale in
@@ -45,10 +81,10 @@ runs:
   using: 'composite'
   steps:
     - name: Reject an unknown "checks" input
-      if: inputs.checks != 'both' && inputs.checks != 'validate' && inputs.checks != 'lint-sessions'
+      if: inputs.checks != '' && inputs.checks != 'both' && inputs.checks != 'validate' && inputs.checks != 'lint-sessions' && inputs.checks != 'ci'
       shell: bash
       run: |
-        echo "::error::Invalid 'checks' input: '${{ inputs.checks }}'. Must be 'both', 'validate', or 'lint-sessions'."
+        echo "::error::Invalid 'checks' input: '${{ inputs.checks }}'. Must be 'both', 'validate', 'lint-sessions', or 'ci'."
         exit 1
 
     - name: Set up Node.js
@@ -66,12 +102,50 @@ runs:
       shell: bash
       run: npm install -g "create-agent-room@${{ inputs.version }}"
 
-    - name: Validate agent-room structure
-      if: inputs.checks == 'both' || inputs.checks == 'validate'
+    - name: Run create-agent-room CI
       shell: bash
-      run: create-agent-room validate "${{ inputs.target-dir }}"
+      run: |
+        ARGS=()
 
-    - name: Lint session logs
-      if: inputs.checks == 'both' || inputs.checks == 'lint-sessions'
-      shell: bash
-      run: create-agent-room lint-sessions "${{ inputs.target-dir }}"
+        if [ -n "${{ inputs.base }}" ]; then
+          ARGS+=(--base "${{ inputs.base }}")
+        fi
+
+        if [ "${{ inputs.strict }}" = "true" ]; then
+          ARGS+=(--strict)
+        fi
+
+        if [ "${{ inputs.comment }}" = "true" ]; then
+          ARGS+=(--comment)
+        fi
+
+        if [ "${{ inputs.summary }}" = "true" ]; then
+          ARGS+=(--summary)
+        fi
+
+        if [ -n "${{ inputs.github-token }}" ]; then
+          ARGS+=(--github-token "${{ inputs.github-token }}")
+        fi
+
+        SKIP="${{ inputs.skip }}"
+        ONLY="${{ inputs.only }}"
+
+        if [ -z "$ONLY" ]; then
+          if [ "${{ inputs.checks }}" = "validate" ]; then
+            ONLY="validate"
+          elif [ "${{ inputs.checks }}" = "lint-sessions" ]; then
+            ONLY="sessions"
+          elif [ "${{ inputs.checks }}" = "both" ]; then
+            ONLY="validate,sessions"
+          fi
+        fi
+
+        if [ -n "$SKIP" ]; then
+          ARGS+=(--skip "$SKIP")
+        fi
+
+        if [ -n "$ONLY" ]; then
+          ARGS+=(--only "$ONLY")
+        fi
+
+        create-agent-room ci "${{ inputs.target-dir }}" "${ARGS[@]}"

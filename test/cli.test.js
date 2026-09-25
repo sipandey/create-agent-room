@@ -256,6 +256,24 @@ test('parseArgs: throws on missing --base value', () => {
   assert.throws(() => parseArgs(['ci', '--base']), /Error: --base option requires a target git ref/);
 });
 
+test('parseArgs: parses ci flags --comment, --github-token, --pr', () => {
+  const result1 = parseArgs(['ci', '--comment', '--github-token', 'tok123', '--pr', '42']);
+  assert.strictEqual(result1.comment, true);
+  assert.strictEqual(result1['pr-comment'], true);
+  assert.strictEqual(result1.githubToken, 'tok123');
+  assert.strictEqual(result1.pr, 42);
+
+  const result2 = parseArgs(['ci', '--pr-comment=false', '--github-token=tok456', '--pr=99']);
+  assert.strictEqual(result2.comment, false);
+  assert.strictEqual(result2.githubToken, 'tok456');
+  assert.strictEqual(result2.pr, 99);
+});
+
+test('parseArgs: throws on missing --github-token and --pr values', () => {
+  assert.throws(() => parseArgs(['ci', '--github-token']), /Error: --github-token option requires a token string/);
+  assert.throws(() => parseArgs(['ci', '--pr']), /Error: --pr option requires a pull request number/);
+});
+
 // End-to-end (spawns the real CLI) rather than just parseArgs, since the
 // actual contract is "prints the version and exits 0" - behavior that
 // lives in main(), not the argument parser.
