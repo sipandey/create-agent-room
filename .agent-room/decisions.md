@@ -16,6 +16,16 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-26 — Attested PR Description Skill (Story 9.9)
+
+**Decision:** Author and package the canonical `describe-pr.md` skill (`/describe_pr` and `/describe-pr`) in `templates/.agent-room/skills/` and `.agent-room/skills/`, and register it in `CORE_SKILL_FILES` in `lib/skill.js`.
+- **Deep Architectural Diff Analysis:** Categorizes changes across User-Facing, Internal Architecture, Breaking Changes, and Database / Migrations dimensions.
+- **Embedded Execution Proof:** Integrates `create-agent-room pr-desc . --verify --output .agent-room/pr-description.md` to run test suites and embed exit code, duration, ISO timestamp, and console logs into the PR body.
+- **Interactive Human Approval Gate:** Enforces presenting the draft PR description to the human and prompting: `"Shall I update the PR description on GitHub?"` before altering remote PR metadata.
+- **GitHub CLI Direct Synchronization:** Automates updating PR bodies via `gh pr edit <number> --body-file <path>`.
+**Why:** Pull request descriptions synthesized without verifiable execution evidence lead to rubber-stamping, unverified claims of "tests pass", and missing architectural context for reviewers. Operationalizing CAR's attestation engine into an interactive skill guarantees that every PR description is backed by fresh, audited execution proofs.
+**Rejected:** Purely automated, unreviewed PR updates without human confirmation (violates developer sovereignty and risk management).
+
 ### 2026-09-26 — Plan Validation Auditor Skill (Story 9.8)
 
 **Decision:** Author and package the canonical `validate-plan.md` skill (`/validate_plan` and `/validate-plan`) in `templates/.agent-room/skills/` and `.agent-room/skills/`, and register it in `CORE_SKILL_FILES` in `lib/skill.js`.

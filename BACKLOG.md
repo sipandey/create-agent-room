@@ -42,7 +42,7 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | | **9.6** | Retire Redundant Legacy Skills (`brainstorming`, `verification-before-completion`) & Orphan Purging | 📋 Ready |
 | | **9.7** | Atomic Commit Workflow Skill (`commit-changes.md` / `/commit`) | ✅ **DONE** |
 | | **9.8** | Plan Validation Auditor Skill (`validate-plan.md` / `/validate_plan`) | ✅ **DONE** |
-| | **9.9** | Attested PR Description Skill (`describe-pr.md` / `/describe_pr`) | 📋 Ready |
+| | **9.9** | Attested PR Description Skill (`describe-pr.md` / `/describe_pr`) | ✅ **DONE** |
 
 ---
 
@@ -731,7 +731,15 @@ Bring structured, disciplined execution to AI coding agents across all CAR-suppo
 ---
 
 ### Story 9.9: Attested PR Description Skill (`describe-pr.md` / `/describe_pr`)
-- **Status:** 📋 Ready
+- **Status:** ✅ **DONE** (Branch `feature/story-9.9-describe-pr-skill`)
+- **Summary:**
+  - Authored canonical `describe-pr.md` skill in `templates/.agent-room/skills/describe-pr.md` and dogfooded in `.agent-room/skills/describe-pr.md`.
+  - Operationalized architectural diff analysis across User-Facing, Internal, Breaking, and Migration dimensions.
+  - Integrated execution attestation generation using `create-agent-room pr-desc . --verify --output .agent-room/pr-description.md`.
+  - Added interactive human confirmation gate before modifying remote PR metadata.
+  - Implemented direct GitHub CLI synchronization via `gh pr edit <number> --body-file <path>`.
+  - Registered in `CORE_SKILL_FILES` in `lib/skill.js` and added unit test coverage in `test/skill.test.js`.
+  - Synchronized across Claude Code (`.claude/skills/describe-pr/SKILL.md`), Cursor, Windsurf, Cline, Codex, and Copilot.
 - **Goal:**
   - Synthesize PR descriptions by combining deep architectural diff analysis with CAR's verified execution proofs (`create-agent-room pr-desc --verify`) and GitHub CLI synchronization.
 - **Acceptance Criteria:**
