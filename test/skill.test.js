@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const { execFileSync } = require('node:child_process');
 const { runInit } = require('../lib/init');
-const { listSkillPacks, addSkillPacks, removeSkillPacks, runSkillCli } = require('../lib/skill');
+const { listSkillPacks, addSkillPacks, removeSkillPacks, runSkillCli, CORE_SKILL_FILES } = require('../lib/skill');
 
 const CLI_PATH = path.join(__dirname, '..', 'bin', 'cli.js');
 
@@ -230,4 +230,14 @@ test('CLI: node bin/cli.js skill add and remove work end-to-end', async () => {
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
+});
+
+test('CORE_SKILL_FILES: registers commit-changes.md with valid metadata', () => {
+  assert.ok(CORE_SKILL_FILES.includes('commit-changes.md'));
+  const templatePath = path.join(__dirname, '..', 'templates', '.agent-room', 'skills', 'commit-changes.md');
+  assert.ok(fs.existsSync(templatePath));
+  const content = fs.readFileSync(templatePath, 'utf8');
+  assert.ok(content.startsWith('---\n'));
+  assert.ok(content.includes('name: commit-changes'));
+  assert.ok(content.includes('description:'));
 });
