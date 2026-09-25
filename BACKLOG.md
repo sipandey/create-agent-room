@@ -24,7 +24,7 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | **Epic 5: Enterprise CI/CD Governance** | **5.1** | `create-agent-room ci` Unified Headless CI Runner | ✅ **DONE** (`7181329`) |
 | | **5.2** | Remote PR Anti-Tamper & Bypass Audit Gate (`ci --base`) | ✅ **DONE** (`5427172`) |
 | | **5.3** | Automated PR Compliance Reporter & GitHub Action | ✅ **DONE** (`13cae8f`) |
-| **Epic 6: Ambient Git & Invisible Governance** | **6.1** | Git Hook Manager CLI (`create-agent-room hook [install\|status\|uninstall]`) | 📋 Ready |
+| **Epic 6: Ambient Git & Invisible Governance** | **6.1** | Git Hook Manager CLI (`create-agent-room hook [install\|status\|uninstall]`) | 🟡 **IN PROGRESS** |
 | | **6.2** | Pre-Push Local CI Gate (`pre-push` -> `create-agent-room ci`) | 📋 Ready |
 | | **6.3** | Ambient Session Tracking & Auto-Handoff (`post-commit` -> auto session) | 📋 Ready |
 | | **6.4** | Cross-Branch Auto-Sync & Drift Healing (`post-checkout` & `post-merge`) | 📋 Ready |
@@ -381,7 +381,7 @@ Close the "local-only" enforcement gap by transforming `create-agent-room` into 
 Eliminate cognitive friction by embedding `create-agent-room` commands directly into standard `git` lifecycle hooks. AI agents and engineers just use native git commands (`commit`, `push`, `checkout`, `pull`), while governance, session recording, rule synchronization, and CI pre-flight checks run invisibly in the background.
 
 ### Story 6.1: Git Hook Manager CLI (`create-agent-room hook [install|status|uninstall]`)
-- **Status:** 📋 Ready
+- **Status:** 🟡 **IN PROGRESS** (Branch `feature/git-hook-manager-cli`)
 - **Goal:**
   - Provide a first-class CLI command and programmatic API to install, inspect, and remove CAR git lifecycle hooks without clobbering existing developer hooks.
 - **Acceptance Criteria:**

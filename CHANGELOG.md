@@ -12,6 +12,13 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ### Added
 
+- Git Hook Manager CLI (`create-agent-room hook [install|status|uninstall]`, Story 6.1): provides first-class management of git lifecycle hooks with non-destructive chaining and custom `core.hooksPath` support.
+  - Implemented `lib/hook.js` supporting 5 lifecycle hooks: `pre-commit`, `pre-push`, `post-commit`, `post-checkout`, and `post-merge`.
+  - Non-destructive chaining: embeds delimited CAR blocks (`# --- create-agent-room hook: <name> ---`), preserving existing user scripts, Husky, and Lefthook integrations without clobbering.
+  - Custom hook directory discovery: detects `git config core.hooksPath` and git worktree/submodule pointers before falling back to `.git/hooks`.
+  - Uninstallation safety: strips only CAR blocks on uninstall; deletes files only when no user code remains.
+  - Integrated into `create-agent-room doctor` to eliminate false drift warnings on chained hooks and auto-repair missing hooks under `--fix`.
+
 - Automated PR Compliance Scorecard Reporter & Modernized GitHub Action (`create-agent-room ci --comment`, Story 5.3): automatically posts and updates sticky compliance scorecards on GitHub pull requests.
   - Implemented `lib/pr-comment.js` using Node.js 18+ standard library global `fetch` with zero external runtime dependencies.
   - Generates sticky PR comments with invisible marker `<!-- agent-room-pr-comment -->`, updating existing comments in-place (`PATCH`) to prevent notification spam across iterations.

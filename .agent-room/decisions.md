@@ -16,6 +16,16 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-25 — first-class git hook manager CLI (Story 6.1)
+
+**Decision:** Implement `create-agent-room hook [install|status|uninstall]` in `lib/hook.js` to manage git lifecycle hooks with non-destructive chaining and custom `core.hooksPath` support.
+- **Non-Destructive Chaining:** Uses delimited blocks (`# --- create-agent-room hook: <name> --- ... # --- end create-agent-room hook: <name> ---`). When repositories already use Husky, Lefthook, or custom developer scripts, CAR appends or updates its block without overwriting user scripts. On uninstall, only the CAR block is stripped; if no user code remains, the file is cleanly deleted.
+- **Five Lifecycle Hooks Supported:** Defines standardized templates for `pre-commit` (guardrails check), `pre-push` (local CI simulation), `post-commit` (ambient session tracking), `post-checkout` (multi-agent rule sync), and `post-merge` (multi-agent rule sync).
+- **Custom Hooks Directory Resolution:** Automatically detects `git config core.hooksPath` (e.g. `.husky/`, `.agent-room/hooks/git/`) and resolves git worktree/submodule pointers before falling back to `.git/hooks`.
+- **Integrated Lifecycle Management:** Deeply wired into `init --tools git` and `doctor --fix`, while `doctor` checks hook blocks to eliminate false drift warnings on chained hooks.
+**Why:** Relying on developer or agent memory to run governance commands creates friction and leads to avoidable CI failures. Hooking CAR commands directly into native git operations makes governance ambient and invisible. Providing an explicit, non-destructive hook manager ensures CAR integrates seamlessly into any existing git setup without breaking custom workflows.
+**Rejected:** Forcing `core.hooksPath` globally (overwriting user's `core.hooksPath` breaks Husky setups); clobbering existing hook files unconditionally.
+
 ### 2026-09-23 — automated PR compliance reporter & modern GitHub Action (Story 5.3)
 
 **Decision:** Implement automated sticky PR scorecard reporting in `lib/pr-comment.js` and modernize the official composite GitHub Action in `action.yml` to orchestrate `create-agent-room ci`.
