@@ -599,6 +599,7 @@ test('pre-push template script: executes cleanly from git hook and respects bypa
   const outputBypass = execFileSync('/bin/sh', [hookFile, 'origin', 'git@github.com:foo/bar.git'], {
     cwd: repo,
     env: Object.assign({}, process.env, { CAR_SKIP_PRE_PUSH: '1' }),
+    input: '',
     stdio: 'pipe',
     encoding: 'utf8',
   });
