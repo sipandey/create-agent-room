@@ -16,6 +16,17 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-26 — Atomic Commit Workflow Skill (Story 9.7)
+
+**Decision:** Author and package the canonical `commit-changes.md` skill (`/commit`) in `templates/.agent-room/skills/` and `.agent-room/skills/`, and register it in `CORE_SKILL_FILES` in `lib/skill.js`.
+- **Pre-Commit Assessment & Guardrails Gate:** Before formulating commits, the skill inspects `git status`, `git diff`, re-verifies authorized git identity (`git config user.name && git config user.email`), verifies the active branch is a dedicated feature/fix branch, and enforces the blast-radius scope limit from `.agent-room/guardrails.json` (max 20 files, max 500 lines per commit).
+- **Mandatory Interactive Approval Gate:** The agent must present the formulated commit plan (files list and imperative Conventional Commits message) to the human and prompt: `"I plan to create [N] commit(s) with these changes. Shall I proceed?"`, halting turn until explicit confirmation is received.
+- **Strict Anti-Sloppiness Staging:** Prohibits `git add -A`, `git add .`, and `git commit -a`. Only specific, named file paths may be staged.
+- **Zero AI Attribution Policy:** Commits must be authored exclusively by the human user identity; strictly forbids `Co-Authored-By` or AI attribution trailers.
+- **No Unsolicited Pushes:** Never executes `git push` without separate, explicit user instruction.
+**Why:** Agents completing implementation phases frequently make monolithic commits exceeding guardrail scope limits, accidentally stage sensitive or temporary files with `git add .`, add unwanted AI attribution headers, or push prematurely to remotes. Standardizing atomic commit execution with an interactive approval gate guarantees clean, auditable git history.
+**Rejected:** Automating commit creation headlessly without human approval (violates pair-programming control and makes unreviewed changes irreversible).
+
 ### 2026-09-25 — Core RPI Guidance & Skill Suite (Story 9.1)
 
 **Decision:** Author and package the four core procedural skills for the Research → Plan → Implement (RPI) framework: `research-codebase.md`, `writing-plans.md`, `implement-plan.md`, and `iterate-plan.md`.

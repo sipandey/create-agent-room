@@ -674,7 +674,16 @@ Bring structured, disciplined execution to AI coding agents across all CAR-suppo
 ---
 
 ### Story 9.7: Atomic Commit Workflow Skill (`commit-changes.md` / `/commit`)
-- **Status:** 📋 Ready
+- **Status:** ✅ **DONE** (Branch `feature/story-9.7-commit-changes-skill`)
+- **Summary:**
+  - Implemented the canonical `commit-changes.md` skill in `templates/.agent-room/skills/` and dogfooded in `.agent-room/skills/`.
+  - Enforced pre-commit verification gates: `git status`, `git diff`, active feature branch check (`git branch --show-current`), and author identity check (`git config user.name && git config user.email`).
+  - Enforced blast-radius scope compliance checking `maxFilesPerChange` (20) and `maxLinesPerChange` (500) from `.agent-room/guardrails.json`.
+  - Added interactive plan approval gate presenting exact files and imperative commit messages, prompting `"I plan to create [N] commit(s) with these changes. Shall I proceed?"`.
+  - Added strict prohibitions against catch-all staging (`git add -A`, `git add .`, `git commit -a`), AI co-author attribution trailers (`Co-Authored-By`, `Generated with...`), and unsolicited `git push`.
+  - Registered `commit-changes.md` in `CORE_SKILL_FILES` in `lib/skill.js` and added unit test coverage in `test/skill.test.js`.
+  - Mirrored to `.claude/skills/commit-changes/SKILL.md` and synced multi-tool manifests for Cursor, Windsurf, Cline, Codex, and Copilot.
+  - All 377 repository tests pass cleanly.
 - **Goal:**
   - Standardize atomic commit formulation, imperative commit messages, pre-commit guardrail checks, and interactive user approval gates without AI attribution.
 - **Acceptance Criteria:**

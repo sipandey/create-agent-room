@@ -27,6 +27,7 @@ Implementation happens in a fresh session using the `implement-plan` skill after
 2. **Analyze and verify understanding**:
    - Cross-reference requirements with codebase reality discovered during the research phase.
    - Identify discrepancies, constraints, or hidden dependencies.
+   - **Anti-Sycophancy Gate:** If the user corrects any technical assumption, do NOT blindly accept it. Inspect the specific code files mentioned to verify reality before adopting the correction.
 3. **Present informed understanding and focused questions**:
    - Summarize what needs to be accomplished based on the research.
    - Only ask questions you genuinely cannot answer through code investigation.
@@ -56,7 +57,12 @@ Confirm the ordering and granularity before writing the complete plan.
 
 ### Step 4: Write the Implementation Plan
 
-Save the complete plan to `docs/plans/YYYY-MM-DD-HHmm-<description>.md` using this exact template:
+<HARD-GATE>
+ZERO OPEN QUESTIONS OR PLACEHOLDERS IN FINAL PLAN:
+If you encounter technical uncertainties during planning, STOP. Resolve them immediately through code inspection or user dialogue. Never output a plan containing "TBD", "TODO: figure out schema", or unresolved architectural questions. The implementation plan must be 100% complete, unambiguous, and mechanically executable.
+</HARD-GATE>
+
+Save the complete plan to `docs/plans/YYYY-MM-DD-[TICKET-]description.md` (e.g., `2026-09-26-ENG-123-auth.md` or `2026-09-26-auth.md`) using this exact template:
 
 ````markdown
 # [Feature / Task Name] Implementation Plan

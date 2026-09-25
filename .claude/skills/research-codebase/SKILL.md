@@ -60,7 +60,7 @@ git checkout -b feature/<topic-or-story-name>
 ```
 
 ### Step 5: Write the Research Document
-Create `docs/research/YYYY-MM-DD-HHmm-<topic>.md` using this exact structure:
+Create `docs/research/YYYY-MM-DD-[TICKET-]description.md` (e.g., `2026-09-26-ENG-123-auth.md` or `2026-09-26-auth.md`) using this exact structure:
 
 ```markdown
 ---
@@ -71,6 +71,7 @@ repository: [repo name from Step 4]
 topic: "[Research Topic]"
 tags: [research, codebase, relevant-tags]
 status: complete
+last_updated: [YYYY-MM-DD]
 ---
 
 # Research: [Topic]
@@ -106,3 +107,13 @@ status: complete
 Present a concise summary to the user highlighting key file references and any open questions. 
 
 **Pause here.** Do not proceed to planning or implementation until the user has reviewed the research findings and confirmed the scope.
+
+---
+
+## Important Operational Guardrails
+
+- **Anti-Sycophancy Gate (Verification on User Corrections):** If the user corrects any technical assumption or statement about the codebase, **DO NOT blindly agree or adopt it**. Spawn a targeted investigation to inspect the specific files/directories mentioned. Only accept corrections once verified against actual code on disk.
+- **Directory Scoping:** When investigating code, be EXTREMELY specific about directory scopes (e.g. `packages/auth/`, `lib/core/`). Never use ambiguous generic terms like "UI" when you mean a specific directory.
+- **Handling Follow-Up Questions:** If the user asks follow-up questions about the same topic, do NOT create a separate fragmented research file. Instead:
+  1. Append a new section to the existing research document: `## Follow-up Research [timestamp]`.
+  2. Update the frontmatter fields `last_updated` and add `last_updated_note: "Added follow-up research for [brief description]"`.
