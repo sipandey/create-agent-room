@@ -1,0 +1,21 @@
+---
+description: Agent-room governance — read AGENTS.md and .agent-room/ before non-trivial work
+alwaysApply: true
+---
+
+# Cursor rules — create-agent-room
+
+Read [`AGENTS.md`](../../AGENTS.md) and everything under
+[`.agent-room/`](../../.agent-room/) before making non-trivial changes:
+
+- `.agent-room/principles.md` — how to get reliable output from the model
+  (present when scaffolded with `--profile full`).
+- `.agent-room/workflow-classifier.md` — size the process to the work
+  (Bug / Enhancement / Feature / Product; `--profile full`).
+- `.agent-room/skills/` — brainstorming, closing-the-loop, code-review, implement-plan, integration-testing, iterate-plan, release-management, research-codebase, systematic-debugging, test-driven-development, verification-before-completion, writing-plans. Follow these as procedures,
+  not suggestions.
+- `.agent-room/anti-patterns.md` and `.agent-room/decisions.md` — check
+  before repeating a past mistake; append after a new one or a notable
+  decision. The project Cursor `stop` hook forces a follow-up turn if you
+  change source files without touching one of these logs (or adding a
+  `<!-- no-log: ... -->` waiver).
