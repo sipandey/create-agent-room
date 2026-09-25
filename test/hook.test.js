@@ -4,7 +4,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const path = require('node:path');
 const fs = require('node:fs');
-const { execFileSync } = require('child_process');
+const { execFileSync, spawnSync } = require('child_process');
 const {
   SUPPORTED_HOOKS,
   resolveHooksDir,
@@ -590,29 +590,32 @@ test('pre-push template script: executes cleanly from git hook and respects bypa
   const repo = createTempGitRepo('pre-push-script-exec');
   t.after(() => cleanupTempDir(repo));
 
+  // Initialize .agent-room so pre-push hook runs active room checks
+  fs.mkdirSync(path.join(repo, '.agent-room'), { recursive: true });
+
   // Install pre-push hook
   installHooks(repo, { hooks: ['pre-push'] });
   const hookFile = path.join(repo, '.git', 'hooks', 'pre-push');
   assert(fs.existsSync(hookFile));
 
   // 1. CAR_SKIP_PRE_PUSH=1 exits 0
-  const outputBypass = execFileSync('/bin/sh', [hookFile, 'origin', 'git@github.com:foo/bar.git'], {
+  const resBypass = spawnSync('/bin/sh', [hookFile, 'origin', 'git@github.com:foo/bar.git'], {
     cwd: repo,
     env: Object.assign({}, process.env, { CAR_SKIP_PRE_PUSH: '1' }),
     input: '',
     stdio: 'pipe',
     encoding: 'utf8',
   });
-  assert.strictEqual(outputBypass, '');
+  assert.strictEqual(resBypass.status, 0);
 
   // 2. Branch deletion on stdin exits 0
   const z40 = '0000000000000000000000000000000000000000';
   const deletionStdin = `refs/heads/delete-me ${z40} refs/heads/delete-me ${z40}\n`;
-  const outputDel = execFileSync('/bin/sh', [hookFile, 'origin', 'git@github.com:foo/bar.git'], {
+  const resDel = spawnSync('/bin/sh', [hookFile, 'origin', 'git@github.com:foo/bar.git'], {
     cwd: repo,
     input: deletionStdin,
     stdio: 'pipe',
     encoding: 'utf8',
   });
-  assert.strictEqual(outputDel, '');
+  assert.strictEqual(resDel.status, 0);
 });
