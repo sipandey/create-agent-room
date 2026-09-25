@@ -413,7 +413,13 @@ Eliminate cognitive friction by embedding `create-agent-room` commands directly 
 ---
 
 ### Story 6.2: Pre-Push Local CI Gate (`pre-push` -> `create-agent-room ci`)
-- **Status:** 🟡 **IN PROGRESS** (Branch `feature/pre-push-local-ci-gate`)
+- **Status:** ✅ **DONE** (Merged into `main` via PR #20, Commit `5010263`)
+- **Summary:**
+  - Enhanced `templates/adapters/git-hooks/pre-push.tmpl` with upstream tracking branch auto-detection (`@{upstream}`, `${REMOTE}/main`, `origin/main`), remote branch deletion bypass (all-zero commit SHAs), `.agent-room.json` config parsing (`hooks.prePush`), and actionable terminal remediation guidance.
+  - Implemented `detectUpstreamBranch`, `resolvePrePushConfig`, `runPrePush`, and `runPrePushCli` in `lib/hook.js` with git ref verification to safely handle initial pushes in fresh repositories.
+  - Added CLI and programmatic `--skip <checks>` support in `lib/ci.js` and `bin/cli.js` for comma-separated or array check exclusions.
+  - Added schema validation in `lib/checks.js` for `.agent-room.json` `hooks` and `hooks.prePush` structure and property types.
+  - Added comprehensive test suites in `test/hook.test.js`, `test/ci.test.js`, `test/cli.test.js`, and `test/validate.test.js` (all 376 repo tests pass, 0 lint warnings).
 - **Goal:**
   - Run the unified headless CI runner locally before `git push` transmits code to remote remotes, guaranteeing that PR anti-tamper, missing session logs, and test regressions are caught in milliseconds rather than waiting for remote CI runners.
 - **Acceptance Criteria:**
