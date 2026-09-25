@@ -40,6 +40,9 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | | **9.4** | Multi-Agent Adapters & Goose Recipe Integration (`--tools goose`, Claude commands, Cursor rules) | 📋 Ready |
 | | **9.5** | Mechanical Seatbelts for RPI Execution (Phased checkbox tracking, Stop-Hook gate, Pre-Commit blast radius) | 📋 Ready |
 | | **9.6** | Retire Redundant Legacy Skills (`brainstorming`, `verification-before-completion`) & Orphan Purging | 📋 Ready |
+| | **9.7** | Atomic Commit Workflow Skill (`commit-changes.md` / `/commit`) | ✅ **DONE** |
+| | **9.8** | Plan Validation Auditor Skill (`validate-plan.md` / `/validate_plan`) | ✅ **DONE** |
+| | **9.9** | Attested PR Description Skill (`describe-pr.md` / `/describe_pr`) | 📋 Ready |
 
 ---
 
@@ -703,7 +706,14 @@ Bring structured, disciplined execution to AI coding agents across all CAR-suppo
 ---
 
 ### Story 9.8: Plan Validation Auditor Skill (`validate-plan.md` / `/validate_plan`)
-- **Status:** 📋 Ready
+- **Status:** ✅ **DONE** (Branch `feature/story-9.8-validate-plan-skill`)
+- **Summary:**
+  - Authored canonical `validate-plan.md` skill template in `templates/.agent-room/skills/validate-plan.md` and dogfooded in `.agent-room/skills/validate-plan.md`.
+  - Implemented 3-Vector Audit process (Database/Schema Migrations, Code Specifications vs. Plan, Automated Test Coverage & Verification).
+  - Implemented triage classification into Matches Plan (🟢), Deviations (🟡), Potential Issues (🔴), and Manual Testing Required (🔵).
+  - Emits structured markdown audit report under `docs/reviews/YYYY-MM-DD-[TICKET-]validation.md`.
+  - Registered in `CORE_SKILL_FILES` in `lib/skill.js` and added unit test coverage in `test/skill.test.js`.
+  - Synchronized across Claude Code (`.claude/skills/validate-plan/SKILL.md`), Cursor, Windsurf, Cline, Codex, and Copilot.
 - **Goal:**
   - Provide an independent post-implementation validation gate to ensure implementation faithfully realized every phase of the approved plan.
 - **Acceptance Criteria:**

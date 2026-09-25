@@ -16,6 +16,19 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-26 — Plan Validation Auditor Skill (Story 9.8)
+
+**Decision:** Author and package the canonical `validate-plan.md` skill (`/validate_plan` and `/validate-plan`) in `templates/.agent-room/skills/` and `.agent-room/skills/`, and register it in `CORE_SKILL_FILES` in `lib/skill.js`.
+- **Role Isolation:** The auditor acts as an independent reviewer, strictly forbidden from rubber-stamping or modifying application code during the audit.
+- **3-Vector Audit Matrix:**
+  1. *Database & Schema Migrations:* Verifies database schemas, migrations, configurations, backwards compatibility, and rollbacks.
+  2. *Code Specifications vs. Plan:* Directly compares git diffs against each phase of the plan in `docs/plans/` to catch omitted tasks, missed requirements, and unauthorized scope creep.
+  3. *Automated Test Coverage & Active Execution:* Verifies automated tests cover all new capabilities and requires actively executing the plan's verification commands during the audit turn.
+- **Triage Classification:** Classifies findings into Matches Plan (🟢), Deviations (🟡), Potential Issues (🔴), and Manual Testing Required (🔵).
+- **Persistent Validation Artifact:** Emits structured reports under `docs/reviews/YYYY-MM-DD-[TICKET-]validation.md` with explicit executive verdicts (`PASSED`, `PASSED WITH WARNINGS`, `FAILED - ACTION REQUIRED`).
+**Why:** After completing implementation, agents often suffer from cognitive bias or context truncation, missing edge cases, skipping planned tests, or introducing unrequested architectural changes. An independent post-implementation validation gate ensures complete fidelity to the approved plan before commits are finalized or PRs are opened.
+**Rejected:** Embedding plan validation directly into `implement-plan.md` (combining implementation and auditing within the same agent prompt leads to confirmation bias and skipped verification).
+
 ### 2026-09-26 — Atomic Commit Workflow Skill (Story 9.7)
 
 **Decision:** Author and package the canonical `commit-changes.md` skill (`/commit`) in `templates/.agent-room/skills/` and `.agent-room/skills/`, and register it in `CORE_SKILL_FILES` in `lib/skill.js`.
