@@ -21,6 +21,12 @@ Append a new entry every time:
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-26 — Branching from an unmerged or pre-squash feature branch instead of latest origin/main
+
+**What happened:** Branched Story 9.7 directly from `feature/story-9.1-rpi-core-skills` rather than switching to `main` and pulling latest from `origin/main`. When PR #21 was squashed and merged into `main`, GitHub created a single squashed commit with a new SHA, causing false merge conflicts when PR #22 was opened.
+**Root cause:** Starting new work from an existing feature branch carries over the previous branch's individual commit history. If the parent branch gets squashed on merge, git cannot reconcile the divergent commit hashes.
+**Avoid:** Before cutting any feature branch, ALWAYS switch to the default branch and pull latest changes from remote: `git checkout main && git pull origin main && git checkout -b feature/<name>`. Never branch off an unmerged or pre-squashed feature branch.
+
 ### 2026-09-25 — Passive git branch inspection instead of enforcing feature branch creation
 
 **What happened:** Began story implementation and modified codebase files while directly on the `main` branch rather than cutting a dedicated `feature/` branch.

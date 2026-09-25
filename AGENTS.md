@@ -95,6 +95,11 @@ Re-verify (`git config user.name && git config user.email`) before any
 push, not just at session start — a global config change or a fresh clone
 mid-session can silently reset it.
 
+- Always start a new task by updating main and cutting from latest origin:
+  ```bash
+  git checkout main && git pull origin main && git checkout -b feature/<name>
+  ```
+  Never cut a feature branch directly from another unmerged or pre-squashed feature branch, as squashed remote merges will cause false merge conflicts.
 - Do not run `git push` unless explicitly asked.
 - Do not amend or rewrite history on shared branches without being asked.
 

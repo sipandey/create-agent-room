@@ -54,10 +54,12 @@ git rev-parse HEAD
 git branch --show-current
 basename $(git rev-parse --show-toplevel)
 ```
-**Branch Gate:** If `git branch --show-current` is `main` or `master`, STOP. Never implement non-trivial features or refactors directly on the default branch. Cut a dedicated feature or fix branch before proceeding to planning:
+**Branch Gate:** If `git branch --show-current` is `main` or `master`, STOP. Never implement non-trivial features or refactors directly on the default branch.
+Always switch to `main`, pull the latest remote changes, and cut a dedicated feature or fix branch before proceeding to planning:
 ```bash
-git checkout -b feature/<topic-or-story-name>
+git checkout main && git pull origin main && git checkout -b feature/<topic-or-story-name>
 ```
+**Crucial Rule:** Never branch off an unmerged or pre-squashed local feature branch. Squash merges create a new commit SHA on `origin/main`, which will cause false merge conflicts if you branch off a pre-squashed local branch. Always branch from an updated `main`.
 
 ### Step 5: Write the Research Document
 Create `docs/research/YYYY-MM-DD-[TICKET-]description.md` (e.g., `2026-09-26-ENG-123-auth.md` or `2026-09-26-auth.md`) using this exact structure:
