@@ -113,15 +113,32 @@ test('findStickyComment: throws on HTTP error', async () => {
 });
 
 test('postPrComment: skips when token or PR number is missing', async () => {
-  const resNoToken = await postPrComment('Report', { repo: 'a/b', prNumber: 1 });
-  assert.strictEqual(resNoToken.ok, false);
-  assert.strictEqual(resNoToken.skipped, true);
-  assert.strictEqual(resNoToken.reason, 'no-token');
+  const origEvent = process.env.GITHUB_EVENT_PATH;
+  const origGitlab = process.env.CI_MERGE_REQUEST_IID;
+  const origToken = process.env.GITHUB_TOKEN;
+  const origGhToken = process.env.GH_TOKEN;
 
-  const resNoPr = await postPrComment('Report', { repo: 'a/b', token: 'tok' });
-  assert.strictEqual(resNoPr.ok, true);
-  assert.strictEqual(resNoPr.skipped, true);
-  assert.strictEqual(resNoPr.reason, 'no-pr-number');
+  delete process.env.GITHUB_EVENT_PATH;
+  delete process.env.CI_MERGE_REQUEST_IID;
+  delete process.env.GITHUB_TOKEN;
+  delete process.env.GH_TOKEN;
+
+  try {
+    const resNoToken = await postPrComment('Report', { repo: 'a/b', prNumber: 1 });
+    assert.strictEqual(resNoToken.ok, false);
+    assert.strictEqual(resNoToken.skipped, true);
+    assert.strictEqual(resNoToken.reason, 'no-token');
+
+    const resNoPr = await postPrComment('Report', { repo: 'a/b', token: 'tok' });
+    assert.strictEqual(resNoPr.ok, true);
+    assert.strictEqual(resNoPr.skipped, true);
+    assert.strictEqual(resNoPr.reason, 'no-pr-number');
+  } finally {
+    if (origEvent !== undefined) process.env.GITHUB_EVENT_PATH = origEvent;
+    if (origGitlab !== undefined) process.env.CI_MERGE_REQUEST_IID = origGitlab;
+    if (origToken !== undefined) process.env.GITHUB_TOKEN = origToken;
+    if (origGhToken !== undefined) process.env.GH_TOKEN = origGhToken;
+  }
 });
 
 test('postPrComment: creates new comment via POST when sticky comment does not exist', async () => {
