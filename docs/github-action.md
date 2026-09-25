@@ -111,7 +111,7 @@ permissions:
 | `skip` | `''` | Comma-separated check IDs to skip (e.g. `verify,eval`) |
 | `only` | `''` | Comma-separated check IDs to run exclusively (e.g. `validate,doctor`) |
 | `checks` | `''` | *(Legacy)* `both`, `validate`, or `lint-sessions`. Preserved for backward-compatibility. |
-| `version` | `2.4.0` | `create-agent-room` version to install globally (pinned by default for deterministic builds) |
+| `version` | `2.5.0` | `create-agent-room` version to install globally (pinned by default for deterministic builds) |
 | `node-version` | `20` | Node.js version set up before installing/running the CLI |
 
 ---

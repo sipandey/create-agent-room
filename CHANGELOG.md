@@ -10,6 +10,8 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-09-25
+
 ### Added
 
 - Pre-Push Local CI Gate & Upstream Detection (`pre-push`, Story 6.2): runs the unified headless CI runner locally before `git push` transmits code to remote remotes, catching test regressions, unapproved rule weakening, and missing session logs in milliseconds.
@@ -637,7 +639,8 @@ default (e.g. a script asserting `principles.md` exists after a bare
 - `package.json` now includes `repository`, `homepage`, `bugs`,
   `keywords`, and `author` metadata for npm.
 
-[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v2.4.0...HEAD
+[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/sipandey/create-agent-room/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/sipandey/create-agent-room/compare/v2.3.1...v2.4.0
 [2.3.1]: https://github.com/sipandey/create-agent-room/compare/v2.3.0...v2.3.1
 [2.3.0]: https://github.com/sipandey/create-agent-room/compare/v2.2.0...v2.3.0

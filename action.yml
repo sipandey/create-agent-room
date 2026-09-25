@@ -63,7 +63,7 @@ inputs:
     default: ''
   version:
     description: >-
-      create-agent-room version to install and run, e.g. "2.4.0" or
+      create-agent-room version to install and run, e.g. "2.5.0" or
       "latest". Pinned by default so CI results stay reproducible across
       runs instead of silently changing behavior when a new version ships —
       see the version-pinning rationale in
@@ -71,7 +71,7 @@ inputs:
       lockstep with package.json's version at release time (see
       "Release process" in AGENTS.md/CLAUDE.md).
     required: false
-    default: '2.4.0'
+    default: '2.5.0'
   node-version:
     description: 'Node.js version to set up before installing create-agent-room.'
     required: false

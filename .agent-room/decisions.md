@@ -16,6 +16,8 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+<!-- no-log: v2.5.0 release commit — routine release mechanics (version bump, lockfile re-sync, action.yml and CI pin bump, CHANGELOG [Unreleased]→[2.5.0]). The CHANGELOG is the record; nothing new to add here. -->
+
 ### 2026-09-25 — pre-push local CI gate and upstream detection (Story 6.2)
 
 **Decision:** Implement the pre-push local CI gate in `templates/adapters/git-hooks/pre-push.tmpl` and `lib/hook.js` (`runPrePush`, `detectUpstreamBranch`, `resolvePrePushConfig`), integrating with `create-agent-room ci --base <upstream>`.

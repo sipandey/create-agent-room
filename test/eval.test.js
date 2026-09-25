@@ -244,7 +244,7 @@ test('runEval: combines builtin and custom evals, and respects --custom-only and
 
 test('formatEvalReport: formats custom evals with breakdown in text and csv', () => {
   const report = {
-    toolVersion: '2.4.0',
+    toolVersion: require('../package.json').version,
     ranAt: new Date().toISOString(),
     summary: {
       total: 2,
