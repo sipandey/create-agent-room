@@ -1124,5 +1124,201 @@ test('guardrails-check: allows bypassing rule weakening when GUARDRAILS_BYPASS=1
   assert.match(logContent, /ticket #999: retiring legacy infrastructure directory/);
 });
 
+test('guardrails-check: planGate allows multi-file commit when <= 5 non-scaffold files changed (bug flow threshold)', (t) => {
+  const dir = makeRepo('plangate-bugflow');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, { protectedPaths: [], forbiddenActions: [] });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  // Stage 5 files across 2 directories
+  fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'lib'), { recursive: true });
+  fs.writeFileSync(path.join(dir, 'src', 'a.js'), 'a');
+  fs.writeFileSync(path.join(dir, 'src', 'b.js'), 'b');
+  fs.writeFileSync(path.join(dir, 'src', 'c.js'), 'c');
+  fs.writeFileSync(path.join(dir, 'lib', 'd.js'), 'd');
+  fs.writeFileSync(path.join(dir, 'lib', 'e.js'), 'e');
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 0, 'bug flow threshold (<= 5 files) should pass without plan');
+});
+
+test('guardrails-check: planGate allows > 5 files changed when all within a single directory', (t) => {
+  const dir = makeRepo('plangate-single-dir');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, { protectedPaths: [], forbiddenActions: [] });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  // Stage 6 files all in src/
+  fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
+  for (let i = 1; i <= 6; i++) {
+    fs.writeFileSync(path.join(dir, 'src', `file${i}.js`), `file ${i}`);
+  }
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 0, 'single-directory change should not trigger plan gate');
+});
+
+test('guardrails-check: planGate blocks multi-file commit touching > 5 files across multiple directories when no plan exists', (t) => {
+  const dir = makeRepo('plangate-no-plan');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, { protectedPaths: [], forbiddenActions: [] });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  // Stage 6 files across 2 directories
+  fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'lib'), { recursive: true });
+  for (let i = 1; i <= 3; i++) {
+    fs.writeFileSync(path.join(dir, 'src', `file${i}.js`), `file ${i}`);
+    fs.writeFileSync(path.join(dir, 'lib', `lib${i}.js`), `lib ${i}`);
+  }
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 1, 'multi-directory multi-file commit must be blocked without plan');
+  assert.match(result.stderr, /RPI plan gate violation: staged change touches 6 non-scaffold files across 2 directories/);
+});
+
+test('guardrails-check: planGate allows multi-file commit when plan is staged in docs/plans/', (t) => {
+  const dir = makeRepo('plangate-staged-plan');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, { protectedPaths: [], forbiddenActions: [] });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  // Stage 6 files across 2 directories
+  fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'lib'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'docs', 'plans'), { recursive: true });
+  for (let i = 1; i <= 3; i++) {
+    fs.writeFileSync(path.join(dir, 'src', `file${i}.js`), `file ${i}`);
+    fs.writeFileSync(path.join(dir, 'lib', `lib${i}.js`), `lib ${i}`);
+  }
+  fs.writeFileSync(
+    path.join(dir, 'docs', 'plans', '2026-09-26-my-plan.md'),
+    '---\ndate: 2026-09-26\nstatus: planned\n---\n# My Plan\n'
+  );
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 0, 'staged plan in docs/plans/ should satisfy plan gate');
+});
+
+test('guardrails-check: planGate allows multi-file commit when active plan exists on disk matching current branch', (t) => {
+  const dir = makeRepo('plangate-branch-plan');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, { protectedPaths: [], forbiddenActions: [] });
+  // Add committed plan on disk
+  fs.mkdirSync(path.join(dir, 'docs', 'plans'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'docs', 'plans', '2026-09-26-branch-plan.md'),
+    '---\ndate: 2026-09-26\nbranch: feature/my-cool-feature\nstatus: planned\n---\n# Plan\n'
+  );
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial with plan'], { cwd: dir, stdio: 'ignore' });
+  execFileSync('git', ['checkout', '-b', 'feature/my-cool-feature'], { cwd: dir, stdio: 'ignore' });
+
+  // Stage 6 files across 2 directories (no plan staged)
+  fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'lib'), { recursive: true });
+  for (let i = 1; i <= 3; i++) {
+    fs.writeFileSync(path.join(dir, 'src', `file${i}.js`), `file ${i}`);
+    fs.writeFileSync(path.join(dir, 'lib', `lib${i}.js`), `lib ${i}`);
+  }
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 0, 'existing plan on disk matching active branch should satisfy plan gate');
+});
+
+test('guardrails-check: planGate blocks multi-file commit when all plans on disk are status complete', (t) => {
+  const dir = makeRepo('plangate-complete-plan');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, { protectedPaths: [], forbiddenActions: [] });
+  fs.mkdirSync(path.join(dir, 'docs', 'plans'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'docs', 'plans', '2026-09-26-old-plan.md'),
+    '---\ndate: 2026-09-26\nstatus: complete\n---\n# Old Plan\n'
+  );
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial with old completed plan'], { cwd: dir, stdio: 'ignore' });
+
+  // Stage 6 files across 2 directories
+  fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'lib'), { recursive: true });
+  for (let i = 1; i <= 3; i++) {
+    fs.writeFileSync(path.join(dir, 'src', `file${i}.js`), `file ${i}`);
+    fs.writeFileSync(path.join(dir, 'lib', `lib${i}.js`), `lib ${i}`);
+  }
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 1, 'completed plans on disk do not satisfy plan gate for new changes');
+  assert.match(result.stderr, /RPI plan gate violation/);
+});
+
+test('guardrails-check: planGate allows multi-file commit when waiver is staged in decisions.md', (t) => {
+  const dir = makeRepo('plangate-waiver');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, { protectedPaths: [], forbiddenActions: [] });
+  fs.mkdirSync(path.join(dir, '.agent-room'), { recursive: true });
+  fs.writeFileSync(path.join(dir, '.agent-room', 'decisions.md'), '# Decisions\n');
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  // Stage 6 files across 2 directories
+  fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'lib'), { recursive: true });
+  for (let i = 1; i <= 3; i++) {
+    fs.writeFileSync(path.join(dir, 'src', `file${i}.js`), `file ${i}`);
+    fs.writeFileSync(path.join(dir, 'lib', `lib${i}.js`), `lib ${i}`);
+  }
+  // Add waiver to decisions.md
+  fs.appendFileSync(
+    path.join(dir, '.agent-room', 'decisions.md'),
+    '\n<!-- no-plan: Routine refactor across modules approved in #456 -->\n'
+  );
+  stageAll(dir);
+
+  const result = runHook(dir);
+  assert.strictEqual(result.code, 0, 'waiver in decisions.md should satisfy plan gate');
+});
+
+test('guardrails-check: planGate allows multi-file commit when GUARDRAILS_BYPASS=1 is provided and logs it', (t) => {
+  const dir = makeRepo('plangate-bypass');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  writeGuardrails(dir, { protectedPaths: [], forbiddenActions: [] });
+  stageAll(dir);
+  execFileSync('git', ['commit', '-m', 'initial'], { cwd: dir, stdio: 'ignore' });
+
+  // Stage 6 files across 2 directories without plan
+  fs.mkdirSync(path.join(dir, 'src'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'lib'), { recursive: true });
+  for (let i = 1; i <= 3; i++) {
+    fs.writeFileSync(path.join(dir, 'src', `file${i}.js`), `file ${i}`);
+    fs.writeFileSync(path.join(dir, 'lib', `lib${i}.js`), `lib ${i}`);
+  }
+  stageAll(dir);
+
+  const result = runHook(dir, { GUARDRAILS_BYPASS: '1' });
+  assert.strictEqual(result.code, 0, 'GUARDRAILS_BYPASS should allow commit');
+  const logContent = fs.readFileSync(path.join(dir, '.agent-room', 'guardrails-bypass-log.md'), 'utf8');
+  assert.match(logContent, /RPI plan gate violation/);
+});
+
+
 
 

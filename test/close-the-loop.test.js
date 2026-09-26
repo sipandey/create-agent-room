@@ -523,4 +523,209 @@ test('checkClosingTheLoop: in strict mode, accepts audited waiver with audit ref
   assert.strictEqual(result.ok, true);
 });
 
+test('checkClosingTheLoop: runs phase verification command when active plan exists in docs/plans/', (t) => {
+  const { checkClosingTheLoop } = loadHook();
+  const dir = makeRepo('plan-phase-verif-pass');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.join(dir, 'docs', 'plans'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'docs', 'plans', '2026-09-26-test.md'),
+    `---
+date: 2026-09-26
+status: in_progress
+---
+## Phase 1: Core Setup
+- [x] Task 1
+*Automated Verification:* \`echo "phase 1 passed"\`
+`
+  );
+  fs.writeFileSync(path.join(dir, 'app.js'), 'app\n');
+
+  let ranCommand = null;
+  const result = checkClosingTheLoop(dir, {
+    statusPorcelain: ' M app.js\n M .agent-room/decisions.md',
+    logDiff: 'diff\n+<!-- no-log: routine validation run for hook -->\n',
+    runCommand: (cmd) => {
+      ranCommand = cmd;
+      return { status: 0, stdout: 'phase 1 passed', stderr: '' };
+    }
+  });
+
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(ranCommand, 'echo "phase 1 passed"');
+});
+
+test('checkClosingTheLoop: fails when active plan phase verification command exits non-zero', (t) => {
+  const { checkClosingTheLoop } = loadHook();
+  const dir = makeRepo('plan-phase-verif-fail');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.join(dir, 'docs', 'plans'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'docs', 'plans', '2026-09-26-test.md'),
+    `---
+date: 2026-09-26
+status: in_progress
+---
+## Phase 1: Core Setup
+- [x] Task 1
+*Automated Verification:* \`node --test test/phase1.test.js\`
+`
+  );
+  fs.writeFileSync(path.join(dir, 'app.js'), 'app\n');
+
+  let ranCommand = null;
+  const result = checkClosingTheLoop(dir, {
+    statusPorcelain: ' M app.js\n M .agent-room/decisions.md',
+    logDiff: 'diff\n+<!-- no-log: routine validation run for hook -->\n',
+    runCommand: (cmd) => {
+      ranCommand = cmd;
+      return { status: 1, stdout: '', stderr: 'AssertionError: test failed' };
+    }
+  });
+
+  assert.strictEqual(result.ok, false);
+  assert.strictEqual(result.reason, 'test-verification-failed');
+  assert.strictEqual(result.planVerification, true);
+  assert.strictEqual(ranCommand, 'node --test test/phase1.test.js');
+  assert.match(result.message, /RPI Phase Verification failed for Phase 1/);
+  assert.match(result.message, /AssertionError: test failed/);
+});
+
+test('checkClosingTheLoop: verifies in-progress phase when previous phase is completed', (t) => {
+  const { checkClosingTheLoop } = loadHook();
+  const dir = makeRepo('plan-phase-in-progress');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.join(dir, 'docs', 'plans'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'docs', 'plans', '2026-09-26-test.md'),
+    `---
+date: 2026-09-26
+status: in_progress
+---
+## Phase 1: Completed Phase
+- [x] Task 1
+*Automated Verification:* \`npm run test:phase1\`
+
+## Phase 2: In-Progress Phase
+- [x] Task 2a
+- [ ] Task 2b
+*Automated Verification:* \`npm run test:phase2\`
+`
+  );
+  fs.writeFileSync(path.join(dir, 'app.js'), 'app\n');
+
+  let ranCommand = null;
+  const result = checkClosingTheLoop(dir, {
+    statusPorcelain: ' M app.js\n M .agent-room/decisions.md',
+    logDiff: 'diff\n+<!-- no-log: routine validation run for hook -->\n',
+    runCommand: (cmd) => {
+      ranCommand = cmd;
+      return { status: 0, stdout: 'ok', stderr: '' };
+    }
+  });
+
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(ranCommand, 'npm run test:phase2');
+});
+
+test('checkClosingTheLoop: matches plan by active git branch over other plans', (t) => {
+  const { checkClosingTheLoop } = loadHook();
+  const dir = makeRepo('plan-branch-match');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  execFileSync('git', ['checkout', '-b', 'feature/custom-branch'], { cwd: dir, stdio: 'ignore' });
+
+  fs.mkdirSync(path.join(dir, 'docs', 'plans'), { recursive: true });
+  // Plan A for main
+  fs.writeFileSync(
+    path.join(dir, 'docs', 'plans', '2026-09-20-main-plan.md'),
+    `---
+branch: main
+status: planned
+---
+## Phase 1: Main Work
+- [ ] Task 1
+*Automated Verification:* \`echo "main verif"\`
+`
+  );
+  // Plan B for feature/custom-branch
+  fs.writeFileSync(
+    path.join(dir, 'docs', 'plans', '2026-09-26-feature-plan.md'),
+    `---
+branch: feature/custom-branch
+status: in_progress
+---
+## Phase 1: Feature Work
+- [x] Task 1
+*Automated Verification:* \`echo "feature verif"\`
+`
+  );
+
+  fs.writeFileSync(path.join(dir, 'app.js'), 'app\n');
+
+  let ranCommand = null;
+  const result = checkClosingTheLoop(dir, {
+    statusPorcelain: ' M app.js\n M .agent-room/decisions.md',
+    logDiff: 'diff\n+<!-- no-log: routine validation run for hook -->\n',
+    runCommand: (cmd) => {
+      ranCommand = cmd;
+      return { status: 0, stdout: 'feature verif', stderr: '' };
+    }
+  });
+
+  assert.strictEqual(result.ok, true);
+  assert.strictEqual(ranCommand, 'echo "feature verif"');
+});
+
+test('adapter claude: fail on plan phase verification exits 2 with RPI Phase Verification message', (t) => {
+  const dir = makeRepo('claude-plan-verif-fail');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.join(dir, 'docs', 'plans'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'docs', 'plans', '2026-09-26-failing-plan.md'),
+    `---
+status: in_progress
+---
+## Phase 1: Failing Phase
+- [x] Task 1
+*Automated Verification:* \`node -e "console.error('phase error'); process.exit(1)"\`
+`
+  );
+  fs.writeFileSync(path.join(dir, 'app.js'), 'app\n');
+
+  const result = runHookCli(dir, []);
+  assert.strictEqual(result.status, 2);
+  assert.match(result.stderr, /RPI Phase Verification failed for Phase 1/);
+  assert.match(result.stderr, /phase error/);
+});
+
+test('adapter cursor: fail on plan phase verification exits 0 with followup_message JSON', (t) => {
+  const dir = makeRepo('cursor-plan-verif-fail');
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  fs.mkdirSync(path.join(dir, 'docs', 'plans'), { recursive: true });
+  fs.writeFileSync(
+    path.join(dir, 'docs', 'plans', '2026-09-26-failing-plan.md'),
+    `---
+status: in_progress
+---
+## Phase 1: Failing Phase
+- [x] Task 1
+*Automated Verification:* \`node -e "console.error('cursor phase error'); process.exit(1)"\`
+`
+  );
+  fs.writeFileSync(path.join(dir, 'app.js'), 'app\n');
+
+  const result = runHookCli(dir, ['--adapter=cursor'], JSON.stringify({ status: 'completed', loop_count: 0 }));
+  assert.strictEqual(result.status, 0);
+  const payload = JSON.parse(result.stdout.trim());
+  assert.match(payload.followup_message, /RPI Phase Verification failed for Phase 1/);
+  assert.match(payload.followup_message, /cursor phase error/);
+});
+
+
 

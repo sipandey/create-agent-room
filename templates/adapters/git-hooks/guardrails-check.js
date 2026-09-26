@@ -247,19 +247,23 @@ if (scopeGuidance && !isInitialCommit()) {
 // Blocks commits touching files outside allowedPaths or crossing conflicting boundaries.
 const scopeBoundaries = guardrails.scopeBoundaries;
 const envAllowedScope = process.env.CAR_ALLOWED_SCOPE;
+
+const nonScaffoldStaged = stagedFiles.filter(
+  (p) =>
+    !p.startsWith('.agent-room/') &&
+    !p.startsWith('docs/plans/') &&
+    !p.startsWith('docs/research/') &&
+    !p.startsWith('.claude/') &&
+    !p.startsWith('.cursor/') &&
+    p !== 'AGENTS.md' &&
+    p !== 'CLAUDE.md' &&
+    p !== '.agent-room.json'
+);
+
 if (!isInitialCommit() && (scopeBoundaries || envAllowedScope)) {
   const allowedPaths = envAllowedScope
     ? envAllowedScope.split(',').map((s) => s.trim()).filter(Boolean)
     : (scopeBoundaries && Array.isArray(scopeBoundaries.allowedPaths) ? scopeBoundaries.allowedPaths : null);
-
-  const nonScaffoldStaged = stagedFiles.filter(
-    (p) =>
-      !p.startsWith('.agent-room/') &&
-      !p.startsWith('docs/plans/') &&
-      p !== 'AGENTS.md' &&
-      p !== 'CLAUDE.md' &&
-      p !== '.agent-room.json'
-  );
 
   if (allowedPaths && allowedPaths.length > 0) {
     for (const file of nonScaffoldStaged) {
@@ -290,6 +294,42 @@ if (!isInitialCommit() && (scopeBoundaries || envAllowedScope)) {
       violations.push(
         `Scope boundary violation: change touches multiple isolated boundaries: ${matchedPatterns.join(' AND ')}`
       );
+    }
+  }
+}
+
+// strictWaivers config resolution
+const isStrictWaivers =
+  guardrails.strictWaivers === true ||
+  (guardrails.verifyOnCommit && guardrails.verifyOnCommit.strict === true);
+
+// planGate: mechanical seatbelt for RPI execution.
+// If staged changes touch >5 non-scaffold files across >1 distinct directories,
+// mandate an active plan in docs/plans/ or an explicit waiver in decisions.md.
+if (!isInitialCommit() && isPlanGateEnabled(guardrails)) {
+  const minFiles =
+    guardrails.planGate && typeof guardrails.planGate.minFiles === 'number'
+      ? guardrails.planGate.minFiles
+      : 5;
+
+  const dirs = new Set(nonScaffoldStaged.map((p) => path.dirname(p).replace(/\\/g, '/')));
+
+  if (nonScaffoldStaged.length > minFiles && dirs.size > 1) {
+    const waiver = hasPlanWaiver(projectRoot, stagedFiles);
+    if (!waiver.waived) {
+      const activePlan = findActivePlanFile(projectRoot, stagedFiles);
+      if (!activePlan) {
+        violations.push(
+          `RPI plan gate violation: staged change touches ${nonScaffoldStaged.length} non-scaffold files across ${dirs.size} directories without an active plan in docs/plans/. Either create an implementation plan in docs/plans/ or record a waiver in .agent-room/decisions.md (e.g. <!-- no-plan: <reason> -->).`
+        );
+      }
+    } else if (isStrictWaivers) {
+      const hasAuditRef = /(?:approved-by|waiver-approved|ticket|issue|ref|jira|#\d+)/i.test(waiver.reason);
+      if (waiver.reason.length < 40 || !hasAuditRef) {
+        violations.push(
+          `Strict waiver audit failed for plan waiver: "${waiver.reason}" must be at least 40 characters and include an audit reference (ticket: #123, approved-by:, ref:, or waiver-approved:)`
+        );
+      }
     }
   }
 }
@@ -374,10 +414,6 @@ if (!isInitialCommit() && Array.isArray(importBoundaries) && importBoundaries.le
 }
 
 // strictWaivers: strict waiver audit enforcement
-const isStrictWaivers =
-  guardrails.strictWaivers === true ||
-  (guardrails.verifyOnCommit && guardrails.verifyOnCommit.strict === true);
-
 if (isStrictWaivers && !isInitialCommit()) {
   // 1. Audit bypasses: if GUARDRAILS_BYPASS is used, require GUARDRAILS_BYPASS_REASON
   if (ALLOW_GUARDRAILS_BYPASS) {
@@ -827,4 +863,166 @@ function resolveVerificationCommand(root, guardrailsConfig) {
   }
   return null;
 }
+
+function isPlanGateEnabled(guardrailsConfig) {
+  if (process.env.CAR_SKIP_PLAN_GATE === '1' || process.env.CAR_SKIP_PLAN_GATE === 'true') {
+    return false;
+  }
+  if (process.env.CAR_PLAN_GATE === '0' || process.env.CAR_PLAN_GATE === 'false') {
+    return false;
+  }
+  if (guardrailsConfig.planGate === false) {
+    return false;
+  }
+  if (guardrailsConfig.planGate && typeof guardrailsConfig.planGate === 'object') {
+    return guardrailsConfig.planGate.enabled !== false;
+  }
+  return true;
+}
+
+function parsePlanFrontmatter(content) {
+  if (!content || !content.startsWith('---')) {
+    return {};
+  }
+  const endIdx = content.indexOf('\n---', 3);
+  if (endIdx === -1) {
+    return {};
+  }
+  const header = content.slice(3, endIdx).trim();
+  const res = {};
+  for (const line of header.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const colonIdx = trimmed.indexOf(':');
+    if (colonIdx === -1) continue;
+    const key = trimmed.slice(0, colonIdx).trim();
+    let val = trimmed.slice(colonIdx + 1).trim();
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    res[key] = val;
+  }
+  return res;
+}
+
+function findActivePlanFile(root, stagedFiles) {
+  // 1. Plan staged directly in this commit
+  const stagedPlan = stagedFiles.find(
+    (f) => f.startsWith('docs/plans/') && f.endsWith('.md') && !f.endsWith('README.md')
+  );
+  if (stagedPlan) {
+    return stagedPlan;
+  }
+
+  // 2. Existing plan on disk in docs/plans/
+  const plansDir = path.join(root, 'docs', 'plans');
+  if (!fs.existsSync(plansDir)) {
+    return null;
+  }
+
+  let planFiles = [];
+  try {
+    planFiles = fs.readdirSync(plansDir).filter((f) => f.endsWith('.md') && f !== 'README.md');
+  } catch (err) {
+    return null;
+  }
+
+  if (planFiles.length === 0) {
+    return null;
+  }
+
+  let currentBranch = '';
+  try {
+    currentBranch = execFileSync('git', ['branch', '--show-current'], {
+      cwd: root,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore']
+    }).trim();
+  } catch (err) {
+    // ignore
+  }
+
+  // Check matching branch first
+  if (currentBranch) {
+    for (const file of planFiles) {
+      try {
+        const content = fs.readFileSync(path.join(plansDir, file), 'utf8');
+        const fm = parsePlanFrontmatter(content);
+        if (fm.branch && fm.branch.trim() === currentBranch) {
+          return file;
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+  }
+
+  // Check plans with active status
+  for (const file of planFiles) {
+    try {
+      const content = fs.readFileSync(path.join(plansDir, file), 'utf8');
+      const fm = parsePlanFrontmatter(content);
+      if (!fm.status || !['complete', 'completed'].includes(fm.status.toLowerCase().trim())) {
+        return file;
+      }
+    } catch (err) {
+      // ignore
+    }
+  }
+
+  return null;
+}
+
+function hasPlanWaiver(root, stagedFiles) {
+  const logFiles = ['.agent-room/decisions.md', '.agent-room/anti-patterns.md'];
+
+  for (const logFile of logFiles) {
+    if (stagedFiles.includes(logFile)) {
+      try {
+        const diff = execFileSync('git', ['diff', '--cached', '-U0', '--', logFile], {
+          cwd: root,
+          encoding: 'utf8',
+          stdio: ['ignore', 'pipe', 'ignore']
+        });
+        const addedLines = diff
+          .split('\n')
+          .filter((line) => line.startsWith('+') && !line.startsWith('+++'))
+          .map((line) => line.slice(1))
+          .join('\n');
+        const match = addedLines.match(/<!--\s*no-plan:\s*(.*?)\s*-->/s);
+        if (match && match[1].trim().length > 0) {
+          return { waived: true, reason: match[1].trim() };
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+  }
+
+  try {
+    const headDiff = execFileSync(
+      'git',
+      ['show', '-U0', 'HEAD', '--', '.agent-room/decisions.md', '.agent-room/anti-patterns.md'],
+      {
+        cwd: root,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore']
+      }
+    );
+    const addedLines = headDiff
+      .split('\n')
+      .filter((line) => line.startsWith('+') && !line.startsWith('+++'))
+      .map((line) => line.slice(1))
+      .join('\n');
+    const match = addedLines.match(/<!--\s*no-plan:\s*(.*?)\s*-->/s);
+    if (match && match[1].trim().length > 0) {
+      return { waived: true, reason: match[1].trim() };
+    }
+  } catch (err) {
+    // ignore
+  }
+
+  return { waived: false, reason: '' };
+}
+
 

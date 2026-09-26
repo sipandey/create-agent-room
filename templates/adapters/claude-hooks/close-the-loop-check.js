@@ -91,6 +91,198 @@ function resolveVerificationConfig(cwd, opts) {
   return null;
 }
 
+function parsePlanFrontmatter(content) {
+  if (!content || !content.startsWith('---')) return {};
+  const endIdx = content.indexOf('\n---', 3);
+  if (endIdx === -1) return {};
+  const header = content.slice(3, endIdx).trim();
+  const res = {};
+  for (const line of header.split('\n')) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+    const colonIdx = trimmed.indexOf(':');
+    if (colonIdx === -1) continue;
+    const key = trimmed.slice(0, colonIdx).trim();
+    let val = trimmed.slice(colonIdx + 1).trim();
+    if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+      val = val.slice(1, -1);
+    }
+    res[key] = val;
+  }
+  return res;
+}
+
+function parsePlanPhases(content) {
+  if (typeof content !== 'string') return null;
+  const endIdx = content.startsWith('---') ? content.indexOf('\n---', 3) : -1;
+  const body = endIdx !== -1 ? content.slice(endIdx + 4) : content;
+
+  const phaseHeaderRegex = /(?:^|\n)#{2,3}\s+Phase\s+(\d+)[:\s]+([^\n]+)/gi;
+  const headerMatches = [];
+  let m;
+  while ((m = phaseHeaderRegex.exec(body)) !== null) {
+    headerMatches.push({
+      phaseNumber: parseInt(m[1], 10),
+      title: m[2].trim(),
+      index: m.index,
+      headerLength: m[0].length,
+    });
+  }
+
+  const phases = [];
+  for (let i = 0; i < headerMatches.length; i++) {
+    const curr = headerMatches[i];
+    const startIndex = curr.index + curr.headerLength;
+    const endIndex = i + 1 < headerMatches.length ? headerMatches[i + 1].index : body.length;
+    const phaseSection = body.slice(startIndex, endIndex);
+
+    const tasks = [];
+    const checkboxRegex = /^[ \t]*-[ \t]*\[([ xX])\][ \t]+([^\r\n]+)/gm;
+    let cm;
+    while ((cm = checkboxRegex.exec(phaseSection)) !== null) {
+      tasks.push({
+        completed: cm[1].toLowerCase() === 'x',
+        text: cm[2].trim(),
+      });
+    }
+
+    let verificationCommand = null;
+    const autoVerifMatch = phaseSection.match(/(?:\*?Automated\s+Verification:?\*?:?|####\s+Automated\s+Verification:?)[^\n`]*`([^`]+)`/i);
+    if (autoVerifMatch) {
+      verificationCommand = autoVerifMatch[1].trim();
+    } else {
+      const codeBlockMatch = phaseSection.match(/(?:\*?Automated\s+Verification:?\*?:?|####\s+Automated\s+Verification:?)[^\n`]*```[a-z]*\r?\n([^\r\n`]+)/i);
+      if (codeBlockMatch) {
+        verificationCommand = codeBlockMatch[1].trim();
+      }
+    }
+
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter((t) => t.completed).length;
+    const completed = totalTasks > 0 && completedTasks === totalTasks;
+
+    phases.push({
+      phaseNumber: curr.phaseNumber,
+      title: curr.title,
+      tasks,
+      totalTasks,
+      completedTasks,
+      completed,
+      verificationCommand,
+    });
+  }
+
+  return { phases };
+}
+
+function resolvePlanPhaseVerification(cwd, opts) {
+  if (opts && typeof opts.planVerificationCommand === 'string') {
+    return {
+      command: opts.planVerificationCommand,
+      phaseNumber: (opts && opts.planPhaseNumber) || 1,
+      phaseTitle: (opts && opts.planPhaseTitle) || 'Active Phase',
+      planFile: (opts && opts.planFile) || 'docs/plans/active-plan.md',
+    };
+  }
+
+  const plansDir = path.join(cwd, 'docs', 'plans');
+  if (!fs.existsSync(plansDir)) return null;
+
+  let planFiles = [];
+  try {
+    planFiles = fs.readdirSync(plansDir).filter((f) => f.endsWith('.md') && f !== 'README.md');
+  } catch (err) {
+    return null;
+  }
+  if (planFiles.length === 0) return null;
+
+  let currentBranch = '';
+  try {
+    currentBranch = execSync('git branch --show-current', {
+      cwd,
+      stdio: ['ignore', 'pipe', 'ignore'],
+      encoding: 'utf8',
+    }).trim();
+  } catch (err) {
+    // ignore
+  }
+
+  let chosenFile = null;
+  let chosenContent = null;
+
+  if (currentBranch) {
+    for (const f of planFiles) {
+      try {
+        const content = fs.readFileSync(path.join(plansDir, f), 'utf8');
+        const fm = parsePlanFrontmatter(content);
+        if (fm.branch && fm.branch.trim() === currentBranch) {
+          chosenFile = f;
+          chosenContent = content;
+          break;
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+  }
+
+  if (!chosenFile) {
+    for (const f of planFiles) {
+      try {
+        const content = fs.readFileSync(path.join(plansDir, f), 'utf8');
+        const fm = parsePlanFrontmatter(content);
+        if (!fm.status || !['complete', 'completed'].includes(fm.status.toLowerCase().trim())) {
+          chosenFile = f;
+          chosenContent = content;
+          break;
+        }
+      } catch (err) {
+        // ignore
+      }
+    }
+  }
+
+  if (!chosenFile || !chosenContent) return null;
+
+  const planInfo = parsePlanPhases(chosenContent);
+  if (!planInfo || planInfo.phases.length === 0) return null;
+
+  let targetPhase = null;
+  const inProgressPhase = planInfo.phases.find((p) => p.completedTasks > 0 && !p.completed);
+  if (inProgressPhase) {
+    targetPhase = inProgressPhase;
+  } else {
+    const completedPhases = planInfo.phases.filter((p) => p.completed);
+    if (completedPhases.length > 0) {
+      targetPhase = completedPhases[completedPhases.length - 1];
+    } else {
+      targetPhase = planInfo.phases[0];
+    }
+  }
+
+  let verifCmd = targetPhase ? targetPhase.verificationCommand : null;
+  if (!verifCmd) {
+    for (let i = planInfo.phases.length - 1; i >= 0; i--) {
+      if (planInfo.phases[i].verificationCommand) {
+        verifCmd = planInfo.phases[i].verificationCommand;
+        targetPhase = planInfo.phases[i];
+        break;
+      }
+    }
+  }
+
+  if (verifCmd) {
+    return {
+      command: verifCmd,
+      phaseNumber: targetPhase ? targetPhase.phaseNumber : null,
+      phaseTitle: targetPhase ? targetPhase.title : '',
+      planFile: path.join('docs', 'plans', chosenFile).replace(/\\/g, '/'),
+    };
+  }
+
+  return null;
+}
+
 function formatTestOutput(stdout, stderr) {
   const combined = [stdout, stderr]
     .filter((chunk) => typeof chunk === 'string' && chunk.length > 0)
@@ -102,13 +294,27 @@ function formatTestOutput(stdout, stderr) {
   return '... [output truncated] ...\n' + combined.slice(-1500);
 }
 
-function buildTestFailureMessage(command, exitCode, output) {
-  let msg =
-    'Pre-stop test verification failed: "' +
-    command +
-    '" exited with code ' +
-    exitCode +
-    '.\n';
+function buildTestFailureMessage(command, exitCode, output, planPhaseInfo) {
+  let msg;
+  if (planPhaseInfo && planPhaseInfo.phaseNumber) {
+    msg =
+      'RPI Phase Verification failed for Phase ' +
+      planPhaseInfo.phaseNumber +
+      ' (' +
+      planPhaseInfo.planFile +
+      '): "' +
+      command +
+      '" exited with code ' +
+      exitCode +
+      '.\n';
+  } else {
+    msg =
+      'Pre-stop test verification failed: "' +
+      command +
+      '" exited with code ' +
+      exitCode +
+      '.\n';
+  }
   if (output && output.trim()) {
     msg += '\n--- Test Output ---\n' + output.trim() + '\n-------------------\n\n';
   } else {
@@ -118,9 +324,17 @@ function buildTestFailureMessage(command, exitCode, output) {
   return msg;
 }
 
-function buildTimeoutMessage(command, timeoutMs) {
+function buildTimeoutMessage(command, timeoutMs, planPhaseInfo) {
+  const prefix =
+    planPhaseInfo && planPhaseInfo.phaseNumber
+      ? 'RPI Phase Verification failed for Phase ' +
+        planPhaseInfo.phaseNumber +
+        ' (' +
+        planPhaseInfo.planFile +
+        '): "'
+      : 'Pre-stop test verification failed: "';
   return (
-    'Pre-stop test verification failed: "' +
+    prefix +
     command +
     '" timed out after ' +
     timeoutMs +
@@ -344,9 +558,21 @@ function checkClosingTheLoop(cwd, opts) {
     process.env.SKIP_TEST_VERIFICATION === '1';
 
   if (!skipTestVerification) {
+    const planVerif = resolvePlanPhaseVerification(cwd, opts);
     const verifConfig = resolveVerificationConfig(cwd, opts);
-    const testCmd =
-      verifConfig && (verifConfig.testCommand || verifConfig.command);
+    let testCmd = null;
+    let isPlanVerification = false;
+    let planPhaseInfo = null;
+
+    if (planVerif && planVerif.command) {
+      testCmd = planVerif.command;
+      isPlanVerification = true;
+      planPhaseInfo = planVerif;
+    } else {
+      testCmd =
+        verifConfig && (verifConfig.testCommand || verifConfig.command);
+    }
+
     if (testCmd && typeof testCmd === 'string' && testCmd.trim()) {
       const timeoutMs =
         (opts && opts.timeoutMs) ||
@@ -361,9 +587,11 @@ function checkClosingTheLoop(cwd, opts) {
         return {
           ok: false,
           sourceChanges: nonScaffold,
-          message: buildTimeoutMessage(testCmd, timeoutMs),
+          message: buildTimeoutMessage(testCmd, timeoutMs, planPhaseInfo),
           reason: 'test-verification-failed',
           testCommand: testCmd,
+          planVerification: isPlanVerification,
+          planPhaseInfo,
         };
       }
 
@@ -377,10 +605,12 @@ function checkClosingTheLoop(cwd, opts) {
         return {
           ok: false,
           sourceChanges: nonScaffold,
-          message: buildTestFailureMessage(testCmd, exitCode, output),
+          message: buildTestFailureMessage(testCmd, exitCode, output, planPhaseInfo),
           reason: 'test-verification-failed',
           testCommand: testCmd,
           testOutput: output,
+          planVerification: isPlanVerification,
+          planPhaseInfo,
         };
       }
     }
@@ -534,6 +764,8 @@ module.exports = {
   SCAFFOLD_FILES,
   getLogDiff,
   resolveVerificationConfig,
+  resolvePlanPhaseVerification,
+  parsePlanPhases,
   buildTestFailureMessage,
   formatTestOutput,
 };
