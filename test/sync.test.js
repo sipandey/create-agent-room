@@ -409,3 +409,48 @@ test('runSync --all --check: verifies drift detection across all 6 tools', (t) =
   process.exitCode = undefined;
 });
 
+test('runSync: syncs and detects drift in Claude Code custom slash commands (.claude/commands/)', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-sync-claude-cmds-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  const agentRoomDir = path.join(tmpDir, '.agent-room', 'skills');
+  fs.mkdirSync(agentRoomDir, { recursive: true });
+  fs.writeFileSync(path.join(agentRoomDir, 'my-skill.md'), '# My Skill\n');
+
+  // Configure claude tool in .agent-room.json
+  fs.writeFileSync(
+    path.join(tmpDir, '.agent-room.json'),
+    JSON.stringify({ name: 'ClaudeCmdsSyncTest', tools: ['claude'] })
+  );
+
+  // Initial sync: creates .claude/skills and .claude/commands
+  runSync(tmpDir, { tools: 'claude' });
+
+  const commandsDir = path.join(tmpDir, '.claude', 'commands');
+  for (const cmd of ['research.md', 'plan.md', 'implement.md', 'iterate.md']) {
+    assert.ok(fs.existsSync(path.join(commandsDir, cmd)), `${cmd} should be created by sync`);
+  }
+
+  // Check passes when up-to-date
+  process.exitCode = undefined;
+  runSync(tmpDir, { tools: 'claude', check: true });
+  assert.strictEqual(process.exitCode, undefined, 'check should pass when commands are up-to-date');
+
+  // Drift one command file
+  fs.writeFileSync(path.join(commandsDir, 'research.md'), '# drifted research command\n');
+  process.exitCode = undefined;
+  runSync(tmpDir, { tools: 'claude', check: true });
+  assert.strictEqual(process.exitCode, 1, 'check should fail when command is drifted');
+  process.exitCode = undefined;
+
+  // Re-sync restores the canonical template
+  runSync(tmpDir, { tools: 'claude', force: true });
+  assert.match(
+    fs.readFileSync(path.join(commandsDir, 'research.md'), 'utf8'),
+    /research-codebase\.md/,
+    're-sync should restore canonical command template'
+  );
+});
+
+

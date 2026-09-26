@@ -1083,3 +1083,72 @@ test('runInit: generates RPI workflow instructions and skills in AGENTS.md acros
   assert.doesNotMatch(minContent, /\[`\.agent-room\/workflow-classifier\.md`\]/);
 });
 
+test('runInit: scaffolds Claude Code custom slash commands (.claude/commands/) when claude is enabled', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-init-claude-cmds-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, {
+    yes: true,
+    tools: 'claude',
+    name: 'ClaudeCmdsTest',
+    force: true,
+  });
+
+  const commandsDir = path.join(tmpDir, '.claude', 'commands');
+  assert.ok(fs.existsSync(commandsDir), '.claude/commands should exist');
+
+  const expectedCommands = ['research.md', 'plan.md', 'implement.md', 'iterate.md'];
+  for (const cmdFile of expectedCommands) {
+    const cmdPath = path.join(commandsDir, cmdFile);
+    assert.ok(fs.existsSync(cmdPath), `${cmdFile} should exist in .claude/commands/`);
+    const content = fs.readFileSync(cmdPath, 'utf8');
+    assert.match(content, /\$ARGUMENTS/, `${cmdFile} should accept $ARGUMENTS`);
+    assert.match(content, /RPI/, `${cmdFile} should reference RPI`);
+  }
+
+  assert.match(
+    fs.readFileSync(path.join(commandsDir, 'research.md'), 'utf8'),
+    /research-codebase\.md/
+  );
+  assert.match(
+    fs.readFileSync(path.join(commandsDir, 'plan.md'), 'utf8'),
+    /writing-plans\.md/
+  );
+  assert.match(
+    fs.readFileSync(path.join(commandsDir, 'implement.md'), 'utf8'),
+    /implement-plan\.md/
+  );
+  assert.match(
+    fs.readFileSync(path.join(commandsDir, 'iterate.md'), 'utf8'),
+    /iterate-plan\.md/
+  );
+});
+
+test('runInit: injects RPI Execution Pipeline guidelines into Cursor rules (.cursor/rules/agent-room.mdc)', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-init-cursor-rpi-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, {
+    yes: true,
+    tools: 'cursor',
+    name: 'CursorRpiTest',
+    force: true,
+  });
+
+  const rulesPath = path.join(tmpDir, '.cursor', 'rules', 'agent-room.mdc');
+  assert.ok(fs.existsSync(rulesPath), 'Cursor rules mdc should exist');
+  const content = fs.readFileSync(rulesPath, 'utf8');
+
+  assert.match(content, /RPI Execution Pipeline/);
+  assert.match(content, /1\.\s+\*\*Research\*\*\s+\(`research-codebase`\)/);
+  assert.match(content, /2\.\s+\*\*Plan & Iterate\*\*\s+\(`writing-plans`,\s+`iterate-plan`\)/);
+  assert.match(content, /3\.\s+\*\*Implement\*\*\s+\(`implement-plan`\)/);
+  assert.match(content, /4\.\s+\*\*Audit\*\*\s+\(`validate-plan`\)/);
+  assert.match(content, /5\.\s+\*\*Deliver\*\*\s+\(`commit-changes`,\s+`describe-pr`\)/);
+  assert.match(content, /docs\/research\/YYYY-MM-DD-<topic>\.md/);
+  assert.match(content, /docs\/plans\/YYYY-MM-DD-<topic>\.md/);
+});
+
+
