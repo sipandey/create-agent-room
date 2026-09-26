@@ -1032,8 +1032,20 @@ test('runInit: --tools all scaffolds all adapters (claude, cursor, windsurf, cli
   assert.ok(fs.existsSync(path.join(tmpDir, '.codexrules')), '.codexrules should exist');
   assert.ok(fs.existsSync(path.join(tmpDir, '.github', 'copilot-instructions.md')), 'copilot instructions should exist');
 });
+test('runInit: scaffolds both docs/plans and docs/research artifact directories', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-init-docs-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
 
+  await runInit(tmpDir, {
+    yes: true,
+    tools: 'none',
+    name: 'DocsScaffoldTest',
+    force: true,
+  });
 
-
-
-
+  assert.ok(fs.existsSync(path.join(tmpDir, 'docs', 'plans')), 'docs/plans directory should exist');
+  assert.ok(fs.existsSync(path.join(tmpDir, 'docs', 'research')), 'docs/research directory should exist');
+  assert.ok(fs.existsSync(path.join(tmpDir, 'docs', 'plans', '.gitkeep')), 'docs/plans/.gitkeep should exist');
+  assert.ok(fs.existsSync(path.join(tmpDir, 'docs', 'research', '.gitkeep')), 'docs/research/.gitkeep should exist');
+});

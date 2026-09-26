@@ -50,6 +50,18 @@ have to re-derive it from scratch by reading git history.
 **Why:** Agents completing implementation phases frequently make monolithic commits exceeding guardrail scope limits, accidentally stage sensitive or temporary files with `git add .`, add unwanted AI attribution headers, or push prematurely to remotes. Standardizing atomic commit execution with an interactive approval gate guarantees clean, auditable git history.
 **Rejected:** Automating commit creation headlessly without human approval (violates pair-programming control and makes unreviewed changes irreversible).
 
+### 2026-09-26 — Standardized Artifact Lifecycle & Schemas (Story 9.2)
+
+**Decision:** Standardize the on-disk artifact lifecycle for RPI research documents (`docs/research/`) and implementation plans (`docs/plans/`), scaffolding both directories on `init` and enforcing YAML frontmatter schemas in `create-agent-room validate`.
+- **Scaffolding:** Added `templates/docs/research/.gitkeep` so both `docs/research/` and `docs/plans/` are scaffolded consistently during repository initialization.
+- **Strict Frontmatter Schemas:**
+  - `docs/research/*.md`: requires `date`, `git_commit`, `branch`, `repository`, `topic`, `tags`, and `status`.
+  - `docs/plans/*.md`: requires `date`, `research_doc`, `branch`, `status`, `phases_total`, and `phases_completed` (with numeric phase validation).
+- **Automated Validation in `lib/checks.js` & `lib/validate.js`:** Section 4 of `collectFindings` validates file naming conventions (`YYYY-MM-DD-<topic>.md`, ignoring `README.md` and `.gitkeep`), verifies frontmatter delimiters (`---`), required attributes, non-empty values, and numeric phase counts.
+- **Dogfood Repository Alignment:** Attached compliant YAML frontmatter headers to historical design notes in `docs/plans/`, ensuring 100% compliance across all dogfooded artifacts.
+**Why:** Hand-crafted, unstructured markdown files scattered in arbitrary directories cause agent amnesia and make cross-session audits impossible. Predictable on-disk locations with validated frontmatter schemas establish durable, machine-readable contracts between research, planning, implementation, and review.
+**Rejected:** External schema validation libraries (e.g. ajv, zod, joi) — CAR maintains a zero-runtime-dependency invariant by implementing pure JavaScript frontmatter linting in `lib/checks.js`.
+
 ### 2026-09-25 — Core RPI Guidance & Skill Suite (Story 9.1)
 
 **Decision:** Author and package the four core procedural skills for the Research → Plan → Implement (RPI) framework: `research-codebase.md`, `writing-plans.md`, `implement-plan.md`, and `iterate-plan.md`.

@@ -1,3 +1,12 @@
+---
+date: 2026-07-13T00:00:00Z
+research_doc: N/A
+branch: feature/scope-guidance-and-bypass-log
+status: complete
+phases_total: 1
+phases_completed: 1
+---
+
 # Design: enforce `scopeGuidance` + a durable guardrails-bypass log
 
 Date: 2026-07-13

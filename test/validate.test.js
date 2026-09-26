@@ -313,3 +313,171 @@ test('runValidate: fails when hooks.prePush in .agent-room.json has invalid type
   }
 });
 
+test('runValidate: fails when research artifact has invalid filename convention', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-validate-research-name-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'ResearchNameRoom', force: true });
+  fs.writeFileSync(path.join(tmpDir, 'docs', 'research', 'bad-name.md'), '---\ndate: 2026-09-26\n---');
+
+  const originalExitCode = process.exitCode;
+  process.exitCode = undefined;
+  try {
+    runValidate(tmpDir);
+    assert.strictEqual(process.exitCode, 1, 'invalid research doc filename should fail validate');
+  } finally {
+    process.exitCode = originalExitCode;
+  }
+});
+
+test('runValidate: fails when research artifact is missing frontmatter delimiters or required attributes', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-validate-research-fm-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'ResearchFmRoom', force: true });
+
+  // Missing frontmatter delimiters
+  const noFmFile = path.join(tmpDir, 'docs', 'research', '2026-09-26-no-fm.md');
+  fs.writeFileSync(noFmFile, '# Just a doc without frontmatter');
+
+  const originalExitCode = process.exitCode;
+  process.exitCode = undefined;
+  try {
+    runValidate(tmpDir);
+    assert.strictEqual(process.exitCode, 1, 'missing delimiters should fail validate');
+  } finally {
+    process.exitCode = originalExitCode;
+  }
+
+  // Missing required attribute (e.g., repository)
+  fs.writeFileSync(noFmFile, [
+    '---',
+    'date: 2026-09-26',
+    'git_commit: abc1234',
+    'branch: main',
+    'topic: "Testing"',
+    'tags: [test]',
+    'status: complete',
+    '---',
+    '# Doc body'
+  ].join('\n'));
+
+  process.exitCode = undefined;
+  try {
+    runValidate(tmpDir);
+    assert.strictEqual(process.exitCode, 1, 'missing repository attribute should fail validate');
+  } finally {
+    process.exitCode = originalExitCode;
+  }
+});
+
+test('runValidate: fails when plan artifact has invalid filename or missing attributes', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-validate-plan-fm-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'PlanFmRoom', force: true });
+
+  // Invalid filename
+  fs.writeFileSync(path.join(tmpDir, 'docs', 'plans', 'not-a-date-plan.md'), '---\ndate: 2026-09-26\n---');
+  const originalExitCode = process.exitCode;
+  process.exitCode = undefined;
+  try {
+    runValidate(tmpDir);
+    assert.strictEqual(process.exitCode, 1, 'invalid plan filename should fail validate');
+  } finally {
+    process.exitCode = originalExitCode;
+  }
+
+  // Valid name but missing research_doc attribute
+  fs.unlinkSync(path.join(tmpDir, 'docs', 'plans', 'not-a-date-plan.md'));
+  fs.writeFileSync(path.join(tmpDir, 'docs', 'plans', '2026-09-26-test-plan.md'), [
+    '---',
+    'date: 2026-09-26',
+    'branch: main',
+    'status: pending',
+    'phases_total: 3',
+    'phases_completed: 1',
+    '---'
+  ].join('\n'));
+
+  process.exitCode = undefined;
+  try {
+    runValidate(tmpDir);
+    assert.strictEqual(process.exitCode, 1, 'missing research_doc should fail validate');
+  } finally {
+    process.exitCode = originalExitCode;
+  }
+});
+
+test('runValidate: fails when plan artifact has non-numeric phase counts', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-validate-plan-num-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'PlanNumRoom', force: true });
+  fs.writeFileSync(path.join(tmpDir, 'docs', 'plans', '2026-09-26-numeric-plan.md'), [
+    '---',
+    'date: 2026-09-26',
+    'research_doc: docs/research/2026-09-26-test.md',
+    'branch: main',
+    'status: in-progress',
+    'phases_total: three',
+    'phases_completed: zero',
+    '---'
+  ].join('\n'));
+
+  const originalExitCode = process.exitCode;
+  process.exitCode = undefined;
+  try {
+    runValidate(tmpDir);
+    assert.strictEqual(process.exitCode, 1, 'non-numeric phases should fail validate');
+  } finally {
+    process.exitCode = originalExitCode;
+  }
+});
+
+test('runValidate: passes when research and plan artifacts follow schema conventions', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-validate-artifacts-pass-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'ArtifactsPassRoom', force: true });
+
+  fs.writeFileSync(path.join(tmpDir, 'docs', 'research', '2026-09-26-valid-research.md'), [
+    '---',
+    'date: 2026-09-26',
+    'git_commit: 1234567',
+    'branch: main',
+    'repository: test-repo',
+    'topic: "Artifact Schemas"',
+    'tags: [schema, validation]',
+    'status: complete',
+    '---',
+    '# Research Findings'
+  ].join('\n'));
+
+  fs.writeFileSync(path.join(tmpDir, 'docs', 'plans', '2026-09-26-valid-plan.md'), [
+    '---',
+    'date: 2026-09-26',
+    'research_doc: docs/research/2026-09-26-valid-research.md',
+    'branch: main',
+    'status: pending',
+    'phases_total: 4',
+    'phases_completed: 0',
+    '---',
+    '# Implementation Plan'
+  ].join('\n'));
+
+  const originalExitCode = process.exitCode;
+  process.exitCode = undefined;
+  try {
+    runValidate(tmpDir);
+    assert.strictEqual(process.exitCode, undefined, 'valid artifacts should pass validation');
+  } finally {
+    process.exitCode = originalExitCode;
+  }
+});
+

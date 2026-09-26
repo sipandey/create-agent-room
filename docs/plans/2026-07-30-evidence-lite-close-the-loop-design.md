@@ -1,3 +1,12 @@
+---
+date: 2026-07-30T00:00:00Z
+research_doc: N/A
+branch: main
+status: complete
+phases_total: 1
+phases_completed: 1
+---
+
 # Design: Evidence-lite close-the-loop (Phase B)
 
 **Date:** 2026-07-30  
