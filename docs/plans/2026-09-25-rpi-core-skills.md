@@ -1,3 +1,12 @@
+---
+date: 2026-09-25T00:00:00Z
+research_doc: N/A
+branch: main
+status: complete
+phases_total: 4
+phases_completed: 4
+---
+
 # Core RPI Guidance & Skill Suite (Story 9.1) — Implementation Plan
 
 **Goal:** Author and package the four core RPI procedure skills (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`) in `templates/.agent-room/skills/` and `.agent-room/skills/`, register them in `lib/skill.js`, and mark `brainstorming.md` as deprecated.  

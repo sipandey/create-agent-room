@@ -67,3 +67,57 @@ test('collectFindings: flags an invalid guardrails.json forbiddenActions entry',
   const { errors } = collectFindings(tmpDir);
   assert.ok(errors.some((e) => e.includes('is not a valid regex')));
 });
+
+test('collectFindings: validates research and plan artifacts schema', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-checks-artifacts-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'none', name: 'ChecksArtifactsTest', profile: 'full', force: true });
+
+  // Add invalid files
+  fs.writeFileSync(path.join(tmpDir, 'docs', 'research', 'not-a-date.md'), '---\n---');
+  fs.writeFileSync(path.join(tmpDir, 'docs', 'plans', '2026-09-26-bad-plan.md'), [
+    '---',
+    'date: 2026-09-26',
+    'research_doc: docs/research/test.md',
+    'branch: main',
+    'status: pending',
+    'phases_total: not-a-number',
+    'phases_completed: 0',
+    '---'
+  ].join('\n'));
+
+  const findings1 = collectFindings(tmpDir);
+  assert.ok(findings1.errors.some((e) => e.includes('must follow YYYY-MM-DD-<topic>.md naming convention')));
+  assert.ok(findings1.errors.some((e) => e.includes('frontmatter "phases_total" must be a number')));
+
+  // Replace with valid files
+  fs.unlinkSync(path.join(tmpDir, 'docs', 'research', 'not-a-date.md'));
+  fs.writeFileSync(path.join(tmpDir, 'docs', 'research', '2026-09-26-valid.md'), [
+    '---',
+    'date: 2026-09-26',
+    'git_commit: abc',
+    'branch: main',
+    'repository: car',
+    'topic: "Testing"',
+    'tags: [test]',
+    'status: complete',
+    '---'
+  ].join('\n'));
+
+  fs.writeFileSync(path.join(tmpDir, 'docs', 'plans', '2026-09-26-bad-plan.md'), [
+    '---',
+    'date: 2026-09-26',
+    'research_doc: docs/research/2026-09-26-valid.md',
+    'branch: main',
+    'status: complete',
+    'phases_total: 2',
+    'phases_completed: 2',
+    '---'
+  ].join('\n'));
+
+  const findings2 = collectFindings(tmpDir);
+  assert.deepStrictEqual(findings2.errors, []);
+});
+

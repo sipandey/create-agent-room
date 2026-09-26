@@ -35,7 +35,7 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | | **8.2** | Monorepo Multi-Package Boundary Enforcement (nested `.agent-room` scopes) | 📋 Ready |
 | | **8.3** | Centralized Compliance Drift & Remote Policy Synchronizer (`doctor --upstream`) | 📋 Ready |
 | **Epic 9: Research → Plan → Implement (RPI) Streamlined Execution** | **9.1** | Core RPI Skills Suite (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`) | ✅ **DONE** |
-| | **9.2** | Standardized Artifact Lifecycle (`docs/research/`, `docs/plans/`, frontmatter schemas) | 📋 Ready |
+| | **9.2** | Standardized Artifact Lifecycle (`docs/research/`, `docs/plans/`, frontmatter schemas) | ✅ **DONE** |
 | | **9.3** | RPI Routing in Workflow Classifier & Universal `AGENTS.md` | 📋 Ready |
 | | **9.4** | Multi-Agent Adapters & Goose Recipe Integration (`--tools goose`, Claude commands, Cursor rules) | 📋 Ready |
 | | **9.5** | Mechanical Seatbelts for RPI Execution (Phased checkbox tracking, Stop-Hook gate, Pre-Commit blast radius) | 📋 Ready |
@@ -596,7 +596,17 @@ Bring structured, disciplined execution to AI coding agents across all CAR-suppo
 ---
 
 ### Story 9.2: Standardized Artifact Lifecycle (`docs/research/`, `docs/plans/`, frontmatter schemas)
-- **Status:** 📋 Ready
+- **Status:** ✅ **DONE** (Branch `feature/story-9.2-artifact-lifecycle`)
+- **Summary:**
+  - Added template scaffolding for `docs/research/.gitkeep` alongside `docs/plans/.gitkeep` in `templates/docs/`.
+  - Added Section 4 to `lib/checks.js` for RPI artifact verification:
+    - Enforces `YYYY-MM-DD-<topic>.md` naming conventions in `docs/research/` and `docs/plans/` (ignoring `README.md` and `.gitkeep`).
+    - Validates YAML frontmatter delimiters (`---`) and required attributes.
+    - Research schema required keys: `date`, `git_commit`, `branch`, `repository`, `topic`, `tags`, and `status`.
+    - Plan schema required keys: `date`, `research_doc`, `branch`, `status`, `phases_total`, and `phases_completed` (with numeric phase validation).
+  - Updated `lib/validate.js` output to report successful RPI artifact schema compliance.
+  - Backfilled YAML frontmatter headers across all historical plans in `docs/plans/`.
+  - Added unit test coverage in `test/init.test.js`, `test/checks.test.js`, and `test/validate.test.js` (all 386 tests pass).
 - **Goal:**
   - Establish predictable on-disk artifact directories, standard frontmatter schemas, and validation for research documents and implementation plans.
 - **Acceptance Criteria:**

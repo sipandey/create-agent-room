@@ -1,3 +1,12 @@
+---
+date: 2026-07-14T00:00:00Z
+research_doc: N/A
+branch: fix/dogfood-drift-and-ci-pin
+status: complete
+phases_total: 1
+phases_completed: 1
+---
+
 # Design: fix three dogfood-drift findings, and stop them recurring
 
 Date: 2026-07-14

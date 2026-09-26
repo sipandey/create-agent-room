@@ -1,3 +1,12 @@
+---
+date: 2026-07-29T00:00:00Z
+research_doc: N/A
+branch: main
+status: complete
+phases_total: 2
+phases_completed: 2
+---
+
 # Design: Cursor Stop parity + multi-tool sync (hybrid mini)
 
 **Date:** 2026-07-29  
