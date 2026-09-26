@@ -37,7 +37,7 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | **Epic 9: Research → Plan → Implement (RPI) Streamlined Execution** | **9.1** | Core RPI Skills Suite (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`) | ✅ **DONE** |
 | | **9.2** | Standardized Artifact Lifecycle (`docs/research/`, `docs/plans/`, frontmatter schemas) | ✅ **DONE** |
 | | **9.3** | RPI Routing in Workflow Classifier & Universal `AGENTS.md` | ✅ **DONE** |
-| | **9.4** | Multi-Agent Adapters & Goose Recipe Integration (`--tools goose`, Claude commands, Cursor rules) | 📋 Ready |
+| | **9.4** | Multi-Agent Adapters: Claude Slash Commands & Cursor RPI Rules | ✅ **DONE** |
 | | **9.5** | Mechanical Seatbelts for RPI Execution (Phased checkbox tracking, Stop-Hook gate, Pre-Commit blast radius) | 📋 Ready |
 | | **9.6** | Retire Redundant Legacy Skills (`brainstorming`, `verification-before-completion`) & Orphan Purging | 📋 Ready |
 | | **9.7** | Atomic Commit Workflow Skill (`commit-changes.md` / `/commit`) | ✅ **DONE** |
@@ -643,20 +643,24 @@ Bring structured, disciplined execution to AI coding agents across all CAR-suppo
 
 ---
 
-### Story 9.4: Multi-Agent Adapters & Goose Recipe Integration (`--tools goose`, Claude commands, Cursor rules)
-- **Status:** 📋 Ready
+### Story 9.4: Multi-Agent Adapters: Claude Slash Commands & Cursor RPI Rules
+- **Status:** ✅ **DONE** (Branch `feature/story-9.4-multi-agent-adapters`)
+- **Summary:**
+  - Implemented Claude Code custom slash command shortcuts (`/research`, `/plan`, `/implement`, `/iterate`) in `templates/adapters/claude-commands/` capturing `$ARGUMENTS` to invoke corresponding RPI procedures.
+  - Added `installClaudeCommands` in `lib/init.js` and `syncClaudeCommands` / `checkClaudeCommandsSync` in `lib/sync.js`.
+  - Injected explicit 5-stage RPI Execution Pipeline guidelines into `templates/adapters/cursorrules.tmpl` and dogfooded in `.cursor/rules/agent-room.mdc`.
+  - Added unit test coverage in `test/init.test.js` and `test/sync.test.js` (390 passing tests, 0 failures, 0 lint warnings).
+  - Note: Goose integration was explicitly removed from scope per user request.
 - **Goal:**
-  - Provide native ergonomic access to RPI across all supported AI coding tools, including Claude Code, Cursor, Windsurf, Cline, Codex, Copilot, and add first-class Goose recipe support.
+  - Provide native ergonomic access to RPI across supported AI coding tools (Claude Code, Cursor, Windsurf, Cline, Codex, Copilot).
 - **Acceptance Criteria:**
   1. Claude Code Adapter:
      - Mirrors RPI skills to `.claude/skills/` (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`).
-     - Provides custom slash command shortcuts (`/research`, `/plan`, `/implement`, `/iterate`).
+     - Provides custom slash command shortcuts (`/research`, `/plan`, `/implement`, `/iterate`) in `.claude/commands/`.
   2. Cursor Adapter:
      - Injects RPI guidelines into `.cursor/rules/agent-room.mdc` so Cursor's agent mode follows the phased research-plan-implement sequence.
-  3. Goose Tool Adapter (`create-agent-room init --tools goose` or `sync`):
-     - Introduces Goose as a supported tool adapter in `lib/init.js` and `lib/sync.js`.
-     - Generates Goose recipes in `.config/goose/recipes/` or local `recipes/`: `rpi-research.yaml`, `rpi-plan.yaml`, `rpi-implement.yaml`, `rpi-iterate.yaml` alongside subrecipes (`rpi-codebase-locator.yaml`, `rpi-codebase-analyzer.yaml`, `rpi-pattern-finder.yaml`).
-     - Ensures Goose recipes point to CAR's `docs/research/` and `docs/plans/` paths and respect repository guardrails.
+  3. Multi-Tool Synchronization:
+     - `create-agent-room sync` and `create-agent-room sync --check` maintain parity across `.claude/commands/`, `.claude/skills/`, and rules manifests.
 
 ---
 
