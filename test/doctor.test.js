@@ -326,3 +326,33 @@ test('runDoctor: with { fix: true } auto-remediates drifted hooks and reports Lo
   assert.match(output, /Looks good/);
 });
 
+test('doctor: detects deprecated core skills and doctor --fix purges them', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-doctor-deprecated-skills-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'claude', name: 'DoctorDeprecatedTest', force: true });
+
+  // Introduce lingering legacy skills
+  const legacySkill = path.join(tmpDir, '.agent-room', 'skills', 'brainstorming.md');
+  fs.writeFileSync(legacySkill, '# Legacy');
+  const legacyClaude = path.join(tmpDir, '.claude', 'skills', 'brainstorming');
+  fs.mkdirSync(legacyClaude, { recursive: true });
+  fs.writeFileSync(path.join(legacyClaude, 'SKILL.md'), '# Legacy');
+
+  const beforeFindings = getFindings(tmpDir);
+  assert.ok(beforeFindings.advisory.some((a) => a.includes('Deprecated legacy skill found: .agent-room/skills/brainstorming.md')));
+  assert.ok(beforeFindings.advisory.some((a) => a.includes('Deprecated mirrored skill found: .claude/skills/brainstorming')));
+
+  const fixed = fixFindings(tmpDir);
+  assert.ok(fixed.some((f) => f.includes('Removed deprecated legacy skill: .agent-room/skills/brainstorming.md')));
+  assert.ok(fixed.some((f) => f.includes('Removed deprecated mirrored skill: .claude/skills/brainstorming')));
+
+  assert.strictEqual(fs.existsSync(legacySkill), false);
+  assert.strictEqual(fs.existsSync(legacyClaude), false);
+
+  const afterFindings = getFindings(tmpDir);
+  assert.ok(!afterFindings.advisory.some((a) => a.includes('Deprecated')));
+});
+
+

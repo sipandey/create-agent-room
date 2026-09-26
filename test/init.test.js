@@ -734,7 +734,7 @@ test('runInit: defaults to --profile minimal, skipping principles/workflow-class
   // Always-included files must still be present.
   assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'guardrails.md')));
   assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'guardrails.json')));
-  assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'skills', 'brainstorming.md')));
+  assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'skills', 'writing-plans.md')));
 
   const config = JSON.parse(fs.readFileSync(path.join(tmpDir, '.agent-room.json'), 'utf8'));
   assert.strictEqual(config.profile, 'minimal');

@@ -7,9 +7,11 @@ first, this file only adds Claude Code-specific mechanics.
 ## Skills
 
 The skills in `.agent-room/skills/` are mirrored into `.claude/skills/` so
-Claude Code can discover and invoke them (`/brainstorming`,
-`/writing-plans`, `/test-driven-development`, `/systematic-debugging`,
-`/verification-before-completion`, `/closing-the-loop`).
+Claude Code can discover and invoke them (`/research-codebase`,
+`/writing-plans`, `/implement-plan`, `/iterate-plan`, `/test-driven-development`,
+`/systematic-debugging`, `/commit-changes`, `/validate-plan`, `/describe-pr`,
+`/closing-the-loop`), alongside custom slash commands in `.claude/commands/`
+(`/research`, `/plan`, `/implement`, `/iterate`).
 
 `.agent-room/skills/` is the source of truth. If you edit a skill, re-run
 `create-agent-room sync` to refresh the `.claude/skills/` copies — don't

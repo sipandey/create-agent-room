@@ -64,7 +64,7 @@ surprises, anything where the "why" is fully obvious from the diff itself.
 
 ## Why this is its own skill, not just advice
 
-`verification-before-completion.md` makes sure you don't claim done without
-evidence. This skill makes sure "done" also means "and I didn't let
+`implement-plan.md` (and `close-the-loop-check.js`) makes sure you don't claim
+done without evidence. This skill makes sure "done" also means "and I didn't let
 something worth remembering evaporate." They're both completion gates;
 they check different things.
