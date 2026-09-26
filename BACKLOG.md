@@ -39,7 +39,7 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | | **9.3** | RPI Routing in Workflow Classifier & Universal `AGENTS.md` | ✅ **DONE** |
 | | **9.4** | Multi-Agent Adapters: Claude Slash Commands & Cursor RPI Rules | ✅ **DONE** |
 | | **9.5** | Mechanical Seatbelts for RPI Execution (Phased checkbox tracking, Stop-Hook gate, Pre-Commit blast radius) | 📋 Ready |
-| | **9.6** | Retire Redundant Legacy Skills (`brainstorming`, `verification-before-completion`) & Orphan Purging | 📋 Ready |
+| | **9.6** | Retire Redundant Legacy Skills (`brainstorming`, `verification-before-completion`) & Orphan Purging | ✅ **DONE** |
 | | **9.7** | Atomic Commit Workflow Skill (`commit-changes.md` / `/commit`) | ✅ **DONE** |
 | | **9.8** | Plan Validation Auditor Skill (`validate-plan.md` / `/validate_plan`) | ✅ **DONE** |
 | | **9.9** | Attested PR Description Skill (`describe-pr.md` / `/describe_pr`) | ✅ **DONE** |
@@ -686,7 +686,15 @@ Bring structured, disciplined execution to AI coding agents across all CAR-suppo
 ---
 
 ### Story 9.6: Retire Redundant Legacy Skills (`brainstorming`, `verification-before-completion`) & Orphan Purging
-- **Status:** 📋 Ready
+- **Status:** ✅ **DONE** (Branch `feature/story-9.6-retire-legacy-skills`)
+- **Summary:**
+  - Deprecated and unregistered `brainstorming.md` and `verification-before-completion.md` from `CORE_SKILL_FILES` in `lib/skill.js`; defined and exported `RETIRED_CORE_SKILL_FILES`.
+  - Updated `listSkillPacks` in `lib/skill.js` to classify lingering retired skills as `deprecated` rather than user `custom` skills.
+  - Implemented `purgeDeprecatedSkills` in `lib/sync.js` and automated advisory findings + auto-remediation in `lib/doctor.js` (`doctor --fix`), cleanly removing retired skills from `.agent-room/skills/` and `.claude/skills/`.
+  - Removed template and dogfood copies of retired skills from `templates/.agent-room/skills/`, `.agent-room/skills/`, and `.claude/skills/`.
+  - Updated guidance documentation (`principles.md`, `closing-the-loop.md`, `CLAUDE.md.tmpl`, `CLAUDE.md`, example projects) and test assertions (`test/init.test.js`) to reference the canonical 10-skill suite.
+  - Resolved circular dependency cycle between `lib/skill.js` and `lib/sync.js` by lazy-loading `runSync` within mutating functions.
+  - All 414 repository tests pass cleanly with zero lint or validation issues.
 - **Goal:**
   - Cleanly deprecate and unregister legacy procedural skills that are now superseded by the RPI pipeline, minimizing token bloat in LLM context windows and preventing cognitive ambiguity across tool adapters.
 - **Acceptance Criteria:**

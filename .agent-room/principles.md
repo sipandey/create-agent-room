@@ -54,8 +54,8 @@ established in `lib/cache.ts:L14-L22`. TTL: 5 minutes." The agent retrieves
 the right pattern and extends it.
 
 **Related:** `systematic-debugging.md` Phase 2 (pattern analysis relies on
-giving the model the right reference), `brainstorming.md` (context
-exploration step).
+giving the model the right reference), `research-codebase.md` (read-only
+codebase discovery step).
 
 ---
 
@@ -74,8 +74,8 @@ the read/write ratio, then pick one. After the first implementation pass,
 you ask "what are the three most likely failure modes for this schema under
 10x current load?" and refine before committing.
 
-**Related:** `brainstorming.md` (proposes alternatives before committing),
-`writing-plans.md` (breaks work into iterable steps).
+**Related:** `writing-plans.md` (proposes alternatives before committing),
+`iterate-plan.md` (iterative refinement).
 
 ---
 
@@ -115,8 +115,8 @@ concurrent requests all fail at the same time and all start retrying." The
 agent discovers the jitter gap itself and adds randomized delay before you
 have to file the production incident.
 
-**Related:** `verification-before-completion.md` (evidence before claims),
-`brainstorming.md` (questioning step).
+**Related:** `implement-plan.md` (evidence before claims via automated per-phase verification),
+`writing-plans.md` (structured questioning step).
 
 ---
 
@@ -178,8 +178,8 @@ function into the file because the name invites everything.
 add date formatting, it finds and extends `date-format.js` without
 touching unrelated code. Retrieval matches intent.
 
-**Related:** `brainstorming.md` (naming is a design decision worth
-discussing), `writing-plans.md` (exact file paths in every task).
+**Related:** `writing-plans.md` (naming is a design decision worth
+discussing, exact file paths in every task).
 
 ---
 
@@ -194,12 +194,12 @@ built without any design discussion because "we'll figure it out as we
 code."
 
 **Compliance:** The typo fix is classified as Bug → fixed, regression
-test, done in hours. The auth system is classified as Feature → full
-brainstorm, design doc, architecture review, TDD, done in weeks. The
-process matches the risk.
+test, done in hours. The auth system is classified as Feature → research,
+design doc, architecture review, TDD, done in weeks. The process matches
+the risk.
 
 **Related:** `workflow-classifier.md` (the classification system),
-`brainstorming.md` (invoked for Features and Products, not Bugs).
+`research-codebase.md` and `writing-plans.md` (invoked for Features and Products, not Bugs).
 
 ---
 
@@ -220,8 +220,8 @@ says real-time collaboration. What's the expected concurrent-editor count?
 If it's typically 1-2, last-write-wins with conflict UI is dramatically
 simpler." The PRD is updated to reflect the simpler requirement.
 
-**Related:** `brainstorming.md` (propose alternatives), `writing-plans.md`
-(architecture section in plan header).
+**Related:** `writing-plans.md` (propose alternatives and trade-offs in
+plan header).
 
 ---
 
@@ -263,7 +263,7 @@ relevance ranking, (C) switch to a dedicated search engine like
 Elasticsearch? I recommend starting with A — it's the lowest-risk
 improvement. What do you think?"
 
-**Related:** `brainstorming.md` (clarifying questions step),
+**Related:** `writing-plans.md` (clarifying questions step),
 `workflow-classifier.md` (scope determines classification).
 
 ---

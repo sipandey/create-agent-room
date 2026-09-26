@@ -7,7 +7,7 @@ const fs = require('node:fs');
 const os = require('node:os');
 const { execFileSync } = require('node:child_process');
 const { runInit } = require('../lib/init');
-const { listSkillPacks, addSkillPacks, removeSkillPacks, runSkillCli, CORE_SKILL_FILES } = require('../lib/skill');
+const { listSkillPacks, addSkillPacks, removeSkillPacks, runSkillCli, CORE_SKILL_FILES, RETIRED_CORE_SKILL_FILES } = require('../lib/skill');
 
 const CLI_PATH = path.join(__dirname, '..', 'bin', 'cli.js');
 
@@ -261,3 +261,36 @@ test('CORE_SKILL_FILES: registers describe-pr.md with valid metadata', () => {
   assert.ok(content.includes('name: describe-pr'));
   assert.ok(content.includes('description:'));
 });
+
+test('CORE_SKILL_FILES and RETIRED_CORE_SKILL_FILES: accurately register canonical vs retired skills', () => {
+  assert.ok(!CORE_SKILL_FILES.includes('brainstorming.md'));
+  assert.ok(!CORE_SKILL_FILES.includes('verification-before-completion.md'));
+  assert.ok(RETIRED_CORE_SKILL_FILES.includes('brainstorming.md'));
+  assert.ok(RETIRED_CORE_SKILL_FILES.includes('verification-before-completion.md'));
+  assert.strictEqual(CORE_SKILL_FILES.length, 10);
+  assert.ok(CORE_SKILL_FILES.includes('research-codebase.md'));
+  assert.ok(CORE_SKILL_FILES.includes('writing-plans.md'));
+  assert.ok(CORE_SKILL_FILES.includes('implement-plan.md'));
+  assert.ok(CORE_SKILL_FILES.includes('iterate-plan.md'));
+  assert.ok(CORE_SKILL_FILES.includes('commit-changes.md'));
+  assert.ok(CORE_SKILL_FILES.includes('validate-plan.md'));
+  assert.ok(CORE_SKILL_FILES.includes('describe-pr.md'));
+});
+
+test('listSkillPacks: handles lingering retired skills without misclassifying as custom', async () => {
+  const tmpDir = await createTestProject();
+  try {
+    const legacyPath = path.join(tmpDir, '.agent-room', 'skills', 'brainstorming.md');
+    fs.writeFileSync(legacyPath, '---\nname: brainstorming\ndescription: Legacy\n---\n# Brainstorming\n', 'utf8');
+
+    const res = listSkillPacks(tmpDir);
+    const customNames = res.custom.map((s) => s.name);
+    assert.ok(!customNames.includes('brainstorming'), 'brainstorming should not be classified as custom skill');
+    assert.ok(Array.isArray(res.deprecated));
+    const deprecatedNames = res.deprecated.map((s) => s.name);
+    assert.ok(deprecatedNames.includes('brainstorming'));
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+

@@ -77,7 +77,7 @@ test('runSync: refreshes Cursor rules when tools include cursor', (t) => {
 
   const agentRoomDir = path.join(tmpDir, '.agent-room', 'skills');
   fs.mkdirSync(agentRoomDir, { recursive: true });
-  fs.writeFileSync(path.join(agentRoomDir, 'brainstorming.md'), '# Brainstorming');
+  fs.writeFileSync(path.join(agentRoomDir, 'writing-plans.md'), '# Writing Plans');
   fs.writeFileSync(path.join(agentRoomDir, 'closing-the-loop.md'), '# Closing');
   fs.writeFileSync(
     path.join(tmpDir, '.agent-room.json'),
@@ -90,7 +90,7 @@ test('runSync: refreshes Cursor rules when tools include cursor', (t) => {
 
   const rules = fs.readFileSync(path.join(tmpDir, '.cursor', 'rules', 'agent-room.mdc'), 'utf8');
   assert.match(rules, /SyncCursorProj/);
-  assert.match(rules, /brainstorming/);
+  assert.match(rules, /writing-plans/);
   assert.match(rules, /closing-the-loop/);
   assert.ok(!fs.existsSync(path.join(tmpDir, '.claude', 'skills')));
 });
@@ -127,7 +127,7 @@ test('runSync: refreshes windsurf, cline, and codex rules when listed in config'
 
   const agentRoomDir = path.join(tmpDir, '.agent-room', 'skills');
   fs.mkdirSync(agentRoomDir, { recursive: true });
-  fs.writeFileSync(path.join(agentRoomDir, 'brainstorming.md'), '# Brainstorming');
+  fs.writeFileSync(path.join(agentRoomDir, 'writing-plans.md'), '# Writing Plans');
   fs.writeFileSync(path.join(agentRoomDir, 'my-skill.md'), '# My Skill');
   fs.writeFileSync(
     path.join(tmpDir, '.agent-room.json'),
@@ -145,7 +145,7 @@ test('runSync: refreshes windsurf, cline, and codex rules when listed in config'
 
   for (const content of [windsurf, cline, codex]) {
     assert.match(content, /OtherRulesSync/);
-    assert.match(content, /brainstorming/);
+    assert.match(content, /writing-plans/);
     assert.match(content, /my-skill/);
   }
 });
@@ -452,5 +452,40 @@ test('runSync: syncs and detects drift in Claude Code custom slash commands (.cl
     're-sync should restore canonical command template'
   );
 });
+
+test('runSync: purges deprecated legacy skills from .agent-room/skills and removes orphaned Claude skills', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-sync-deprecated-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  const agentRoomDir = path.join(tmpDir, '.agent-room', 'skills');
+  fs.mkdirSync(agentRoomDir, { recursive: true });
+  fs.writeFileSync(path.join(agentRoomDir, 'brainstorming.md'), '# Brainstorming');
+  fs.writeFileSync(path.join(agentRoomDir, 'verification-before-completion.md'), '# Verification');
+  fs.writeFileSync(path.join(agentRoomDir, 'writing-plans.md'), '# Writing Plans');
+
+  const claudeDir = path.join(tmpDir, '.claude', 'skills');
+  fs.mkdirSync(path.join(claudeDir, 'brainstorming'), { recursive: true });
+  fs.writeFileSync(path.join(claudeDir, 'brainstorming', 'SKILL.md'), '# Brainstorming');
+  fs.mkdirSync(path.join(claudeDir, 'verification-before-completion'), { recursive: true });
+  fs.writeFileSync(path.join(claudeDir, 'verification-before-completion', 'SKILL.md'), '# Verification');
+
+  const configPath = path.join(tmpDir, '.agent-room.json');
+  fs.writeFileSync(configPath, JSON.stringify({ tools: ['claude', 'cursor'] }));
+
+  // Run sync
+  runSync(tmpDir);
+
+  // Assert deprecated files are removed from .agent-room/skills/
+  assert.strictEqual(fs.existsSync(path.join(agentRoomDir, 'brainstorming.md')), false);
+  assert.strictEqual(fs.existsSync(path.join(agentRoomDir, 'verification-before-completion.md')), false);
+  assert.strictEqual(fs.existsSync(path.join(agentRoomDir, 'writing-plans.md')), true);
+
+  // Assert mirrored skills are deleted
+  assert.strictEqual(fs.existsSync(path.join(claudeDir, 'brainstorming')), false);
+  assert.strictEqual(fs.existsSync(path.join(claudeDir, 'verification-before-completion')), false);
+  assert.strictEqual(fs.existsSync(path.join(claudeDir, 'writing-plans', 'SKILL.md')), true);
+});
+
 
 

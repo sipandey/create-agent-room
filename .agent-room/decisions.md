@@ -16,6 +16,18 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-26 — Retire Redundant Legacy Skills & Orphan Purging (Story 9.6)
+
+**Decision:** Formally deprecate and unregister legacy procedural skills (`brainstorming`, `verification-before-completion`) in favor of the canonical 10-skill Research → Plan → Implement (RPI) suite:
+- **Registry Unregistration:** Updated `CORE_SKILL_FILES` in `lib/skill.js` to strictly contain the 10 canonical skills (`research-codebase.md`, `writing-plans.md`, `implement-plan.md`, `iterate-plan.md`, `test-driven-development.md`, `systematic-debugging.md`, `commit-changes.md`, `validate-plan.md`, `describe-pr.md`, `closing-the-loop.md`) and exported `RETIRED_CORE_SKILL_FILES = ['brainstorming.md', 'verification-before-completion.md']`.
+- **Classification & Deprecation:** Updated `listSkillPacks` in `lib/skill.js` to classify lingering retired skills as `deprecated` rather than user `custom` skills.
+- **Automated Orphan Purging in Sync & Doctor:** Enhanced `lib/sync.js` (`purgeDeprecatedSkills`, called during `syncSkillsToClaude` and before rules generation) and `lib/doctor.js` (`checkDeprecatedSkills` advisory finding, and auto-removal in `doctor --fix`) to detect and purge lingering retired skills from both `.agent-room/skills/` and `.claude/skills/`.
+- **Template & Dogfood Deletion:** Removed `brainstorming.md` and `verification-before-completion.md` from `templates/.agent-room/skills/`, `.agent-room/skills/`, and `.claude/skills/`.
+- **Guidance & Test Alignment:** Updated `principles.md`, `closing-the-loop.md`, `CLAUDE.md.tmpl`, `CLAUDE.md`, example projects, and `test/init.test.js` to reference canonical RPI procedures.
+- **Circular Dependency Elimination:** Resolved circular dependency between `lib/sync.js` and `lib/skill.js` by lazy-loading `runSync` in mutating functions (`addSkillPacks`, `removeSkillPacks`).
+**Why:** `brainstorming.md` was conceptually split into read-only fact gathering (`research-codebase.md`) and interactive plan authoring (`writing-plans.md`). `verification-before-completion.md` was made redundant because per-phase verification is baked directly into `implement-plan.md` checkboxes and verified at turn completion by `close-the-loop-check.js`. Keeping deprecated skills inflated agent context windows and caused confusion across tool adapters.
+**Rejected:** Silently keeping legacy templates as optional skill packs (they are fully superseded and obsolete); leaving orphaned files in existing projects during `sync` or `doctor --fix` (leads to lingering ghost skills in Claude Code and Cursor).
+
 ### 2026-09-26 — Multi-Agent Adapters: Claude Slash Commands & Cursor RPI Rules (Story 9.4)
 
 **Decision:** Implement native ergonomic shortcuts for the Research → Plan → Implement (RPI) pipeline across supported multi-agent tool adapters:
