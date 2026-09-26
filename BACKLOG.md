@@ -665,7 +665,14 @@ Bring structured, disciplined execution to AI coding agents across all CAR-suppo
 ---
 
 ### Story 9.5: Mechanical Seatbelts for RPI Execution (Phased checkbox tracking, Stop-Hook gate, Pre-Commit blast radius)
-- **Status:** 📋 Ready
+- **Status:** ✅ **DONE** (Branch `feature/story-9.5-mechanical-seatbelts`)
+- **Summary:**
+  - Implemented core plan parsing and state checkpoint utility in `lib/plan.js` with zero dependencies: extracts YAML frontmatter, phase sections, task checkboxes (`- [ ]` vs `- [x]`), automated verification commands (`*Automated Verification:* \`...\``), and resumption points (`getPlanResumptionPoint`, `findActivePlan`).
+  - Added unit test suite for plan parsing in `test/plan.test.js` (6 test cases covering structure extraction, task counts, resumption points, and branch matching).
+  - Implemented Pre-Commit Blast Radius & Plan Gate in `templates/adapters/git-hooks/guardrails-check.js` and dogfood `.agent-room/hooks/guardrails-check.js`: blocks commits touching >5 non-scaffold files across multiple directories (`dirs.size > 1`) unless an active plan exists in `docs/plans/` (or is staged), an explicit waiver is provided in `.agent-room/decisions.md` (`<!-- no-plan: ... -->`), or `GUARDRAILS_BYPASS=1` is provided. Added 8 unit tests in `test/guardrails-check.test.js`.
+  - Implemented Stop Hook Phase Verification Gate in `templates/adapters/claude-hooks/close-the-loop-check.js` and dogfood `.agent-room/hooks/close-the-loop-check.js`: when non-scaffold files are modified and an active plan exists in `docs/plans/`, discovers the active or completed phase's verification command and executes it, blocking turn completion on exit code non-zero with structured failure diagnostics. Added 6 unit tests in `test/close-the-loop.test.js`.
+  - Maintained 100% template-to-dogfood parity across git pre-commit hooks and Claude/Cursor stop hooks.
+  - All 410 repository tests pass cleanly (`npm test`), linter passes with 0 errors/warnings (`npm run lint`), and `node bin/cli.js validate .` passes.
 - **Goal:**
   - Back the RPI methodology with CAR's signature runtime mechanical enforcement so agents cannot quietly abandon the process mid-stream.
 - **Acceptance Criteria:**
