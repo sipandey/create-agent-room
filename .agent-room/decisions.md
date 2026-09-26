@@ -50,6 +50,18 @@ have to re-derive it from scratch by reading git history.
 **Why:** Agents completing implementation phases frequently make monolithic commits exceeding guardrail scope limits, accidentally stage sensitive or temporary files with `git add .`, add unwanted AI attribution headers, or push prematurely to remotes. Standardizing atomic commit execution with an interactive approval gate guarantees clean, auditable git history.
 **Rejected:** Automating commit creation headlessly without human approval (violates pair-programming control and makes unreviewed changes irreversible).
 
+### 2026-09-26 — RPI Routing in Workflow Classifier & Universal AGENTS.md (Story 9.3)
+
+**Decision:** Formally integrate the Research → Plan → Implement (RPI) pipeline into the CAR workflow taxonomy (`workflow-classifier.md`) and universal agent entrance instructions (`AGENTS.md` / `buildAgentsMdSections`), establishing explicit routing for non-trivial tasks while preserving lightweight defect flows and profile-aware token footprints.
+- **Workflow Classifier Routing:** Formally routed `Feature`, `Product`, and multi-file `Enhancement` or `Refactor` tasks to the 5-stage RPI pipeline (`research-codebase` -> `writing-plans`/`iterate-plan` -> `implement-plan` -> `validate-plan` -> `commit-changes`/`describe-pr`). Explicitly defined that localized defect fixes follow the lightweight Bug Flow (reproduce -> diagnose -> test -> fix) without RPI documentation overhead.
+- **Universal AGENTS.md Instructions:** Updated `FIRST_FIVE_MINUTES` to instruct agents not to skip RPI for non-trivial features, updated `GUIDANCE_LINKS` to reference canonical RPI procedure skills, and restructured `DEFAULT_WORKFLOW` to mandate RPI for features/products and TDD execution with live checkpoint tracking (`- [ ]` -> `- [x]`).
+- **Profile Awareness:**
+  - `strict` & `full` / `standard`: Supply full procedural guidance, linking `workflow-classifier.md`, `principles.md`, and RPI skills.
+  - `minimal`: Keeps guidance lean with direct, self-contained RPI workflow steps in `AGENTS.md` and zero dead or dangling references to skipped files.
+- **Dogfood Repository Alignment:** Synchronized root `AGENTS.md` and `.agent-room/workflow-classifier.md` with the updated templates.
+**Why:** Without universal, prominent guidance at the repository entrance (`AGENTS.md`) and routing classifier (`workflow-classifier.md`), AI agents default to unstructured, monolithic execution and bypass the RPI discipline. Codifying RPI into the entry point ensures agents immediately adopt phased, verified workflows on all tasks.
+**Rejected:** Forcing RPI onto trivial single-line bug fixes (unnecessary documentation overhead slows down debugging); hardcoding a single static `AGENTS.md` template without profile awareness (would leak broken references into minimal-profile projects).
+
 ### 2026-09-26 — Standardized Artifact Lifecycle & Schemas (Story 9.2)
 
 **Decision:** Standardize the on-disk artifact lifecycle for RPI research documents (`docs/research/`) and implementation plans (`docs/plans/`), scaffolding both directories on `init` and enforcing YAML frontmatter schemas in `create-agent-room validate`.

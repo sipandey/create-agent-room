@@ -16,14 +16,14 @@ over-process wastes time, under-process builds the wrong thing.
 
 ```
 Did something break?
-  yes -> Bug Flow
+  yes -> Bug Flow (reproduce -> diagnose -> test -> fix; skip RPI)
   no
     Does similar code/pattern already exist in this repo?
-      yes -> Enhancement Flow
+      yes -> Enhancement Flow (lightweight; use RPI if touching >3 files)
       no
         Is the scope clear and bounded?
-          yes -> Feature Flow
-          no  -> Product Flow
+          yes -> Feature Flow (full RPI pipeline)
+          no  -> Product Flow (spikes + full RPI pipeline)
 ```
 
 Stop as soon as one answer is clear. Ask in this order:
@@ -39,7 +39,7 @@ Stop as soon as one answer is clear. Ask in this order:
 - **Classification: Bug.**
 - Process: Reproduce on Safari, read the server logs, find the root cause
   (not the symptom), write a regression test, smallest fix, note why it
-  slipped through in `anti-patterns.md`. Hours.
+  slipped through in `anti-patterns.md`. Hours. (Skips RPI docs).
 
 ### "Add dark mode to the settings page"
 - Did something break? No.
@@ -57,8 +57,9 @@ Stop as soon as one answer is clear. Ask in this order:
 - Is the scope clear? Yes — we know exactly which events trigger webhooks,
   the payload shape, and the delivery guarantees we need.
 - **Classification: Feature.**
-- Process: Full brainstorm (delivery guarantees? retry policy? signature
-  verification?), design doc, architecture review, TDD, 1-2 weeks.
+- Process: Execute full RPI pipeline (`research-codebase` -> `writing-plans`
+  -> `implement-plan` -> `validate-plan` -> `commit-changes`/`describe-pr`),
+  1-2 weeks.
 
 ### "We need to support multi-tenant data isolation"
 - Did something break? No.
@@ -69,7 +70,7 @@ Stop as soon as one answer is clear. Ask in this order:
 - **Classification: Product.**
 - Process: Define the problem before the feature list. Write key hypotheses
   ("row-level security vs. schema-per-tenant"). Spike the risky assumptions.
-  Build the smallest useful proof of concept. Learn and iterate. Months.
+  Build the smallest useful proof of concept using RPI. Learn and iterate. Months.
 
 ## Misclassification signals
 
@@ -92,27 +93,42 @@ Reproduce -> Diagnose (root cause, not symptom) -> Write the regression test
 first -> Smallest fix that passes -> Run the relevant checks -> Note why it
 slipped through (append to `.agent-room/anti-patterns.md`).
 
-Do not load: PRD files, architecture exploration, spikes.
+Do not load: RPI research docs (`docs/research/`), phased execution plans
+(`docs/plans/`), PRD files, architecture exploration, or spikes.
 
 ## Enhancement Flow (days)
 Confirm it fits existing rails -> short PRD (a paragraph is fine) -> find the
 closest prior example in the codebase -> TDD -> quick review and ship.
 
 Rule of thumb: if you can describe it as "do X like we already do Y," it's an
-enhancement. If you can't find a Y, it's a feature.
+enhancement. If you can't find a Y, or if the change spans more than 3 files,
+upgrade to Feature Flow and execute the RPI pipeline.
 
-## Feature Flow (weeks)
-Write the first design from the user journey -> let architecture discoveries
-tighten/simplify the design (don't treat draft 1 as sacred) -> TDD against the
-final shape -> review -> observe after shipping.
+## Feature Flow (weeks) — The RPI Pipeline
+Features, Products, and complex multi-file Enhancements or Refactors execute
+the full Research → Plan → Implement (RPI) pipeline:
 
-Use the `brainstorming` -> `writing-plans` -> TDD chain in `.agent-room/skills/`
-for this.
+1. **Research (`research-codebase`):** Strictly read-only exploration mapping
+   architecture, existing conventions, and dependency boundaries without
+   modifying code. Output findings to `docs/research/YYYY-MM-DD-<topic>.md`.
+2. **Plan & Iterate (`writing-plans` / `iterate-plan`):** Ask clarifying
+   questions, evaluate 2-3 architectural approaches with trade-offs, define
+   "What We're NOT Doing", and author a phased checklist with automated
+   verification commands to `docs/plans/YYYY-MM-DD-<topic>.md`. Obtain human
+   approval before proceeding.
+3. **Implement (`implement-plan`):** Execute phase-by-phase using TDD. Run
+   automated verification commands at each phase and update checkboxes on disk
+   (`- [ ]` -> `- [x]`) for context-compaction resilience.
+4. **Audit (`validate-plan`):** Run a 3-vector compliance audit (database,
+   code modifications, automated test verification) before declaring done.
+   Output report to `docs/reviews/YYYY-MM-DD-<topic>-validation.md`.
+5. **Deliver (`commit-changes` & `describe-pr`):** Formulate atomic git
+   commits with human confirmation gates and author attested PR descriptions.
 
 ## Product Flow (months)
 Define the problem before the feature list -> write the key hypotheses ->
-spike the risky assumptions -> build the smallest useful MVP -> learn from
-reality and loop (iterate or pivot).
+spike the risky assumptions -> build the smallest useful MVP using the RPI
+pipeline -> learn from reality and loop (iterate or pivot).
 
 ## Time budget as a signal
 
