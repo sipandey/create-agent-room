@@ -39,3 +39,4 @@ instead of scrolling off a terminal and being forgotten.
 - 2026-09-25T17:38:15.920Z | author: Siddharth Pandey <siddharth.pandey06@gmail.com> | reason: Implement pre-push local CI gate and upstream detection (Story 6.2) | bypassed: Change scope exceeds guidance: 826 lines changed (limit 500)
 - 2026-09-25T18:03:56.140Z | author: Siddharth Pandey <siddharth.pandey06@gmail.com> | reason: chore(release): version 2.5.0 | bypassed: Protected path violation: .github/workflows/agent-room-validate.yml
 - 2026-09-26T02:56:55.824Z | author: Siddharth Pandey <siddharth.pandey06@gmail.com> | bypassed: Change scope exceeds guidance: 715 lines changed (limit 500)
+- 2026-09-26T03:08:25.404Z | author: Siddharth Pandey <siddharth.pandey06@gmail.com> | bypassed: Change scope exceeds guidance: 602 lines changed (limit 500)

@@ -1049,3 +1049,37 @@ test('runInit: scaffolds both docs/plans and docs/research artifact directories'
   assert.ok(fs.existsSync(path.join(tmpDir, 'docs', 'plans', '.gitkeep')), 'docs/plans/.gitkeep should exist');
   assert.ok(fs.existsSync(path.join(tmpDir, 'docs', 'research', '.gitkeep')), 'docs/research/.gitkeep should exist');
 });
+
+test('runInit: generates RPI workflow instructions and skills in AGENTS.md across profiles', async (t) => {
+  const fullDir = path.join(__dirname, 'tmp-rpi-agents-full-' + Date.now());
+  const minDir = path.join(__dirname, 'tmp-rpi-agents-min-' + Date.now());
+  fs.mkdirSync(fullDir, { recursive: true });
+  fs.mkdirSync(minDir, { recursive: true });
+  t.after(() => {
+    fs.rmSync(fullDir, { recursive: true, force: true });
+    fs.rmSync(minDir, { recursive: true, force: true });
+  });
+
+  await runInit(fullDir, { yes: true, tools: 'none', name: 'RpiFullTest', profile: 'full', language: 'rust', force: true });
+  await runInit(minDir, { yes: true, tools: 'none', name: 'RpiMinTest', profile: 'minimal', language: 'rust', force: true });
+
+  const fullContent = fs.readFileSync(path.join(fullDir, 'AGENTS.md'), 'utf8');
+  const minContent = fs.readFileSync(path.join(minDir, 'AGENTS.md'), 'utf8');
+
+  // Both should contain the core RPI skill procedures
+  for (const skill of ['research-codebase', 'writing-plans', 'implement-plan', 'iterate-plan', 'validate-plan', 'commit-changes', 'describe-pr']) {
+    assert.match(fullContent, new RegExp(skill), `full AGENTS.md should mention ${skill}`);
+    assert.match(minContent, new RegExp(skill), `minimal AGENTS.md should mention ${skill}`);
+  }
+
+  // Full profile references classifier and full 5-stage RPI pipeline
+  assert.match(fullContent, /workflow-classifier\.md/);
+  assert.match(fullContent, /RPI Pipeline/);
+  assert.match(fullContent, /docs\/research\/YYYY-MM-DD-<topic>\.md/);
+  assert.match(fullContent, /docs\/plans\/YYYY-MM-DD-<topic>\.md/);
+
+  // Minimal profile has self-contained RPI steps and no dangling links
+  assert.match(minContent, /Features & non-trivial changes \(RPI\)/);
+  assert.doesNotMatch(minContent, /\[`\.agent-room\/workflow-classifier\.md`\]/);
+});
+

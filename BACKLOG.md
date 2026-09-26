@@ -36,7 +36,7 @@ This document tracks all Epics, Stories, Acceptance Criteria, and implementation
 | | **8.3** | Centralized Compliance Drift & Remote Policy Synchronizer (`doctor --upstream`) | 📋 Ready |
 | **Epic 9: Research → Plan → Implement (RPI) Streamlined Execution** | **9.1** | Core RPI Skills Suite (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`) | ✅ **DONE** |
 | | **9.2** | Standardized Artifact Lifecycle (`docs/research/`, `docs/plans/`, frontmatter schemas) | ✅ **DONE** |
-| | **9.3** | RPI Routing in Workflow Classifier & Universal `AGENTS.md` | 📋 Ready |
+| | **9.3** | RPI Routing in Workflow Classifier & Universal `AGENTS.md` | ✅ **DONE** |
 | | **9.4** | Multi-Agent Adapters & Goose Recipe Integration (`--tools goose`, Claude commands, Cursor rules) | 📋 Ready |
 | | **9.5** | Mechanical Seatbelts for RPI Execution (Phased checkbox tracking, Stop-Hook gate, Pre-Commit blast radius) | 📋 Ready |
 | | **9.6** | Retire Redundant Legacy Skills (`brainstorming`, `verification-before-completion`) & Orphan Purging | 📋 Ready |
@@ -622,7 +622,14 @@ Bring structured, disciplined execution to AI coding agents across all CAR-suppo
 ---
 
 ### Story 9.3: RPI Routing in Workflow Classifier & Universal `AGENTS.md`
-- **Status:** 📋 Ready
+- **Status:** ✅ **DONE** (Branch `feature/story-9.3-rpi-routing`)
+- **Summary:**
+  - Updated `workflow-classifier.md` in `templates/.agent-room/` and dogfood `.agent-room/` to route `Feature`, `Product`, and multi-file `Enhancement`/`Refactor` tasks into the 5-stage RPI pipeline (`research-codebase`, `writing-plans`/`iterate-plan`, `implement-plan`, `validate-plan`, `commit-changes`/`describe-pr`).
+  - Explicitly defined that single-file defects follow the lightweight Bug Flow (reproduce -> diagnose -> test -> fix), skipping RPI overhead.
+  - Updated `buildAgentsMdSections` in `lib/init.js` to dynamically generate RPI pipeline workflow instructions and skills across `strict`, `full`/`standard`, and `minimal` profiles.
+  - Maintained lean token footprint for `--profile minimal` with direct, self-contained RPI guidance without dangling links.
+  - Dogfooded updated `AGENTS.md` in repository root.
+  - Added unit test coverage in `test/init.test.js` verifying dynamic section generation across profiles (all 387 tests pass).
 - **Goal:**
   - Formally wire RPI into the CAR workflow taxonomy and universal agent entrance instructions so agents automatically know when and how to invoke RPI.
 - **Acceptance Criteria:**

@@ -15,7 +15,7 @@ Do not immediately start writing code.
     Read `.agent-room/coordination/handoff-protocol.md` if you are picking
     up someone else's work.
 2.  **Classify the work:** Use `.agent-room/workflow-classifier.md`. Don't
-    apply Feature-weight process to a one-line bug fix, and don't skip design
+    apply Feature-weight process to a one-line bug fix, and don't skip RPI
     for a "simple" feature.
 3.  **Check guardrails:** Review `.agent-room/guardrails.md`. Ensure your
     planned work does not touch protected paths or require human approval
@@ -40,9 +40,9 @@ Do not immediately start writing code.
   architecture/design decisions and why. Append when you make one that future
   sessions would otherwise have to re-derive.
 - [`.agent-room/skills/`](.agent-room/skills/) — procedures to follow, not
-  just read: `brainstorming`, `writing-plans`, `test-driven-development`,
-  `systematic-debugging`, `verification-before-completion`,
-  `closing-the-loop`.
+  just read: `research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`,
+  `test-driven-development`, `systematic-debugging`, `commit-changes`, `validate-plan`,
+  `describe-pr`, `closing-the-loop`.
 - [`.agent-room/coordination/`](.agent-room/coordination/) — protocols for
   multi-agent workflows: `handoff-protocol`, `scope-boundaries`,
   `session-log-format`.
@@ -50,22 +50,26 @@ Do not immediately start writing code.
 ## The default workflow
 
 1. **Classify the work** using `.agent-room/workflow-classifier.md`.
-2. **For anything beyond a trivial bug fix**, brainstorm before building: ask
-   clarifying questions, propose 2-3 approaches with trade-offs, get the
-   design approved, *then* write a short design note under `docs/plans/`.
-3. **Use TDD**: write the failing test first, watch it fail, write the
-   minimal code to pass, refactor, commit. No production code without a
-   failing test first.
-4. **Debug systematically**: find the root cause before proposing a fix.
-   Reproduce, check recent changes, gather evidence at component boundaries.
-   No fixes without root-cause investigation.
-5. **Verify before claiming done**: run the actual test/build/lint command in
+2. **Bug Flow (defects)**: Reproduce -> diagnose root cause -> write failing
+   test first (TDD) -> minimal fix -> verify. Skips RPI documentation overhead.
+3. **RPI Pipeline (features, products, multi-file changes)**: Follow the 5-stage pipeline:
+   - **Research**: Run `research-codebase` to map architecture, existing patterns,
+     and boundaries (strictly read-only). Save to `docs/research/YYYY-MM-DD-<topic>.md`.
+   - **Plan & Iterate**: Run `writing-plans` (or `iterate-plan`) to clarify requirements,
+     evaluate trade-offs, and author phased checklist to `docs/plans/YYYY-MM-DD-<topic>.md`.
+     Get human approval before implementing.
+   - **Implement**: Run `implement-plan` to execute phase-by-phase with TDD, running automated
+     verification at each checkpoint and updating checkboxes (`- [ ]` -> `- [x]`) on disk.
+   - **Audit**: Run `validate-plan` before completion to audit against plan specifications.
+   - **Deliver**: Run `commit-changes` for atomic commits (no AI attribution, human gate)
+     and `describe-pr` for pull request summaries.
+4. **Verify before claiming done**: run the actual test/build/lint command in
    this turn and read its output before saying "tests pass" or "fixed."
    "Should work" is not evidence.
-6. **Serialize state**: Before ending your session, log your work in
+5. **Serialize state**: Before ending your session, log your work in
    `.agent-room/sessions/` according to `session-log-format.md`, and write
    a handoff note if the task is incomplete.
-7. **Close the loop — before ending the turn, not after**: this is a gate,
+6. **Close the loop — before ending the turn, not after**: this is a gate,
    not a suggestion. Follow `.agent-room/skills/closing-the-loop.md`. If the
    turn fixed a bug, found a root cause, or made a non-obvious design call,
    append it to `.agent-room/anti-patterns.md` or `.agent-room/decisions.md`
