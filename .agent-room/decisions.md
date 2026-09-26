@@ -16,6 +16,16 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-26 — Multi-Agent Adapters: Claude Slash Commands & Cursor RPI Rules (Story 9.4)
+
+**Decision:** Implement native ergonomic shortcuts for the Research → Plan → Implement (RPI) pipeline across supported multi-agent tool adapters:
+- **Claude Code Custom Slash Commands:** Scaffolds and synchronizes custom command files in `.claude/commands/{research,plan,implement,iterate}.md` using `$ARGUMENTS` to invoke the underlying procedural skills (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`) directly from the terminal via `/research`, `/plan`, `/implement`, and `/iterate`.
+- **Cursor RPI Execution Pipeline Rules:** Injected explicit 5-stage RPI guidelines into `templates/adapters/cursorrules.tmpl` and `.cursor/rules/agent-room.mdc` to guide Cursor's agent mode through the phased sequence (Research -> Plan & Iterate -> Implement -> Audit -> Deliver).
+- **Tool Adapter Parity:** Updated `lib/init.js` (`installClaudeCommands`) and `lib/sync.js` (`syncClaudeCommands`, `checkClaudeCommandsSync`) to maintain continuous parity between template command definitions and target workspaces, including dirty file protection and `--force` overrides.
+- **Scope Alignment:** Removed Goose integration (`--tools goose`, `.goosehints`, and Goose recipes) per explicit user direction to keep the tool adapter surface clean and focused on existing supported assistants.
+**Why:** While procedure skills exist in `.agent-room/skills/` and mirrored directories, developers and agents interacting via Claude Code and Cursor benefit from native slash commands and explicit agent mode rules that reduce prompt friction and prevent cognitive drift during execution.
+**Rejected:** Embedding command shortcuts only as aliased directories in `.claude/skills/` (confuses skill metadata discovery with user slash command invocation).
+
 ### 2026-09-26 — Attested PR Description Skill (Story 9.9)
 
 **Decision:** Author and package the canonical `describe-pr.md` skill (`/describe_pr` and `/describe-pr`) in `templates/.agent-room/skills/` and `.agent-room/skills/`, and register it in `CORE_SKILL_FILES` in `lib/skill.js`.
