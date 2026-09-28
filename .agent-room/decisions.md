@@ -16,6 +16,15 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-28 — Basic RPI Framework in Default Installation & Delivery/Audit Modularization
+
+**Decision:** Formally establish the Basic Research → Plan → Implement (RPI) Framework (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`) along with core hygiene skills (`test-driven-development`, `systematic-debugging`, `closing-the-loop`) as the standard default installation across all presets (`minimal`, `standard`, `strict`).
+- **Default Installation Scope:** Every scaffolded agent room ships with the core RPI pipeline, artifact directories (`docs/research/`, `docs/plans/`), slash commands (`/research`, `/plan`, `/implement`, `/iterate`), and mechanical seatbelts (pre-commit plan gate & stop-hook phase verification).
+- **Delivery & Audit Modularization:** Extended delivery and audit skills (`commit-changes` / `/commit`, `validate-plan` / `/validate_plan`, `describe-pr` / `/describe_pr`) are designated for full mode (`--profile full` / `--preset standard`) and dedicated optional skill packs (`release`, `code-review`), keeping the default `minimal` room ultra-lean and focused on the core build loop.
+- **Documentation Alignment:** Synchronized `README.md`, `CAPABILITIES.md`, `ROADMAP.md`, and `docs/enforcement-model.md` to reflect RPI runtime gates, artifact lifecycle conventions, and preset boundaries.
+**Why:** The primary failure mode of AI coding agents is the "rush to code" — editing code without researching constraints or agreeing on a phased plan. By embedding the basic RPI framework directly into the default installation, every agent is mechanically guided through read-only research, interactive plan approval, and phased TDD implementation, while leaving downstream delivery and auditing modular for full mode.
+**Rejected:** Requiring `--preset standard` or full profile just to get basic planning and research (leaves default rooms vulnerable to blind refactors); forcing delivery/audit tooling into minimal rooms where solo developers only need the basic RPI cycle.
+
 ### 2026-09-26 — Retire Redundant Legacy Skills & Orphan Purging (Story 9.6)
 
 **Decision:** Formally deprecate and unregister legacy procedural skills (`brainstorming`, `verification-before-completion`) in favor of the canonical 10-skill Research → Plan → Implement (RPI) suite:
