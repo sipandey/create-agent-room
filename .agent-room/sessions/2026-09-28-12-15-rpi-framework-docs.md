@@ -2,10 +2,10 @@
 
 **Date:** 2026-09-28 12:15
 **Agent:** Siddharth Pandey
-**Classification:** Documentation
+**Classification:** Enhancement
 
 ## Goal
-Update documentation across `README.md`, `CAPABILITIES.md`, `ROADMAP.md`, and `docs/enforcement-model.md` to establish the Basic RPI Framework (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`) as part of the default installation across presets, with delivery/audit skills modularized for full mode.
+Document Basic RPI Framework in default installation and roadmap delivery/audit modularization.
 
 ## Files touched
 - Created:
