@@ -16,6 +16,16 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-28 — Ambient Git Lifecycle Governance (Stories 6.3 & 6.4)
+
+**Decision:** Implement first-class CLI actions (`create-agent-room hook post-commit|post-checkout|post-merge`) and lifecycle management in `lib/hook.js`, `lib/session.js`, and `lib/sync.js`:
+- **Ambient Session Tracking on `post-commit` (Story 6.3):** Automatically extracts HEAD commit SHA, subject, and changed files via `git diff-tree --root --name-status -r HEAD` and appends them to the active `In Progress` session in `.agent-room/sessions/` (or scaffolds a new session if none exists). Test suite verification (`verifyProject`) is bypassed during ambient commit logging (`skipVerify: true`) to maintain commit execution under 50ms.
+- **Multi-Assistant Rule Synchronization on `post-checkout` & `post-merge` (Story 6.4):** Evaluates `$3 == 1` on `post-checkout` to trigger only on branch checkouts while skipping file checkouts (`$3 == 0`). Triggers after pull/merge to execute `runSync(target, { all: true, quiet: true })`, ensuring `.cursor/rules/`, `.claude/skills/`, `.windsurfrules`, `.clinerules`, `.codexrules`, and `.github/copilot-instructions.md` remain in exact parity across branches with unobtrusive quiet logging.
+- **Declarative Configuration & Bypasses:** Overridable via `.agent-room.json` (`hooks.postCommit`, `hooks.postCheckout`, `hooks.postMerge` with `{ enabled: false }`) and fast environment bypasses (`CAR_SKIP_HOOK`, `CAR_SKIP_POST_COMMIT`, `CAR_SKIP_POST_CHECKOUT`, `CAR_SKIP_POST_MERGE`).
+- **Packaged Hook Templates & Delimited Drift Detection:** Updated packaged templates to delegate cleanly to `create-agent-room hook <name>` (with fallback to `node bin/cli.js hook <name>`). Enhanced `lib/doctor.js` static hook drift detection and `--fix` repair to verify delimited blocks across all 5 git lifecycle hooks without false positives.
+**Why:** AI coding agents frequently switch branches and produce multiple atomic commits without manually running session scaffolding or rule sync commands. Automating these lifecycle actions ambiently inside standard git hooks ensures session audit trails and assistant configurations remain 100% current without imposing manual cognitive burden or blocking developer velocity.
+**Rejected:** Running full test suites synchronously in `post-commit` (stalls git commits for up to 70 seconds); embedding raw unmanaged shell scripts in git hooks instead of first-class CLI commands with JSON telemetry and testable bypasses.
+
 ### 2026-09-28 — Modular Skill Partitioning for Delivery & Audit Workflows
 
 **Decision:** Partition delivery and audit skills (`commit-changes.md`, `validate-plan.md`, `describe-pr.md`) out of the default minimal profile into full mode (`--profile full` / `--preset standard|strict`) and on-demand skill packs (`create-agent-room skill add <skill|pack>`):

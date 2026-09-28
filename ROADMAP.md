@@ -28,12 +28,12 @@ Small, cheap, clearly worth it:
 
 - **Basic RPI Framework in Default Installation** — **Shipped** (Epic 9). The baseline Research → Plan → Implement pipeline (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`), `docs/research/` & `docs/plans/` artifact lifecycle, slash commands (`/research`, `/plan`, `/implement`, `/iterate`), and mechanical seatbelts (pre-commit plan gate & stop-hook phase verification) are now standard across all default `minimal` installations.
 - **Modular Profile / Skill Partitioning for Delivery & Audit Workflows** — **Shipped**. Streamlined the default `minimal` profile to package *strictly* the core RPI triad (`research`, `plan`, `implement`) and core hygiene (`tdd`, `systematic-debugging`, `closing-the-loop`) at ~9,900 tokens (~40% context reduction), partitioning downstream delivery and audit skills (`commit-changes`, `validate-plan`, `describe-pr`) into full mode (`--profile full` / `--preset standard` / `--preset strict`) or on-demand installation via `create-agent-room skill add`.
+- **Ambient Git Lifecycle Governance (Stories 6.3 & 6.4)** — **Shipped**. Automatically track commits, subjects, and touched files into active session logs ambiently on `post-commit` (without stalling commits with verification suites), and auto-sync multi-assistant rules across branches on `post-checkout` (branch checkout) and `post-merge` via first-class CLI actions (`create-agent-room hook post-commit|post-checkout|post-merge`).
 
 ## Next
 
 Worth doing, more effort, still in keeping with the project's scope:
 
-- **Ambient Git Lifecycle Governance (Stories 6.3 & 6.4)** — Automatically track commits and inter-turn diffs to active session logs on `post-commit`, and auto-sync multi-assistant rules across branches on `post-checkout` / `post-merge`.
 - ~~**Publish `action.yml` to the GitHub Marketplace**~~ — **done** (listed as
   [create-agent-room Validate](https://github.com/marketplace/actions/create-agent-room-validate);
   update via release **Edit** + Marketplace checkbox on new major versions).

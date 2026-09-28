@@ -21,6 +21,12 @@ Append a new entry every time:
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-28 — Running heavy test verification suites inside post-commit hooks
+
+**What happened:** Attempting to record ambient git commits by calling the standard session generator (`create-agent-room session --record`) triggered full project test execution (`verifyProject`) inside `post-commit`, causing routine git commits to stall for up to 70+ seconds.
+**Root cause:** Routine git lifecycle hooks must be instantaneous (<50ms). Running verification suites belongs at turn completion (Stop hooks) and pre-push CI simulation (`pre-push`), not on every individual `git commit`.
+**Avoid:** In ambient lifecycle tracking, explicitly bypass test runners (`skipVerify: true`) and record placeholder attestations, keeping git commits instantaneous and non-blocking.
+
 ### 2026-09-26 — Branching from an unmerged or pre-squash feature branch instead of latest origin/main
 
 **What happened:** Branched Story 9.7 directly from `feature/story-9.1-rpi-core-skills` rather than switching to `main` and pulling latest from `origin/main`. When PR #21 was squashed and merged into `main`, GitHub created a single squashed commit with a new SHA, causing false merge conflicts when PR #22 was opened.

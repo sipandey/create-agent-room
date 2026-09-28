@@ -407,6 +407,22 @@ Catch PR anti-tamper, unapproved rule weakening, test regressions, and missing s
   - Standard git bypass: `git push --no-verify`
   - Environment variable: `CAR_SKIP_PRE_PUSH=1 git push`
 
+#### Ambient Session Tracking (`post-commit`)
+Automatically capture commit progress into session logs in milliseconds without stalling your commit velocity:
+- **Zero Test Stalling:** Bypasses verification tests on commit to complete in <50ms.
+- **Smart Session Resolution:** Discovers active `In Progress` session logs matching current branch or created today; non-destructively appends commit SHA, subject, and touched files. If no active session exists, scaffolds a new session log.
+- **Configurable & Bypassable:**
+  - Config: `"hooks": { "postCommit": { "enabled": true } }` in `.agent-room.json`
+  - Fast bypass: `CAR_SKIP_POST_COMMIT=1 git commit -m "..."`
+
+#### Multi-Assistant Rule Synchronization (`post-checkout` & `post-merge`)
+Keep agent assistant rules in exact parity across branches and teammate merges:
+- **Branch-Switch Detection:** Triggers on branch checkout (`$3 == 1`) and pull/merge (`$1 == 0|1`), ignoring individual file checkouts (`$3 == 0`).
+- **Unobtrusive Quiet Sync:** Syncs `.cursor/rules/`, `.claude/skills/`, `.windsurfrules`, `.clinerules`, `.codexrules`, and `.github/copilot-instructions.md` silently unless files are updated or conflicts occur.
+- **Configurable & Bypassable:**
+  - Config: `"hooks": { "postCheckout": { "enabled": true }, "postMerge": { "enabled": true } }`
+  - Fast bypass: `CAR_SKIP_POST_CHECKOUT=1 git checkout <branch>` or `CAR_SKIP_POST_MERGE=1 git pull`
+
 ---
 
 ## ⚙️ Complete CLI Options Reference

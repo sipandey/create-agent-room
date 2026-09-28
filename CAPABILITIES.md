@@ -73,6 +73,16 @@ These features **actively block, fail, or prevent** operations if violated:
   Commits that strengthen or preserve existing rules proceed cleanly, while any rule-weakening requires `GUARDRAILS_BYPASS=1` with an auditable justification logged to `.agent-room/guardrails-bypass-log.md`.
 - **RPI Plan Gate:** Staging changes touching >5 non-scaffold files across multiple directories is blocked unless an active implementation plan exists in `docs/plans/` (or an explicit waiver `<!-- no-plan: <reason> -->` is recorded in `.agent-room/decisions.md`). Prevents agents from executing large multi-file changes without an approved plan.
 
+### Git Lifecycle Governance & Automation (Hooks)
+
+`create-agent-room` provides first-class git lifecycle management for all 5 core git lifecycle hooks via `create-agent-room hook install|status|uninstall`:
+- **Pre-commit (`pre-commit`):** Runs `guardrails-check.js` to block secret leakage, protected-path tampering, rule weakening, and unauthorized multi-file changes without approved RPI plans.
+- **Pre-push (`pre-push`):** Runs `create-agent-room hook pre-push` (`create-agent-room ci`), performing full local CI pre-simulation (test suite verification, doctor drift checks, session log linting, structure validation, and PR anti-tamper diff checks) before pushing to remote branches. Respects `CAR_SKIP_PRE_PUSH=1` or `git push --no-verify`.
+- **Post-commit (`post-commit`):** Ambient Session Tracking (Story 6.3). Automatically discovers active in-progress session logs in `.agent-room/sessions/` matching the current branch or created today, recording commit SHA, subject, touched files, and new decisions into the log without executing slow test suites or blocking commit velocity (<50ms). Respects `CAR_SKIP_POST_COMMIT=1` or `hooks.postCommit.enabled: false`.
+- **Post-checkout (`post-checkout`):** Multi-Assistant Rule Synchronization (Story 6.4). Triggers when switching branches (`$3 == 1`), automatically running `sync --all --quiet` to idempotently update rules across Claude Code, Cursor, Windsurf, Cline, Codex, and GitHub Copilot. Skips file checkouts (`$3 == 0`). Respects `CAR_SKIP_POST_CHECKOUT=1` or `hooks.postCheckout.enabled: false`.
+- **Post-merge (`post-merge`):** Multi-Assistant Rule Synchronization (Story 6.4). Triggers after pull or merge, automatically running `sync --all --quiet` to keep all assistant configurations synchronized with updated skills. Respects `CAR_SKIP_POST_MERGE=1` or `hooks.postMerge.enabled: false`.
+- **Delimited Chaining:** All installed git hooks use delimited blocks (`# --- create-agent-room hook: <name> ---`) and chain non-destructively with existing user hook scripts.
+
 ### Anti-patterns & Decisions Logs (Stop Hooks — Claude Code + Cursor)
 
 - **What it does:** When using Claude Code and/or Cursor, the shared checker
@@ -310,7 +320,6 @@ These provide a framework that requires external setup or effort:
 
 Features planned for future releases:
 
-- **Ambient Git lifecycle governance:** Automated post-commit session capture & post-checkout rule sync (Stories 6.3 & 6.4)
 - **Real-time observability:** Interactive TUI room dashboard and session inspector (Epic 7)
 - **Enterprise policy distribution:** Monorepo package boundaries and remote policy inheritance (Epic 8)
 - **Approval workflows:** Simple gates for guardrails violations

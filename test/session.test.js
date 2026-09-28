@@ -6,7 +6,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const os = require('node:os');
 const { execFileSync, execSync } = require('node:child_process');
-const { createSession, runSessionCli } = require('../lib/session');
+const { createSession, runSessionCli, findActiveSession, recordAmbientCommit } = require('../lib/session');
 const { validateMarkdownSession, validateJSONSession } = require('../lib/lint-sessions');
 
 const CLI_PATH = path.join(__dirname, '..', 'bin', 'cli.js');
@@ -186,4 +186,97 @@ test('CLI: node bin/cli.js session <name> --json --dry-run prints valid JSON', (
   const parsed = JSON.parse(output);
   assert.strictEqual(parsed.classification, 'Feature');
   assert.ok(Array.isArray(parsed.actions));
+});
+
+test('findActiveSession: discovers in-progress session matching branch', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'car-find-active-'));
+  try {
+    const sessionDir = path.join(tmpDir, '.agent-room', 'sessions');
+    fs.mkdirSync(sessionDir, { recursive: true });
+
+    // 1. None exist
+    assert.strictEqual(findActiveSession(tmpDir, 'feature-x'), null);
+
+    // 2. Completed session exists
+    fs.writeFileSync(
+      path.join(sessionDir, '2026-09-28-10-00-feature-x.md'),
+      '# Session Log: feature-x\n\n**Status:** Completed\n'
+    );
+    assert.strictEqual(findActiveSession(tmpDir, 'feature-x'), null);
+
+    // 3. In Progress session exists
+    const activePath = path.join(sessionDir, '2026-09-28-11-00-feature-x.md');
+    fs.writeFileSync(
+      activePath,
+      '# Session Log: feature-x\n\n**Status:** In Progress\n'
+    );
+    assert.strictEqual(findActiveSession(tmpDir, 'feature-x'), activePath);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('recordAmbientCommit: creates new in-progress session if none exists and records commit', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'car-ambient-create-'));
+  try {
+    execFileSync('git', ['init', tmpDir], { stdio: 'ignore' });
+    execFileSync('git', ['config', 'user.name', 'Test Author'], { cwd: tmpDir });
+    execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: tmpDir });
+
+    const testFile = path.join(tmpDir, 'hello.txt');
+    fs.writeFileSync(testFile, 'hello world\n');
+    execFileSync('git', ['add', 'hello.txt'], { cwd: tmpDir });
+    execFileSync('git', ['commit', '-m', 'feat: initial commit'], { cwd: tmpDir });
+
+    const res = recordAmbientCommit(tmpDir);
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.action, 'created');
+    assert.ok(res.sessionPath && fs.existsSync(res.sessionPath));
+    assert.ok(res.commitSha);
+    assert.strictEqual(res.subject, 'feat: initial commit');
+
+    const content = fs.readFileSync(res.sessionPath, 'utf8');
+    assert.ok(content.includes('feat: initial commit'));
+    assert.ok(content.includes('hello.txt'));
+    assert.ok(content.includes('**Status:** In Progress'));
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('recordAmbientCommit: updates active in-progress session with subsequent commits', () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'car-ambient-update-'));
+  try {
+    execFileSync('git', ['init', tmpDir], { stdio: 'ignore' });
+    execFileSync('git', ['config', 'user.name', 'Test Author'], { cwd: tmpDir });
+    execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: tmpDir });
+
+    const f1 = path.join(tmpDir, 'file1.txt');
+    fs.writeFileSync(f1, 'file 1\n');
+    execFileSync('git', ['add', 'file1.txt'], { cwd: tmpDir });
+    execFileSync('git', ['commit', '-m', 'feat: first commit'], { cwd: tmpDir });
+
+    const res1 = recordAmbientCommit(tmpDir);
+    assert.strictEqual(res1.ok, true);
+    assert.strictEqual(res1.action, 'created');
+
+    // Make second commit
+    const f2 = path.join(tmpDir, 'file2.txt');
+    fs.writeFileSync(f2, 'file 2\n');
+    execFileSync('git', ['add', 'file2.txt'], { cwd: tmpDir });
+    execFileSync('git', ['commit', '-m', 'feat: second commit'], { cwd: tmpDir });
+
+    const res2 = recordAmbientCommit(tmpDir);
+    assert.strictEqual(res2.ok, true);
+    assert.strictEqual(res2.action, 'updated');
+    assert.strictEqual(res2.sessionPath, res1.sessionPath);
+
+    const updatedContent = fs.readFileSync(res1.sessionPath, 'utf8');
+    assert.ok(updatedContent.includes('feat: first commit'));
+    assert.ok(updatedContent.includes('feat: second commit'));
+    assert.ok(updatedContent.includes('file1.txt'));
+    assert.ok(updatedContent.includes('file2.txt'));
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
 });
