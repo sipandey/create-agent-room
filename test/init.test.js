@@ -1151,4 +1151,59 @@ test('runInit: injects RPI Execution Pipeline guidelines into Cursor rules (.cur
   assert.match(content, /docs\/plans\/YYYY-MM-DD-<topic>\.md/);
 });
 
+test('runInit: partitions skills between minimal (7 core build skills) and full (10 core skills)', async (t) => {
+  const minDir = path.join(__dirname, 'tmp-partition-min-' + Date.now());
+  const fullDir = path.join(__dirname, 'tmp-partition-full-' + Date.now());
+  fs.mkdirSync(minDir, { recursive: true });
+  fs.mkdirSync(fullDir, { recursive: true });
+  t.after(() => {
+    fs.rmSync(minDir, { recursive: true, force: true });
+    fs.rmSync(fullDir, { recursive: true, force: true });
+  });
+
+  await runInit(minDir, { yes: true, tools: 'none', name: 'PartitionMinTest', profile: 'minimal', language: 'rust', force: true });
+  await runInit(fullDir, { yes: true, tools: 'none', name: 'PartitionFullTest', profile: 'full', language: 'rust', force: true });
+
+  // Minimal profile must include strictly the 7 build skills (+ any language stack skill)
+  const minSkills = fs.readdirSync(path.join(minDir, '.agent-room', 'skills'));
+  assert.ok(minSkills.includes('research-codebase.md'));
+  assert.ok(minSkills.includes('writing-plans.md'));
+  assert.ok(minSkills.includes('implement-plan.md'));
+  assert.ok(minSkills.includes('iterate-plan.md'));
+  assert.ok(minSkills.includes('test-driven-development.md'));
+  assert.ok(minSkills.includes('systematic-debugging.md'));
+  assert.ok(minSkills.includes('closing-the-loop.md'));
+
+  // Minimal profile must NOT scaffold the 3 delivery and audit skills
+  assert.strictEqual(minSkills.includes('commit-changes.md'), false);
+  assert.strictEqual(minSkills.includes('validate-plan.md'), false);
+  assert.strictEqual(minSkills.includes('describe-pr.md'), false);
+
+  // Full profile must include all 10 core skills
+  const fullSkills = fs.readdirSync(path.join(fullDir, '.agent-room', 'skills'));
+  for (const skill of [
+    'research-codebase.md',
+    'writing-plans.md',
+    'implement-plan.md',
+    'iterate-plan.md',
+    'test-driven-development.md',
+    'systematic-debugging.md',
+    'closing-the-loop.md',
+    'commit-changes.md',
+    'validate-plan.md',
+    'describe-pr.md'
+  ]) {
+    assert.ok(fullSkills.includes(skill), `full profile must contain ${skill}`);
+  }
+
+  // AGENTS.md assertions
+  const minAgents = fs.readFileSync(path.join(minDir, 'AGENTS.md'), 'utf8');
+  const fullAgents = fs.readFileSync(path.join(fullDir, 'AGENTS.md'), 'utf8');
+
+  assert.match(minAgents, /closing-the-loop/);
+  assert.match(minAgents, /Extended delivery\s+and audit skills/);
+  assert.match(fullAgents, /`commit-changes`,\s+`validate-plan`,\s+`describe-pr`/);
+});
+
+
 
