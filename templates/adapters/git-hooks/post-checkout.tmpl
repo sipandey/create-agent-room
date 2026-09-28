@@ -10,11 +10,8 @@ if [ "${CAR_SKIP_HOOK:-0}" = "1" ] || [ "${CAR_SKIP_POST_CHECKOUT:-0}" = "1" ]; 
   exit 0
 fi
 
-# In git post-checkout, argument $3 is 1 if this was a branch checkout, 0 for file checkout
-if [ "$3" = "1" ]; then
-  if command -v create-agent-room >/dev/null 2>&1; then
-    create-agent-room sync . --all >/dev/null 2>&1 || true
-  elif [ -f "bin/cli.js" ]; then
-    node "bin/cli.js" sync . --all >/dev/null 2>&1 || true
-  fi
+if command -v create-agent-room >/dev/null 2>&1; then
+  create-agent-room hook post-checkout "$1" "$2" "$3" >/dev/null 2>&1 || true
+elif [ -f "bin/cli.js" ]; then
+  node "bin/cli.js" hook post-checkout "$1" "$2" "$3" >/dev/null 2>&1 || true
 fi

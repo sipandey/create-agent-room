@@ -6,6 +6,7 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { runInit } = require('../lib/init');
 const { runDoctor, getFindings, fixFindings } = require('../lib/doctor');
+const { installHooks } = require('../lib/hook');
 
 async function captureConsoleLog(asyncFn) {
   const lines = [];
@@ -353,6 +354,62 @@ test('doctor: detects deprecated core skills and doctor --fix purges them', asyn
 
   const afterFindings = getFindings(tmpDir);
   assert.ok(!afterFindings.advisory.some((a) => a.includes('Deprecated')));
+});
+
+test('doctor: recognizes delimited lifecycle hooks (post-commit, post-checkout, post-merge, pre-push) without false drift', async (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-doctor-lifecycle-hooks-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  await runInit(tmpDir, { yes: true, tools: 'git', git: true, name: 'DoctorLifecycleTest', force: true });
+
+  // Install all lifecycle hooks with standard delimiter blocks
+  installHooks(tmpDir, { all: true });
+
+  // 1. Initially all hooks should be recognized as clean (no drift)
+  const initialFindings = getFindings(tmpDir);
+  assert.strictEqual(
+    initialFindings.advisory.some((a) => a.includes("doesn't match the currently installed CLI's template")),
+    false,
+    'all installed hooks should match template delimiters without false drift'
+  );
+
+  // 2. Prepend user code outside delimiter block in post-commit hook
+  const postCommitHook = path.join(tmpDir, '.git', 'hooks', 'post-commit');
+  const existingPostCommit = fs.readFileSync(postCommitHook, 'utf8');
+  fs.writeFileSync(postCommitHook, '#!/bin/sh\n# user pre-step\necho "hello"\n\n' + existingPostCommit.replace(/^#![^\n]*\n/, ''));
+
+  // Should still NOT be flagged as drifted because the delimited block is untouched
+  const chainedFindings = getFindings(tmpDir);
+  assert.strictEqual(
+    chainedFindings.advisory.some((a) => a.includes("post-commit doesn't match")),
+    false,
+    'chained user code outside block should not trigger drift warning'
+  );
+
+  // 3. Mutate inside the delimited block of post-checkout
+  const postCheckoutHook = path.join(tmpDir, '.git', 'hooks', 'post-checkout');
+  fs.writeFileSync(postCheckoutHook, '#!/bin/sh\n# --- create-agent-room hook: post-checkout ---\necho "tampered"\n# --- end create-agent-room hook: post-checkout ---\n');
+
+  const tamperedFindings = getFindings(tmpDir);
+  assert.ok(
+    tamperedFindings.advisory.some((a) => a.includes(".git/hooks/post-checkout doesn't match")),
+    'tampered block content must be flagged as drifted'
+  );
+
+  // 4. Run fixFindings and assert it re-synchronizes the hook
+  const fixed = fixFindings(tmpDir);
+  assert.ok(
+    fixed.some((f) => f.includes('Synchronized drifted hook: .git/hooks/post-checkout')),
+    'fixFindings must re-sync drifted post-checkout hook'
+  );
+
+  const finalFindings = getFindings(tmpDir);
+  assert.strictEqual(
+    finalFindings.advisory.some((a) => a.includes("post-checkout doesn't match")),
+    false,
+    'post-checkout should be clean after fix'
+  );
 });
 
 

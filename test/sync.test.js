@@ -487,5 +487,37 @@ test('runSync: purges deprecated legacy skills from .agent-room/skills and remov
   assert.strictEqual(fs.existsSync(path.join(claudeDir, 'writing-plans', 'SKILL.md')), true);
 });
 
+test('runSync --quiet: suppresses up-to-date output when files are already in sync', (t) => {
+  const tmpDir = path.join(__dirname, 'tmp-sync-quiet-' + Date.now());
+  fs.mkdirSync(tmpDir, { recursive: true });
+  t.after(() => fs.rmSync(tmpDir, { recursive: true, force: true }));
+
+  const agentRoomDir = path.join(tmpDir, '.agent-room', 'skills');
+  fs.mkdirSync(agentRoomDir, { recursive: true });
+  fs.writeFileSync(path.join(agentRoomDir, 'writing-plans.md'), '# Writing Plans\nBody content');
+
+  const configPath = path.join(tmpDir, '.agent-room.json');
+  fs.writeFileSync(configPath, JSON.stringify({ tools: ['cursor', 'copilot'] }));
+
+  // Initial sync populates mirrors
+  const initial = runSync(tmpDir, { all: true });
+  assert.strictEqual(initial.ok, true);
+  assert.ok(initial.syncedCount > 0);
+
+  // Subsequent sync with quiet: true should produce no logs
+  const logs = [];
+  const originalLog = console.log;
+  console.log = (...args) => logs.push(args.join(' '));
+  try {
+    const second = runSync(tmpDir, { all: true, quiet: true });
+    assert.strictEqual(second.ok, true);
+    assert.strictEqual(second.syncedCount, 0);
+    assert.ok(second.unchangedCount > 0);
+    assert.strictEqual(logs.length, 0, 'quiet mode should not output anything when up to date');
+  } finally {
+    console.log = originalLog;
+  }
+});
+
 
 

@@ -11,7 +11,7 @@ if [ "${CAR_SKIP_HOOK:-0}" = "1" ] || [ "${CAR_SKIP_POST_MERGE:-0}" = "1" ]; the
 fi
 
 if command -v create-agent-room >/dev/null 2>&1; then
-  create-agent-room sync . --all >/dev/null 2>&1 || true
+  create-agent-room hook post-merge "$1" >/dev/null 2>&1 || true
 elif [ -f "bin/cli.js" ]; then
-  node "bin/cli.js" sync . --all >/dev/null 2>&1 || true
+  node "bin/cli.js" hook post-merge "$1" >/dev/null 2>&1 || true
 fi

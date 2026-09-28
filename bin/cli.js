@@ -380,7 +380,7 @@ Usage:
   create-agent-room session [target-dir] [name] [options]
   create-agent-room skill [list|add|remove] [packs...] [options]
   create-agent-room ci [target-dir] [options]
-  create-agent-room hook [install|status|uninstall] [target-dir] [options]
+  create-agent-room hook [install|status|uninstall|pre-push|post-commit|post-checkout|post-merge] [target-dir] [options]
 
 Options:
   --hooks <list>            Target git hooks (pre-commit, pre-push, post-commit, post-checkout, post-merge)
@@ -478,6 +478,11 @@ Examples:
   create-agent-room ci --format json
   create-agent-room ci --format markdown --summary
   create-agent-room ci --strict --skip-verify
+  create-agent-room hook status
+  create-agent-room hook install --all
+  create-agent-room hook post-commit
+  create-agent-room hook post-checkout
+  create-agent-room hook post-merge
   create-agent-room --version
 
 Sync mirrors .agent-room/skills/ into .claude/skills/ (claude) and

@@ -18,6 +18,12 @@ const {
   detectUpstreamBranch,
   resolvePrePushConfig,
   runPrePush,
+  runPostCommit,
+  resolvePostCommitConfig,
+  runPostCheckout,
+  resolvePostCheckoutConfig,
+  runPostMerge,
+  resolvePostMergeConfig,
   runHookCli,
 } = require('../lib/hook');
 
@@ -619,3 +625,340 @@ test('pre-push template script: executes cleanly from git hook and respects bypa
   });
   assert.strictEqual(resDel.status, 0);
 });
+
+test('resolvePostCommitConfig: reads hooks.postCommit from .agent-room.json', (t) => {
+  const repo = createTempGitRepo('post-commit-cfg');
+  t.after(() => cleanupTempDir(repo));
+
+  const def = resolvePostCommitConfig(repo);
+  assert.strictEqual(def.enabled, true);
+
+  fs.writeFileSync(
+    path.join(repo, '.agent-room.json'),
+    JSON.stringify({
+      hooks: {
+        postCommit: {
+          enabled: false,
+        },
+      },
+    })
+  );
+
+  const disabled = resolvePostCommitConfig(repo);
+  assert.strictEqual(disabled.enabled, false);
+});
+
+test('runPostCommit: bypasses via CAR_SKIP_POST_COMMIT or CAR_SKIP_HOOK', (t) => {
+  const repo = createTempGitRepo('post-commit-bypass');
+  t.after(() => cleanupTempDir(repo));
+
+  const origSkip = process.env.CAR_SKIP_POST_COMMIT;
+  process.env.CAR_SKIP_POST_COMMIT = '1';
+  try {
+    const res = runPostCommit(repo);
+    assert.strictEqual(res.ok, true);
+    assert.strictEqual(res.skipped, true);
+    assert.strictEqual(res.reason, 'bypassed via environment variable');
+  } finally {
+    if (origSkip !== undefined) {
+      process.env.CAR_SKIP_POST_COMMIT = origSkip;
+    } else {
+      delete process.env.CAR_SKIP_POST_COMMIT;
+    }
+  }
+
+  const res2 = runPostCommit(repo, { skipHook: true });
+  assert.strictEqual(res2.ok, true);
+  assert.strictEqual(res2.skipped, true);
+});
+
+test('runPostCommit: respects hooks.postCommit.enabled: false in .agent-room.json', (t) => {
+  const repo = createTempGitRepo('post-commit-disabled');
+  t.after(() => cleanupTempDir(repo));
+
+  fs.writeFileSync(
+    path.join(repo, '.agent-room.json'),
+    JSON.stringify({
+      hooks: {
+        postCommit: {
+          enabled: false,
+        },
+      },
+    })
+  );
+
+  const res = runPostCommit(repo);
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.skipped, true);
+  assert.strictEqual(res.reason, 'postCommit hook disabled in .agent-room.json');
+});
+
+test('runPostCommit: records commit ambiently in .agent-room/sessions/', (t) => {
+  const repo = createTempGitRepo('post-commit-exec');
+  t.after(() => cleanupTempDir(repo));
+
+  execFileSync('git', ['config', 'user.name', 'Ambient Tester'], { cwd: repo });
+  execFileSync('git', ['config', 'user.email', 'ambient@example.com'], { cwd: repo });
+
+  const testFile = path.join(repo, 'ambient.txt');
+  fs.writeFileSync(testFile, 'ambient tracking\n');
+  execFileSync('git', ['add', 'ambient.txt'], { cwd: repo });
+  execFileSync('git', ['commit', '-m', 'feat: ambient tracking commit'], { cwd: repo });
+
+  const res = runPostCommit(repo);
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.skipped, false);
+  assert.ok(res.sessionPath && fs.existsSync(res.sessionPath));
+  assert.strictEqual(res.subject, 'feat: ambient tracking commit');
+
+  const content = fs.readFileSync(res.sessionPath, 'utf8');
+  assert.ok(content.includes('feat: ambient tracking commit'));
+  assert.ok(content.includes('ambient.txt'));
+});
+
+test('runHookCli: post-commit action dispatches cleanly in json mode', (t) => {
+  const repo = createTempGitRepo('cli-postcommit-dispatch');
+  t.after(() => cleanupTempDir(repo));
+
+  let logged = '';
+  const origLog = console.log;
+  console.log = (msg) => {
+    logged += msg + '\n';
+  };
+
+  try {
+    const code = runHookCli(repo, 'post-commit', [], {
+      skipPostCommit: true,
+      json: true,
+    });
+    assert.strictEqual(code, 0);
+    const parsed = JSON.parse(logged);
+    assert.strictEqual(parsed.ok, true);
+    assert.strictEqual(parsed.skipped, true);
+  } finally {
+    console.log = origLog;
+  }
+});
+
+test('resolvePostCheckoutConfig: reads hooks.postCheckout from .agent-room.json', (t) => {
+  const repo = createTempGitRepo('post-checkout-cfg');
+  t.after(() => cleanupTempDir(repo));
+
+  // Default enabled
+  const def = resolvePostCheckoutConfig(repo);
+  assert.strictEqual(def.enabled, true);
+
+  // Explicitly disabled
+  fs.writeFileSync(
+    path.join(repo, '.agent-room.json'),
+    JSON.stringify({
+      hooks: {
+        postCheckout: { enabled: false },
+      },
+    })
+  );
+
+  const disabled = resolvePostCheckoutConfig(repo);
+  assert.strictEqual(disabled.enabled, false);
+});
+
+test('runPostCheckout: bypasses file checkouts ($3 != 1)', (t) => {
+  const repo = createTempGitRepo('post-checkout-file');
+  t.after(() => cleanupTempDir(repo));
+
+  const res = runPostCheckout(repo, { flag: '0' });
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.skipped, true);
+  assert.strictEqual(res.reason, 'file checkout (flag != 1)');
+});
+
+test('runPostCheckout: bypasses via CAR_SKIP_POST_CHECKOUT or CAR_SKIP_HOOK', (t) => {
+  const repo = createTempGitRepo('post-checkout-bypass');
+  t.after(() => cleanupTempDir(repo));
+
+  const res1 = runPostCheckout(repo, { flag: '1', skipPostCheckout: true });
+  assert.strictEqual(res1.ok, true);
+  assert.strictEqual(res1.skipped, true);
+
+  const res2 = runPostCheckout(repo, { flag: '1', skipHook: true });
+  assert.strictEqual(res2.ok, true);
+  assert.strictEqual(res2.skipped, true);
+});
+
+test('runPostCheckout: respects hooks.postCheckout.enabled: false in .agent-room.json', (t) => {
+  const repo = createTempGitRepo('post-checkout-disabled');
+  t.after(() => cleanupTempDir(repo));
+
+  fs.writeFileSync(
+    path.join(repo, '.agent-room.json'),
+    JSON.stringify({
+      hooks: {
+        postCheckout: { enabled: false },
+      },
+    })
+  );
+
+  const res = runPostCheckout(repo, { flag: '1' });
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.skipped, true);
+  assert.strictEqual(res.reason, 'postCheckout hook disabled in .agent-room.json');
+});
+
+test('runPostCheckout: executes sync on branch checkout (flag: 1)', (t) => {
+  const repo = createTempGitRepo('post-checkout-exec');
+  t.after(() => cleanupTempDir(repo));
+
+  const agentRoomDir = path.join(repo, '.agent-room', 'skills');
+  fs.mkdirSync(agentRoomDir, { recursive: true });
+  fs.writeFileSync(path.join(agentRoomDir, 'writing-plans.md'), '# Writing Plans');
+  fs.writeFileSync(
+    path.join(repo, '.agent-room.json'),
+    JSON.stringify({ tools: ['cursor'] })
+  );
+
+  const res = runPostCheckout(repo, { flag: '1' });
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.skipped, false);
+  assert.strictEqual(res.action, 'synced');
+  assert.ok(fs.existsSync(path.join(repo, '.cursor', 'rules', 'agent-room.mdc')));
+});
+
+test('resolvePostMergeConfig: reads hooks.postMerge from .agent-room.json', (t) => {
+  const repo = createTempGitRepo('post-merge-cfg');
+  t.after(() => cleanupTempDir(repo));
+
+  // Default enabled
+  const def = resolvePostMergeConfig(repo);
+  assert.strictEqual(def.enabled, true);
+
+  // Explicitly disabled
+  fs.writeFileSync(
+    path.join(repo, '.agent-room.json'),
+    JSON.stringify({
+      hooks: {
+        postMerge: { enabled: false },
+      },
+    })
+  );
+
+  const disabled = resolvePostMergeConfig(repo);
+  assert.strictEqual(disabled.enabled, false);
+});
+
+test('runPostMerge: bypasses via CAR_SKIP_POST_MERGE or CAR_SKIP_HOOK', (t) => {
+  const repo = createTempGitRepo('post-merge-bypass');
+  t.after(() => cleanupTempDir(repo));
+
+  const res1 = runPostMerge(repo, { skipPostMerge: true });
+  assert.strictEqual(res1.ok, true);
+  assert.strictEqual(res1.skipped, true);
+
+  const res2 = runPostMerge(repo, { skipHook: true });
+  assert.strictEqual(res2.ok, true);
+  assert.strictEqual(res2.skipped, true);
+});
+
+test('runPostMerge: respects hooks.postMerge.enabled: false in .agent-room.json', (t) => {
+  const repo = createTempGitRepo('post-merge-disabled');
+  t.after(() => cleanupTempDir(repo));
+
+  fs.writeFileSync(
+    path.join(repo, '.agent-room.json'),
+    JSON.stringify({
+      hooks: {
+        postMerge: { enabled: false },
+      },
+    })
+  );
+
+  const res = runPostMerge(repo);
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.skipped, true);
+  assert.strictEqual(res.reason, 'postMerge hook disabled in .agent-room.json');
+});
+
+test('runPostMerge: executes sync on merge', (t) => {
+  const repo = createTempGitRepo('post-merge-exec');
+  t.after(() => cleanupTempDir(repo));
+
+  const agentRoomDir = path.join(repo, '.agent-room', 'skills');
+  fs.mkdirSync(agentRoomDir, { recursive: true });
+  fs.writeFileSync(path.join(agentRoomDir, 'writing-plans.md'), '# Writing Plans');
+  fs.writeFileSync(
+    path.join(repo, '.agent-room.json'),
+    JSON.stringify({ tools: ['cursor'] })
+  );
+
+  const res = runPostMerge(repo);
+  assert.strictEqual(res.ok, true);
+  assert.strictEqual(res.skipped, false);
+  assert.strictEqual(res.action, 'synced');
+  assert.ok(fs.existsSync(path.join(repo, '.cursor', 'rules', 'agent-room.mdc')));
+});
+
+test('runHookCli: post-checkout and post-merge actions dispatch cleanly in json mode', (t) => {
+  const repo = createTempGitRepo('cli-checkout-merge-dispatch');
+  t.after(() => cleanupTempDir(repo));
+
+  let logged = '';
+  const origLog = console.log;
+  console.log = (msg) => {
+    logged += msg + '\n';
+  };
+
+  try {
+    logged = '';
+    const codeCheckout = runHookCli(repo, 'post-checkout', ['HEAD~1', 'HEAD', '0'], {
+      json: true,
+    });
+    assert.strictEqual(codeCheckout, 0);
+    const parsedCheckout = JSON.parse(logged);
+    assert.strictEqual(parsedCheckout.ok, true);
+    assert.strictEqual(parsedCheckout.skipped, true);
+    assert.strictEqual(parsedCheckout.reason, 'file checkout (flag != 1)');
+
+    logged = '';
+    const codeMerge = runHookCli(repo, 'post-merge', ['0'], {
+      skipPostMerge: true,
+      json: true,
+    });
+    assert.strictEqual(codeMerge, 0);
+    const parsedMerge = JSON.parse(logged);
+    assert.strictEqual(parsedMerge.ok, true);
+    assert.strictEqual(parsedMerge.skipped, true);
+  } finally {
+    console.log = origLog;
+  }
+});
+
+test('post-checkout and post-merge template scripts: execute cleanly and respect bypasses', (t) => {
+  const repo = createTempGitRepo('checkout-merge-template-exec');
+  t.after(() => cleanupTempDir(repo));
+
+  fs.mkdirSync(path.join(repo, '.agent-room'), { recursive: true });
+
+  installHooks(repo, { hooks: ['post-checkout', 'post-merge'] });
+  const checkoutHook = path.join(repo, '.git', 'hooks', 'post-checkout');
+  const mergeHook = path.join(repo, '.git', 'hooks', 'post-merge');
+  assert.ok(fs.existsSync(checkoutHook));
+  assert.ok(fs.existsSync(mergeHook));
+
+  // Test post-checkout bypass
+  const resCheckoutBypass = spawnSync('/bin/sh', [checkoutHook, 'HEAD~1', 'HEAD', '1'], {
+    cwd: repo,
+    env: Object.assign({}, process.env, { CAR_SKIP_POST_CHECKOUT: '1' }),
+    stdio: 'pipe',
+    encoding: 'utf8',
+  });
+  assert.strictEqual(resCheckoutBypass.status, 0);
+
+  // Test post-merge bypass
+  const resMergeBypass = spawnSync('/bin/sh', [mergeHook, '0'], {
+    cwd: repo,
+    env: Object.assign({}, process.env, { CAR_SKIP_POST_MERGE: '1' }),
+    stdio: 'pipe',
+    encoding: 'utf8',
+  });
+  assert.strictEqual(resMergeBypass.status, 0);
+});
+
