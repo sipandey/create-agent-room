@@ -7,7 +7,16 @@ const fs = require('node:fs');
 const os = require('node:os');
 const { execFileSync } = require('node:child_process');
 const { runInit } = require('../lib/init');
-const { listSkillPacks, addSkillPacks, removeSkillPacks, runSkillCli, CORE_SKILL_FILES, RETIRED_CORE_SKILL_FILES } = require('../lib/skill');
+const {
+  listSkillPacks,
+  addSkillPacks,
+  removeSkillPacks,
+  runSkillCli,
+  CORE_SKILL_FILES,
+  MINIMAL_CORE_SKILL_FILES,
+  DELIVERY_AUDIT_SKILL_FILES,
+  RETIRED_CORE_SKILL_FILES
+} = require('../lib/skill');
 
 const CLI_PATH = path.join(__dirname, '..', 'bin', 'cli.js');
 
@@ -293,4 +302,50 @@ test('listSkillPacks: handles lingering retired skills without misclassifying as
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }
 });
+
+test('CORE_SKILL_FILES: accurately partitions minimal vs delivery/audit skill files', () => {
+  assert.strictEqual(MINIMAL_CORE_SKILL_FILES.length, 7);
+  assert.strictEqual(DELIVERY_AUDIT_SKILL_FILES.length, 3);
+  assert.strictEqual(CORE_SKILL_FILES.length, 10);
+
+  for (const s of MINIMAL_CORE_SKILL_FILES) {
+    assert.ok(CORE_SKILL_FILES.includes(s));
+  }
+  for (const s of DELIVERY_AUDIT_SKILL_FILES) {
+    assert.ok(CORE_SKILL_FILES.includes(s));
+  }
+});
+
+test('addSkillPacks and removeSkillPacks: adds and removes extended delivery and audit skills on demand', async () => {
+  const tmpDir = await createTestProject();
+  try {
+    // Add commit-changes directly
+    const addRes = addSkillPacks(tmpDir, 'commit-changes');
+    assert.strictEqual(addRes.success, true);
+    assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'skills', 'commit-changes.md')));
+
+    // Add via alias audit (validate-plan.md)
+    const addAudit = addSkillPacks(tmpDir, 'audit');
+    assert.strictEqual(addAudit.success, true);
+    assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'skills', 'validate-plan.md')));
+
+    // Add via alias delivery (commit-changes.md, describe-pr.md)
+    const addDelivery = addSkillPacks(tmpDir, 'delivery');
+    assert.strictEqual(addDelivery.success, true);
+    assert.ok(fs.existsSync(path.join(tmpDir, '.agent-room', 'skills', 'describe-pr.md')));
+
+    // Remove commit-changes
+    const remRes = removeSkillPacks(tmpDir, 'commit-changes');
+    assert.strictEqual(remRes.success, true);
+    assert.strictEqual(fs.existsSync(path.join(tmpDir, '.agent-room', 'skills', 'commit-changes.md')), false);
+
+    // Remove audit
+    const remAudit = removeSkillPacks(tmpDir, 'audit');
+    assert.strictEqual(remAudit.success, true);
+    assert.strictEqual(fs.existsSync(path.join(tmpDir, '.agent-room', 'skills', 'validate-plan.md')), false);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 

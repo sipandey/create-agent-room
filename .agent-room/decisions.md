@@ -16,6 +16,15 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+### 2026-09-28 — Modular Skill Partitioning for Delivery & Audit Workflows
+
+**Decision:** Partition delivery and audit skills (`commit-changes.md`, `validate-plan.md`, `describe-pr.md`) out of the default minimal profile into full mode (`--profile full` / `--preset standard|strict`) and on-demand skill packs (`create-agent-room skill add <skill|pack>`):
+- **Core Partitioning:** Split `CORE_SKILL_FILES` into `MINIMAL_CORE_SKILL_FILES` (7 core build loop skills) and `DELIVERY_AUDIT_SKILL_FILES` (3 extended skills), preserving backward-compatible discovery and sync.
+- **On-Demand Extended Installation:** Implemented `resolveExtendedCoreSkillFiles` in `lib/skill.js` allowing `skill add` / `skill remove` to install or purge individual extended skills (`commit-changes`, `validate-plan`, `describe-pr`) or domain aliases (`delivery`, `audit`) into minimal rooms on demand.
+- **Dynamic Scaffolding & AGENTS.md:** Excluded extended skills in `minimalProfileExcludes` and tailored `AGENTS.md` `GUIDANCE_LINKS` and `DEFAULT_WORKFLOW` to streamline minimal mode to strictly the core build loop while full mode retains the complete 5-stage RPI pipeline.
+**Why:** Scaffolded token overhead in default `--profile minimal` is reduced by ~40% (~6,500 tokens, from ~16,400 to ~9,900 tokens), preventing agent cognitive overload and context truncation for developers running basic build loops, while maintaining full zero-friction extensibility when delivery or audit automation is required.
+**Rejected:** Hardcoding two separate directories of skills in templates (would duplicate template maintenance across updates); forcing full delivery/audit tooling into minimal rooms.
+
 <!-- no-log: v2.6.0 release commit — routine release mechanics (version bump, lockfile re-sync, action.yml and CI pin bump, CHANGELOG [Unreleased]→[2.6.0]). The CHANGELOG is the record; nothing new to add here. -->
 <!-- no-plan: routine release commit v2.6.0 (version bump, action.yml, lockfile, changelog) -->
 

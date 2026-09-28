@@ -6,8 +6,9 @@ This document clarifies which features are actively enforced, which are prescrip
 scaffolds the **Basic RPI Framework** (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`),
 core hygiene procedures (`test-driven-development`, `systematic-debugging`, `closing-the-loop`), artifact directories (`docs/research/`, `docs/plans/`),
 and mechanical seatbelts, while skipping secondary documentation (`principles.md`, `workflow-classifier.md`, `coordination/`)
-to minimize agent token overhead. Extended delivery and audit workflows (`commit-changes`, `validate-plan`, `describe-pr`)
-provide post-implementation verification in `standard` and `full` modes. `validate` reads the profile a room was scaffolded
+and downstream delivery/audit skills (`commit-changes`, `validate-plan`, `describe-pr`)
+to minimize agent token overhead (~9,900 tokens). Extended delivery and audit workflows
+provide post-implementation verification in `standard` and `full` modes, or on demand via `create-agent-room skill add`. `validate` reads the profile a room was scaffolded
 with from `.agent-room.json` and only requires full-corpus documentation files under `full`/`standard`.
 
 ---
@@ -255,7 +256,7 @@ These provide a framework that requires external setup or effort:
 - **Current state:**
   - ✅ `create-agent-room eval` runs builtin fixtures; `--format json|csv`
     for CI/dashboard export; exit 1 on failure
-  - ❌ Custom `.agent-room/evals/` packs in consumer repos (Phase 2)
+  - ✅ Custom `.agent-room/evals/` and `evals/custom/` suites supported (Story 3.3)
   - ❌ LLM-as-judge or codegen-quality scoring
 - **Reality:** Mechanical governance regression tests, not agent task benchmarks
 
@@ -309,10 +310,8 @@ These provide a framework that requires external setup or effort:
 
 Features planned for future releases:
 
-- **Real-time observability:** Dashboards, trending, alerting
-- **Session orchestration:** Query handoff state during execution, queue work
-- **Session metrics export:** JSON/CSV export of `.agent-room/sessions/` stats
-  (compliance `eval` JSON/CSV export shipped in v2.3.0; session metrics
-  aggregation export still deferred)
+- **Ambient Git lifecycle governance:** Automated post-commit session capture & post-checkout rule sync (Stories 6.3 & 6.4)
+- **Real-time observability:** Interactive TUI room dashboard and session inspector (Epic 7)
+- **Enterprise policy distribution:** Monorepo package boundaries and remote policy inheritance (Epic 8)
 - **Approval workflows:** Simple gates for guardrails violations
 - **Performance tracking:** Cost, tokens, latency per session
