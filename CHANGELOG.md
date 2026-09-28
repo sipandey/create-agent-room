@@ -10,6 +10,53 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+## [2.6.0] - 2026-09-28
+
+### Added
+
+- Core Research → Plan → Implement (RPI) Pipeline & Skills (Stories 9.1, 9.3): establishes the canonical procedural skill suite and workflow routing to systematically eliminate the "rush to code" failure mode across AI coding agents.
+  - Packaged 4 foundational RPI skills in `templates/.agent-room/skills/`: `research-codebase.md` (read-only factual discovery without premature proposals), `writing-plans.md` (interactive architectural requirements, trade-off analysis, and phased implementation checklists), `implement-plan.md` (disciplined, phase-by-phase TDD execution with persistent checkbox tracking), and `iterate-plan.md` (surgical plan refinements).
+  - Established Basic RPI Framework as part of the default installation across all governance presets (`minimal`, `standard`, `strict`).
+  - Integrated RPI routing into `workflow-classifier.md` and universal `AGENTS.md` instructions, establishing clear bifurcation between the 5-stage RPI pipeline (features, products, multi-file enhancements) and lightweight Bug Flow (defects).
+
+- Standardized Artifact Lifecycle & Schema Validation (`docs/research/`, `docs/plans/`, Story 9.2):
+  - Consistently scaffolds dedicated artifact directories `docs/research/` and `docs/plans/` on repository initialization (`create-agent-room init`).
+  - Machine-validated YAML frontmatter schemas enforced via `create-agent-room validate`: validates file naming conventions (`YYYY-MM-DD-<topic>.md`), required metadata attributes (`date`, `git_commit`, `branch`, `repository`, `topic`, `tags`, `status` for research docs; `date`, `research_doc`, `branch`, `status`, `phases_total`, and `phases_completed` for plan docs), non-empty values, and numeric phase counts.
+
+- Multi-Agent Tool Adapters: Claude Slash Commands & Cursor RPI Rules (Story 9.4):
+  - Claude Code custom slash commands: scaffolds and synchronizes `.claude/commands/{research,plan,implement,iterate}.md` using `$ARGUMENTS` to invoke procedural skills directly from the terminal via `/research`, `/plan`, `/implement`, and `/iterate`.
+  - Cursor RPI rules: injected 5-stage RPI execution guidelines into `templates/adapters/cursorrules.tmpl` and `.cursor/rules/agent-room.mdc` to guide Cursor's agent mode through the phased sequence.
+  - Automatic tool synchronization: updated `lib/init.js` and `lib/sync.js` to synchronize Claude commands alongside existing rules and skills with dirty-file protection and `--force` support.
+
+- Mechanical Seatbelts for RPI Execution (Story 9.5):
+  - Pre-Commit RPI Plan Gate: checks staged changes in `.agent-room/hooks/guardrails-check.js`, preventing multi-file code modifications across multiple directories without an active plan in `docs/plans/` or an explicit waiver in `.agent-room/decisions.md` (`<!-- no-plan: <reason> -->`).
+  - Stop Hook Phase Verification Gate: inspects active plans in `docs/plans/` on Claude Code and Cursor stop hook boundaries (`.agent-room/hooks/close-the-loop-check.js`), preventing agents from completing turns with uncompleted phase checkboxes (`- [ ]`) unless blocked or explicit waiver recorded.
+
+- Atomic Commit Workflow Skill (`create-agent-room` / `/commit`, Story 9.7):
+  - Authors and packages canonical `commit-changes.md` skill in `templates/.agent-room/skills/` and `CORE_SKILL_FILES`.
+  - Enforces pre-commit assessment, branch hygiene, guardrail scope limits (max 20 files, max 500 lines per commit), zero AI attribution trailers, strict single-file staging (prohibiting `git add -A` and `git commit -a`), and a mandatory interactive human approval gate before staging.
+
+- Plan Validation Auditor Skill (`create-agent-room` / `/validate_plan`, Story 9.8):
+  - Authors and packages canonical `validate-plan.md` skill in `templates/.agent-room/skills/` and `CORE_SKILL_FILES`.
+  - Enforces independent auditor role isolation across a 3-vector audit matrix: database & schema migrations, code specifications vs. approved plan in `docs/plans/`, and automated test coverage & active execution.
+  - Generates structured, auditable validation reports under `docs/reviews/YYYY-MM-DD-[TICKET-]validation.md`.
+
+- Attested PR Description Skill (`create-agent-room` / `/describe_pr`, Story 9.9):
+  - Authors and packages canonical `describe-pr.md` skill in `templates/.agent-room/skills/` and `CORE_SKILL_FILES`.
+  - Conducts deep architectural diff analysis across user-facing, internal architecture, breaking changes, and migrations.
+  - Integrates `create-agent-room pr-desc --verify` to embed verifiable execution proofs, test suite exit code, duration, and reviewer compliance checklists into PR descriptions.
+  - Includes interactive human approval gate before updating pull requests via GitHub CLI (`gh pr edit`).
+
+### Changed
+
+- Standardized canonical `CORE_SKILL_FILES` in `lib/skill.js` to 10 foundational skills (`research-codebase.md`, `writing-plans.md`, `implement-plan.md`, `iterate-plan.md`, `test-driven-development.md`, `systematic-debugging.md`, `commit-changes.md`, `validate-plan.md`, `describe-pr.md`, `closing-the-loop.md`).
+- Extended automated test suite coverage with comprehensive end-to-end integration and CLI test scenarios across all 414 test cases (100% pass rate).
+
+### Deprecated & Removed
+
+- Deprecated and removed obsolete procedural skills `brainstorming.md` and `verification-before-completion.md` (superseded by canonical RPI pipeline skills).
+- Implemented automated orphan skill detection and purging in `lib/sync.js` and `create-agent-room doctor --fix`.
+
 ## [2.5.0] - 2026-09-25
 
 ### Added
@@ -639,7 +686,8 @@ default (e.g. a script asserting `principles.md` exists after a bare
 - `package.json` now includes `repository`, `homepage`, `bugs`,
   `keywords`, and `author` metadata for npm.
 
-[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v2.5.0...HEAD
+[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v2.6.0...HEAD
+[2.6.0]: https://github.com/sipandey/create-agent-room/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/sipandey/create-agent-room/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/sipandey/create-agent-room/compare/v2.3.1...v2.4.0
 [2.3.1]: https://github.com/sipandey/create-agent-room/compare/v2.3.0...v2.3.1

@@ -16,6 +16,9 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+<!-- no-log: v2.6.0 release commit — routine release mechanics (version bump, lockfile re-sync, action.yml and CI pin bump, CHANGELOG [Unreleased]→[2.6.0]). The CHANGELOG is the record; nothing new to add here. -->
+<!-- no-plan: routine release commit v2.6.0 (version bump, action.yml, lockfile, changelog) -->
+
 ### 2026-09-28 — Basic RPI Framework in Default Installation & Delivery/Audit Modularization
 
 **Decision:** Formally establish the Basic Research → Plan → Implement (RPI) Framework (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`) along with core hygiene skills (`test-driven-development`, `systematic-debugging`, `closing-the-loop`) as the standard default installation across all presets (`minimal`, `standard`, `strict`).
