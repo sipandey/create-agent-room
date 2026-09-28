@@ -2,12 +2,13 @@
 
 This document clarifies which features are actively enforced, which are prescriptive guidance, and which are aspirational frameworks requiring additional setup.
 
-**Note on `--profile`:** `init` defaults to `--profile minimal`, which
-skips `principles.md`, `workflow-classifier.md`, and `coordination/`
-(described below as 🟡 guidance features) unless `--profile full` is
-passed. `validate` reads the profile a room was scaffolded with from
-`.agent-room.json` and only requires those files under `full` — see
-README.md's [Profiles](../README.md#profiles-minimal-vs-full) section.
+**Note on `--preset` / `--profile`:** `init` defaults to `--preset minimal` (or `--profile minimal`), which
+scaffolds the **Basic RPI Framework** (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`),
+core hygiene procedures (`test-driven-development`, `systematic-debugging`, `closing-the-loop`), artifact directories (`docs/research/`, `docs/plans/`),
+and mechanical seatbelts, while skipping secondary documentation (`principles.md`, `workflow-classifier.md`, `coordination/`)
+to minimize agent token overhead. Extended delivery and audit workflows (`commit-changes`, `validate-plan`, `describe-pr`)
+provide post-implementation verification in `standard` and `full` modes. `validate` reads the profile a room was scaffolded
+with from `.agent-room.json` and only requires full-corpus documentation files under `full`/`standard`.
 
 ---
 
@@ -69,6 +70,7 @@ These features **actively block, fail, or prevent** operations if violated:
   - Removing `scopeBoundaries.allowedPaths` or weakening `disallowedCrossBoundaries`.
   - Disabling or removing `verifyOnCommit` pre-commit verification or strict waiver audits.
   Commits that strengthen or preserve existing rules proceed cleanly, while any rule-weakening requires `GUARDRAILS_BYPASS=1` with an auditable justification logged to `.agent-room/guardrails-bypass-log.md`.
+- **RPI Plan Gate:** Staging changes touching >5 non-scaffold files across multiple directories is blocked unless an active implementation plan exists in `docs/plans/` (or an explicit waiver `<!-- no-plan: <reason> -->` is recorded in `.agent-room/decisions.md`). Prevents agents from executing large multi-file changes without an approved plan.
 
 ### Anti-patterns & Decisions Logs (Stop Hooks — Claude Code + Cursor)
 
@@ -84,6 +86,8 @@ These features **actively block, fail, or prevent** operations if violated:
     stdout `{ "followup_message": "..." }` forces another agent turn
     (same check; Cursor's API continues the loop rather than hard-blocking).
   Pass `--adapter=claude` (default) or `--adapter=cursor` to the shared script.
+- **Pre-Stop Test & Build Verification Gate:** When non-scaffold files change during an agent turn, the Stop hook automatically runs the configured test suite (`verification.testCommand` in `.agent-room.json`). If tests fail, it blocks the turn and feeds the failure logs back to the LLM to force immediate resolution.
+- **RPI Phase Verification Gate:** When an agent is working through an active plan in `docs/plans/`, the Stop hook automatically extracts the declared automated verification command for the active/completed phase and verifies that it passes before permitting turn completion.
 - **Why this is a stronger enforcement point than the pre-commit hook
   above:** it runs *inside the agent's own loop*, before there's
   necessarily even a commit to gate. Evidence-lite (B.1) also inspects the
@@ -124,11 +128,34 @@ These features **actively block, fail, or prevent** operations if violated:
 - **How it fails:** Exit code 1; descriptive error message
 - **User action:** Required before committing skill packs
 
+### RPI Artifact Schema & Convention Enforcement (validate & ci)
+
+- **What it does:** Both `validate` and `ci` mechanically verify that artifacts in `docs/research/` and `docs/plans/` adhere to strict conventions:
+  - Files follow the date-prefixed convention: `YYYY-MM-DD-<topic>.md`.
+  - Required frontmatter fields: `date`, `branch`, `topic`, `status`, `phases_total` (must be a number), `phases_completed` (must be a number), and `research_doc` (linking the plan to its discovery research artifact).
+- **How it fails:** Exit code 1; blocks CI verification until artifact headers and naming conventions are corrected.
+- **Enforcement:** Enforced in local CLI (`create-agent-room validate`) and in automated pull request checks (`create-agent-room ci`).
+
 ---
 
 ## 🟡 Prescriptive Guidance (Requires Human Discipline)
 
 These features provide templates and protocols that agents must choose to follow. **There is no automatic enforcement:**
+
+### Research → Plan → Implement (RPI) Framework
+
+- **What it is:** The foundational execution framework for all agentic coding tasks:
+  - **Basic RPI Suite (Default in All Presets):**
+    - `research-codebase`: Read-only codebase exploration, boundary discovery, and architecture mapping (`docs/research/`).
+    - `writing-plans` & `iterate-plan`: Structured requirements clarification, trade-off evaluation, and phased implementation checklists (`docs/plans/`).
+    - `implement-plan`: Phase-by-phase execution with mandatory test-driven development (TDD) checkpoints.
+    - Coupled with core procedures: `test-driven-development`, `systematic-debugging`, and `closing-the-loop`.
+  - **Extended Delivery & Audit Workflows (Full Mode):**
+    - `commit-changes` (`/commit`): Formulates atomic commits with blast radius guardrails and zero AI attribution.
+    - `validate-plan` (`/validate_plan`): Conducts independent 3-vector validation audits (schema, code, tests).
+    - `describe-pr` (`/describe_pr`): Synthesizes PR descriptions backed by live test verification proofs and GitHub CLI synchronization.
+- **Tool Integration:** Claude Code slash commands in `.claude/commands/` (`/research`, `/plan`, `/implement`, `/iterate`) and Cursor agent mode rules in `.cursor/rules/agent-room.mdc`.
+- **Enforcement:** The procedure steps are guidance; however, phase test verification and plan blast radius are mechanically backed by the Stop Hook and Pre-Commit Plan Gate.
 
 ### Workflow Classifier
 

@@ -24,13 +24,15 @@ this says *what we're planning and why we're not planning Y*.
 
 ## Now
 
-Small, cheap, clearly worth it — currently empty; check `## Next` for
-what's queued up.
+Small, cheap, clearly worth it:
+
+- **Basic RPI Framework in Default Installation** — **Shipped** (Epic 9). The baseline Research → Plan → Implement pipeline (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`), `docs/research/` & `docs/plans/` artifact lifecycle, slash commands (`/research`, `/plan`, `/implement`, `/iterate`), and mechanical seatbelts (pre-commit plan gate & stop-hook phase verification) are now standard across all default `minimal` installations.
 
 ## Next
 
 Worth doing, more effort, still in keeping with the project's scope:
 
+- **Modular Profile / Skill Partitioning for Delivery & Audit Workflows** — Further streamline the default `minimal` profile to package *strictly* the core RPI triad (`research`, `plan`, `implement`) and core hygiene (`tdd`, `systematic-debugging`, `closing-the-loop`), partitioning downstream delivery and audit skills (`commit-changes`, `validate-plan`, `describe-pr`) into full mode (`--profile full` / `--preset standard`) or dedicated optional skill packs (`release`, `code-review`).
 - ~~**Publish `action.yml` to the GitHub Marketplace**~~ — **done** (listed as
   [create-agent-room Validate](https://github.com/marketplace/actions/create-agent-room-validate);
   update via release **Edit** + Marketplace checkbox on new major versions).
@@ -41,10 +43,7 @@ Worth doing, more effort, still in keeping with the project's scope:
 Plausible, but shouldn't be built speculatively — wait for an actual user
 need before spending the complexity budget:
 
-- A metrics export format (JSON/CSV) for teams who want to pipe session
-  data into their own dashboards, instead of the tool building a dashboard
-  itself. (Compliance `eval` report export addresses governance regression
-  only, not session metrics.)
+- ~~**Metrics export format (JSON/CSV/Markdown)**~~ — **done** (Story 3.1: `create-agent-room metrics --format json|csv|markdown` with session, test verification, and decision analytics).
 
 ## Explicitly out of scope
 

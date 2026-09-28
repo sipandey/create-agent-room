@@ -17,6 +17,7 @@ Imagine hiring a brilliant junior developer who types at 200 words a minute, wor
 2. **The Accidental Secret Leak:** While testing an API, the agent paste-tests an active AWS access key, GitHub personal token, or modifies your `.env` file and stages it to Git.
 3. **The Blast Radius Creep:** You ask the agent to adjust a CSS margin on the homepage. Thirty seconds later, it has modified your database schema, rewritten the Dockerfile, and touched 18 unrelated backend files.
 4. **The Amnesic Coworker:** The agent rewrites a complex algorithm from scratch because it had no memory of *why* the original author designed it that way. No decisions were recorded, so history repeats itself every week.
+5. **The "Rush to Code" Blunder:** You ask the agent for a new feature. It immediately begins writing code without researching existing patterns or presenting a phased plan — inventing nonexistent APIs and introducing architectural debt.
 
 ### Why "Just Write an `AGENTS.md`" Doesn't Work
 
@@ -86,6 +87,8 @@ npm install -g create-agent-room
 
 `create-agent-room` added a lightweight, self-contained governance room:
 - **`AGENTS.md`**: The universal entry point explaining your project boundaries to any agent.
+- **`docs/research/` & `docs/plans/`**: Dedicated artifact directories for the **Research → Plan → Implement (RPI)** pipeline.
+- **`.agent-room/skills/`**: The core RPI procedural skills (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`, `test-driven-development`, `systematic-debugging`, `closing-the-loop`).
 - **`.agent-room/guardrails.json`**: Machine-readable safety rules (secrets scanning, protected paths, file limits).
 - **`.agent-room/decisions.md`**: An append-only log capturing architectural decisions so agents don't repeat past mistakes.
 - **`.agent-room/hooks/`**: The automatic pre-commit and stop hooks that enforce compliance behind the scenes.
@@ -100,6 +103,41 @@ npm install -g create-agent-room
 ```
 
 ![Demo: create-agent-room blocking a staged AWS key at commit, then blocking an agent turn with no decision log](docs/demo.gif)
+
+---
+
+## 🔄 The Core Engine: Research → Plan → Implement (RPI)
+
+AI coding agents write significantly better, safer code when they don't rush straight to editing. `create-agent-room` bakes the **Research → Plan → Implement (RPI)** execution pipeline directly into your repository:
+
+```mermaid
+flowchart LR
+  A["🔍 ① Research\n(/research)"] -->|"Map codebase & boundaries"| B["📝 ② Plan & Iterate\n(/plan, /iterate)"]
+  B -->|"Human approval of phased plan"| C["⚡ ③ Implement\n(/implement)"]
+  C -->|"TDD checkpoints & phase verification"| D["🛡️ ④ Audit & Deliver\n(Standard/Full Mode)"]
+  D -->|"validate-plan, commit-changes, describe-pr"| E["🚀 Shipped"]
+```
+
+### 1. Basic RPI Framework (Default in Every Room)
+Every scaffolded repository — including the default `minimal` preset — ships with the core RPI pipeline ready to run across Claude Code, Cursor, and any other assistant:
+
+* **Phase 1: Research (`research-codebase` / `/research`)**  
+  *Strictly read-only investigation.* The agent reads existing codebase architecture, catalogs constraints, maps dependencies, and writes findings to `docs/research/YYYY-MM-DD-<topic>.md`.
+* **Phase 2: Plan & Iterate (`writing-plans`, `iterate-plan` / `/plan`, `/iterate`)**  
+  *Requirements clarification & phased checklists.* The agent explores architectural approaches, evaluates trade-offs, and authors a structured implementation plan with test checkpoints in `docs/plans/YYYY-MM-DD-<topic>.md`. Requires human review and approval before code is written.
+* **Phase 3: Implement (`implement-plan` / `/implement`)**  
+  *Disciplined execution.* The agent executes the approved plan phase-by-phase using Test-Driven Development (TDD), executes automated verification commands at each phase checkpoint, and updates progress checkboxes (`- [ ]` → `- [x]`) on disk.
+
+### 2. Mechanical Seatbelts for RPI
+RPI in `create-agent-room` is not merely polite advice — it is mechanically enforced by runtime seatbelts:
+* **Pre-Commit Plan Gate:** A Git pre-commit seatbelt blocks commits that touch >5 non-scaffold files across multiple directories unless an active implementation plan exists in `docs/plans/` or an explicit waiver is recorded in `.agent-room/decisions.md`.
+* **Stop-Hook Phase Verification Gate:** When an agent is working through an active plan, Claude Code and Cursor stop hooks automatically verify that the active/completed phase's test command passes before the turn can end.
+
+### 3. Extended Audit & Delivery Workflows (Full Mode)
+For standard and full workflows, additional skills streamline post-implementation verification and delivery:
+* **Atomic Commits (`commit-changes` / `/commit`):** Formulates single-responsibility git commits with imperative messages, enforces blast radius limits, and prompts for human confirmation with zero AI attribution trailers.
+* **Plan Validation Audits (`validate-plan` / `/validate_plan`):** Runs a 3-vector audit (schema migrations, code specifications, test verification) and emits structured reports to `docs/reviews/`.
+* **Attested PR Descriptions (`describe-pr` / `/describe_pr`):** Synthesizes PR summaries with embedded execution proofs and updates pull request descriptions directly via the GitHub CLI.
 
 ---
 
@@ -192,8 +230,8 @@ create-agent-room init . --yes --preset <minimal|standard|strict>
 
 | Preset | Who It's For | What It Enforces | Guidance Token Overhead |
 | :--- | :--- | :--- | :--- |
-| **`minimal`** *(Default)* | Solopreneurs, prototypes, and fast-moving small apps | Basic `AGENTS.md`, Git pre-commit secrets guardrails, Stop hook, and core skills. Skips secondary documentation to minimize LLM token costs. | ~6,500 tokens |
-| **`standard`** | Production software teams & established repos | Everything in `minimal` + **Automated Pre-Stop Test Verification Gate** + complete principles playbook, task classifier, and handoff protocols. | ~12,500 tokens |
+| **`minimal`** *(Default)* | Solopreneurs, prototypes, and fast-moving small apps | Basic `AGENTS.md`, **Basic RPI Framework** (`research-codebase`, `writing-plans`, `implement-plan`, `iterate-plan`), core procedure skills (`test-driven-development`, `systematic-debugging`, `closing-the-loop`), `docs/research/` & `docs/plans/` artifact directories, Pre-Commit guardrails & Plan Gate, and Stop hooks. Skips secondary documentation and coordination protocols to minimize LLM token costs. | ~6,500 tokens |
+| **`standard`** | Production software teams & established repos | Everything in `minimal` + **Automated Pre-Stop Test Verification Gate** + complete principles playbook, task classifier, handoff protocols, and extended delivery & audit workflows (`commit-changes`, `validate-plan`, `describe-pr`). | ~12,500 tokens |
 | **`strict`** | Enterprise, financial, healthcare, & high-compliance repos | Everything in `standard` + **Pre-Commit Test Execution** (`verifyOnCommit`) + **Architectural Import Boundaries** (`importBoundaries`) + **Strict Waiver Audits** (mandates ticket references like `ticket: #123` and ≥40 character rationale for overrides) + tight scope limits (10 files / 300 lines). | ~12,500 tokens |
 
 ---
@@ -430,7 +468,7 @@ Catch PR anti-tamper, unapproved rule weakening, test regressions, and missing s
 
 - **Strictly Zero Dependencies:** `create-agent-room` has exactly **0 external runtime dependencies**. It runs entirely on the Node.js standard library (`fs`, `path`, `child_process`). No supply-chain risk.
 - **100% Dogfooded:** This repository runs `create-agent-room` on itself. Every commit and turn is gated by the same stop hooks, pre-commit guardrails, and compliance evals described above.
-- **329 Automated Tests:** Verified across unit, integration, and CLI end-to-end tests on every release.
+- **414 Automated Tests:** Verified across unit, integration, and CLI end-to-end tests on every release.
 
 ---
 

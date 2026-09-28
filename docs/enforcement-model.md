@@ -31,6 +31,10 @@ the CLI — not that your model followed instructions.
 2. **Evidence-lite** — if a log file was touched, does `git diff HEAD` on that
    file contain a valid `<!-- no-log: ... -->` waiver (≥20 chars + keyword) or
    a structured `### YYYY-MM-DD` entry?
+3. **Pre-stop test verification** — if non-scaffold files changed, executes
+   `verification.testCommand` (e.g. `npm test`) and blocks completion if tests fail.
+4. **RPI phase verification gate** — if working on an active plan in `docs/plans/`,
+   executes the phase verification command and blocks completion if phase verification fails.
 
 **Adapters:**
 
@@ -53,6 +57,9 @@ hook** in this tool.
 - Protected paths (includes the guardrails machinery itself)
 - Forbidden patterns (AWS keys, private keys, tokens, etc.)
 - Optional `scopeGuidance` (`maxFilesPerChange`, `maxLinesPerChange`)
+- **RPI plan gate** — staging changes across >5 non-scaffold files across multiple
+  directories requires an active plan in `docs/plans/` or an explicit waiver
+  (`<!-- no-plan: <reason> -->` in `.agent-room/decisions.md`).
 
 **Bypass:** `GUARDRAILS_BYPASS=1` — every use appended to
 `.agent-room/guardrails-bypass-log.md` and auto-staged.
