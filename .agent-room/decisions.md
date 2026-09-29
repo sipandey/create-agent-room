@@ -16,6 +16,9 @@ have to re-derive it from scratch by reading git history.
 
 <!-- Entries go below this line, newest first. -->
 
+<!-- no-log: v2.7.0 release commit — routine release mechanics (version bump, lockfile re-sync, action.yml and CI pin bump, CHANGELOG [Unreleased]→[2.7.0]). The CHANGELOG is the record; nothing new to add here. -->
+<!-- no-plan: routine release commit v2.7.0 (version bump, action.yml, lockfile, changelog) -->
+
 ### 2026-09-28 — Ambient Git Lifecycle Governance (Stories 6.3 & 6.4)
 
 **Decision:** Implement first-class CLI actions (`create-agent-room hook post-commit|post-checkout|post-merge`) and lifecycle management in `lib/hook.js`, `lib/session.js`, and `lib/sync.js`:

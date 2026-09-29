@@ -10,6 +10,27 @@ Releases before 1.2.1 predate this changelog. See `git log` and the tags
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-09-29
+
+### Added
+
+- Ambient Git Lifecycle Governance (Stories 6.3 & 6.4):
+  - Ambient Session Tracking on `post-commit` (Story 6.3): automatically extracts HEAD commit SHA, subject, and changed files via `git diff-tree --root --name-status -r HEAD` and appends them to the active `In Progress` session in `.agent-room/sessions/` (or scaffolds a new session if none exists). Test suite verification (`verifyProject`) is bypassed during ambient commit logging (`skipVerify: true`) to maintain commit execution under 50ms.
+  - Multi-Assistant Rule Synchronization on `post-checkout` & `post-merge` (Story 6.4): evaluates `$3 == 1` on `post-checkout` to trigger only on branch checkouts while skipping file checkouts (`$3 == 0`). Triggers after git pull/merge to execute `runSync(target, { all: true, quiet: true })`, ensuring `.cursor/rules/`, `.claude/skills/`, `.windsurfrules`, `.clinerules`, `.codexrules`, and `.github/copilot-instructions.md` remain in exact parity across branches with unobtrusive quiet logging.
+  - Added `--quiet` flag to `create-agent-room sync` (`runSync(target, { quiet: true })`) to suppress banner and info logging during automated git hook execution.
+  - Declarative configuration in `.agent-room.json`: supports `hooks.postCommit`, `hooks.postCheckout`, `hooks.postMerge` with `{ enabled: false }` along with fast environment bypasses (`CAR_SKIP_HOOK`, `CAR_SKIP_POST_COMMIT`, `CAR_SKIP_POST_CHECKOUT`, `CAR_SKIP_POST_MERGE`).
+  - Delimited Git Hook Drift Detection & Auto-Repair: packaged templates delegate cleanly to `create-agent-room hook <name>` (with fallback to `node bin/cli.js hook <name>`). Enhanced `lib/doctor.js` static hook drift detection (`checkHooks`) and `--fix` auto-repair to verify delimited blocks across all 5 git lifecycle hooks (`pre-commit`, `commit-msg`, `post-commit`, `post-checkout`, `post-merge`) without false positives.
+
+- Modular Skill Partitioning for Minimal Rooms:
+  - Partitioned delivery and audit skills (`commit-changes.md`, `validate-plan.md`, `describe-pr.md`) out of the default minimal profile into full mode (`--profile full` / `--preset standard|strict`) and on-demand skill packs (`create-agent-room skill add <skill|pack>`).
+  - Core partitioning in `lib/skill.js`: split `CORE_SKILL_FILES` into `MINIMAL_CORE_SKILL_FILES` (7 build loop skills) and `DELIVERY_AUDIT_SKILL_FILES` (3 extended skills), preserving backward-compatible discovery and sync.
+  - On-Demand Extended Installation: implemented `resolveExtendedCoreSkillFiles` in `lib/skill.js` allowing `skill add` / `skill remove` to install or purge individual extended skills (`commit-changes`, `validate-plan`, `describe-pr`) or domain aliases (`delivery`, `audit`) into minimal rooms on demand.
+  - Dynamic Scaffolding & AGENTS.md: excluded extended skills in `minimalProfileExcludes` and tailored `AGENTS.md` `GUIDANCE_LINKS` and `DEFAULT_WORKFLOW` to streamline minimal mode to strictly the core build loop while full mode retains the complete 5-stage RPI pipeline, reducing scaffolded token overhead in default minimal mode by ~40% (~6,500 tokens).
+
+### Changed
+
+- Expanded automated test suite with comprehensive unit and integration test coverage across all 444 test cases (100% pass rate).
+
 ## [2.6.0] - 2026-09-28
 
 ### Added
@@ -686,7 +707,8 @@ default (e.g. a script asserting `principles.md` exists after a bare
 - `package.json` now includes `repository`, `homepage`, `bugs`,
   `keywords`, and `author` metadata for npm.
 
-[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v2.6.0...HEAD
+[Unreleased]: https://github.com/sipandey/create-agent-room/compare/v2.7.0...HEAD
+[2.7.0]: https://github.com/sipandey/create-agent-room/compare/v2.6.0...v2.7.0
 [2.6.0]: https://github.com/sipandey/create-agent-room/compare/v2.5.0...v2.6.0
 [2.5.0]: https://github.com/sipandey/create-agent-room/compare/v2.4.0...v2.5.0
 [2.4.0]: https://github.com/sipandey/create-agent-room/compare/v2.3.1...v2.4.0
